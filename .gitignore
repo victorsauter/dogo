@@ -1,0 +1,16 @@
+# Système
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.idea/
+.vscode/
+*.swp
+
+# Configuration locale et secrets
+.env
+.env.*
+!.env.example
+
+# Journaux
+*.log

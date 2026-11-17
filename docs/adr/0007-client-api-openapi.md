@@ -1,7 +1,8 @@
 # ADR 0007 — Client mobile généré depuis la description OpenAPI
 
-- **Statut :** Proposé
+- **Statut :** Accepté
 - **Date :** 18/11/2026
+- **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
 
 ## Contexte
 
