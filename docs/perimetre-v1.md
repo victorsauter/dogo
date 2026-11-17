@@ -130,8 +130,8 @@ L'application s'appelle dogo et se développe dans le dépôt `dogo` ; le dépô
 
 - **Nom.** dogo, plus simple à retenir que DogoMeet.
 - **Dépôt `DogoMeet`.** Premier développement en .NET (utilisateur, chien, balade). Il n'est ni modifié ni déplacé.
-- **Base proposée pour l'API.** .NET 10 en minimal API, EF Core avec migrations, PostgreSQL et PostGIS pour la recherche géographique.
-- **Organisation du code.** À trancher entre un découpage par fonctionnalité et le CRUD générique de `DogoMeet` ; voir l'ADR 0004.
+- **API.** .NET 10 en minimal API. La base proposée est PostgreSQL avec PostGIS, pour la recherche géographique, et des migrations EF Core.
+- **Organisation du code.** Par fonctionnalité (comptes, chiens, balades, inscriptions, organisations, signalements) ; voir l'ADR 0004.
 - **Tests.** Dès le départ sur les règles d'inscription : capacité, gabarits admis, approbation, blocage, réservation aux membres.
 - **Client mobile.** Application native iOS et Android, connexion Apple ou Google ; développée avec React Native et Expo. L'API publie une description OpenAPI pour générer le client.
 - **Pas de mutualisation.** Aucun paquet commun avec une future application équine tant qu'il n'y a qu'un produit.

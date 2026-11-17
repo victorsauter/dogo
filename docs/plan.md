@@ -59,7 +59,7 @@ Les catégories de gabarit restent à fixer ; le périmètre demande au minimum 
 
 **API**
 
-- [ ] Créer le projet .NET 10 en minimal API, avec sa description OpenAPI
+- [ ] Créer le projet .NET 10 en minimal API, organisé par fonctionnalité, avec sa description OpenAPI
 - [ ] Brancher EF Core et écrire la première migration : utilisateurs et chiens
 - [ ] Connexion : vérifier le jeton d'identité Apple ou Google, créer le compte au premier passage, émettre un jeton de session
 - [ ] Profil : lire et modifier son propre profil
@@ -155,7 +155,6 @@ Les catégories de gabarit restent à fixer ; le périmètre demande au minimum 
 
 | Sujet | À décider avant | Note |
 | --- | --- | --- |
-| Organisation du code de l'API | Le lot 1 | Par fonctionnalité, ou CRUD générique repris de `DogoMeet` ; voir l'ADR 0004 |
 | Stockage des photos | La fin du lot 1 | Dépend de l'hébergement retenu |
 | Hébergement de l'API et de la base | La démonstration du lot 2 | La base doit proposer PostGIS si l'ADR 0005 est accepté |
 | Fond de carte | Le lot 2 | Une clé Google Maps est en général nécessaire sur Android ; à vérifier |

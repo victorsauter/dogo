@@ -1,6 +1,6 @@
 # ADR 0004 — API en .NET 10, code organisé par fonctionnalité
 
-- **Statut :** Proposé
+- **Statut :** Accepté
 - **Date :** 18/11/2026
 
 ## Contexte
@@ -23,5 +23,5 @@ Le code est organisé par fonctionnalité : un dossier par domaine (comptes, chi
 
 ## Alternatives écartées
 
-- **Reprendre le CRUD générique de `DogoMeet`.** Déjà écrit, et très peu de code par entité. Les règles d'inscription, d'approbation et de blocage devraient toutefois vivre en dehors de la couche générique, ce qui ferait cohabiter deux styles. Reste une option valable pour les entités simples : c'est le point à trancher avant le lot 1.
+- **Reprendre le CRUD générique de `DogoMeet`.** Déjà écrit, et très peu de code par entité. Les règles d'inscription, d'approbation et de blocage devraient toutefois vivre en dehors de la couche générique, ce qui ferait cohabiter deux styles. Option écartée le 18/11/2026.
 - **Changer de langage côté serveur.** Aucun gain, et la perte de l'expérience acquise en .NET.
