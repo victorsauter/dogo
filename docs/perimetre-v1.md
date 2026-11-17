@@ -1,4 +1,4 @@
-# DogoMeet — Périmètre V1 (v0.3)
+# dogo — Périmètre V1 (v0.3)
 
 **Version :** 0.3 · 18/11/2026
 
@@ -86,10 +86,11 @@ Trois points sont à faire cadrer par un juriste avant le lancement :
 
 ## Décisions
 
-Dix décisions sont prises ; deux restent ouvertes et dépendent des éducateurs partenaires.
+Onze décisions sont prises ; deux restent ouvertes et dépendent des éducateurs partenaires.
 
 | Décision prise | Choix |
 | --- | --- |
+| Nom et dépôt | L'application s'appelle dogo et vit dans le dépôt `dogo` ; `DogoMeet` est conservé à part |
 | Paiement des balades professionnelles | Hors application en V1 |
 | Pays du pilote | France |
 | Forme de l'application | Application native iOS et Android |
@@ -125,15 +126,17 @@ Le blocage et le signalement ne peuvent pas attendre après le lot 4 : l'App Sto
 
 ## Technique
 
-On garde le dépôt, son nom, la CI et .NET ; on réécrit le code.
+L'application s'appelle dogo et se développe dans le dépôt `dogo` ; le dépôt `DogoMeet` est conservé tel quel, à part.
 
-- **État du repo.** 760 lignes, dernier commit en février 2025. Il compile mais plante au démarrage, car aucun service n'est enregistré.
-- **Modèle actuel.** Utilisateur, chien et balade seulement ; la balade n'a ni organisateur, ni lieu, ni capacité, ni règles.
-- **Nouvelle base proposée.** .NET 10 en minimal API, EF Core avec migrations, PostgreSQL et PostGIS pour la recherche géographique.
-- **Organisation du code.** Par fonctionnalité (balades, inscriptions, organisations, signalements) plutôt qu'un CRUD générique : le domaine est fait d'actions comme rejoindre, approuver ou bloquer.
+- **Nom.** dogo, plus simple à retenir que DogoMeet.
+- **Dépôt `DogoMeet`.** Premier développement en .NET (utilisateur, chien, balade). Il n'est ni modifié ni déplacé.
+- **Base proposée pour l'API.** .NET 10 en minimal API, EF Core avec migrations, PostgreSQL et PostGIS pour la recherche géographique.
+- **Organisation du code.** À trancher entre un découpage par fonctionnalité et le CRUD générique de `DogoMeet` ; voir l'ADR 0004.
 - **Tests.** Dès le départ sur les règles d'inscription : capacité, gabarits admis, approbation, blocage, réservation aux membres.
-- **Pas de mutualisation.** Ni monorepo ni paquets communs tant qu'il n'y a qu'un produit.
 - **Client mobile.** Application native iOS et Android, connexion Apple ou Google ; développée avec React Native et Expo. L'API publie une description OpenAPI pour générer le client.
+- **Pas de mutualisation.** Aucun paquet commun avec une future application équine tant qu'il n'y a qu'un produit.
+
+Le détail est dans le [plan de développement](plan.md) et les [décisions d'architecture](adr/README.md).
 
 ## Mis de côté
 
