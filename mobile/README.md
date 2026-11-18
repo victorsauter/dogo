@@ -106,6 +106,7 @@ mobile/
     ├── notifications/     notifications push : chargement conditionnel, enregistrement de l'appareil, liens, écoute
     ├── auth/              session (magasin sécurisé, SessionProvider, useSession), signIn, providers/ (Apple, Google)
     ├── components/        composants de base (Screen, Text, Button, TextField…)
+    ├── discover/          les deux vues de l'onglet Balades (panneau, liste), leur préférence et le réglage du profil
     ├── theme/             couleurs claires et sombres, espacements, rayons, typographie
     ├── strings/           tous les textes français (fr.ts)
     ├── lib/               configuration, fournisseurs, âge, dates, géographie, position, validation des formulaires, sélecteur de photo
@@ -158,7 +159,7 @@ export function useCreateDog() {
 
 ### Balades (lot 2)
 
-- **Onglet « Balades »** (`(tabs)/index.tsx`) : carte (`WalksMap`) et liste (`WalkCard`) des mêmes balades, filtres période et gabarit. La recherche suit la zone visible : `searchParamsFor(region, filtres)` (`src/api/walks.ts`) calcule centre, rayon (plafonné à 100 km) et fin de période ; la requête part 400 ms après le dernier déplacement et garde les résultats précédents pendant le chargement (indicateur « Recherche… » après 300 ms seulement).
+- **Onglet « Balades »** (`(tabs)/index.tsx`, deux vues, voir plus bas) : carte (`WalksMap`) et liste (`WalkCard`) des mêmes balades, filtres période et gabarit. La recherche suit la zone visible : `searchParamsFor(region, filtres)` (`src/api/walks.ts`) calcule centre, rayon (plafonné à 100 km) et fin de période ; la requête part 400 ms après le dernier déplacement et garde les résultats précédents pendant le chargement (indicateur « Recherche… » après 300 ms seulement).
 - **Fiche** `walks/[id]` : tout sur la balade, inscription de mes chiens (`WalkRegistrationPanel`), et pour l'organisateur demandes en attente, « Retirer », modification et annulation.
 - **Formulaire** `walks/new`, `walks/[id]/edit` : `WalkForm` (validation `validateWalk` dans `src/lib/forms.ts`, point de rendez-vous sur `MeetingPointPicker`). Les conflits `walk.capacity_below_registered` et `walk.size_in_use` s'affichent sur leur champ (`walkSubmitErrors`).
 - **« Mes balades »** : `GET /me/walks` avec `role` (`Organizer`, `Participant`) et `when` (`Upcoming`, `Past`), en PascalCase.
@@ -166,14 +167,16 @@ export function useCreateDog() {
 - **Dates** : `src/lib/dates.ts` (`formatWalkStart` → « Demain à 09:30 », `formatDuration` → « 1 h 30 »), en français et dans le fuseau de l'appareil. Pluriels : `plural(t.discover.resultCount, n)`.
 - **Champs des lots suivants** (`isProfessional`, `organization`, `hasBlockedParticipant`) sont déjà affichés par `WalkCard` et la fiche (badge « Pro » et bordure, nom de l'organisation, avertissement discret).
 
-### Prototype : dispositions de l’onglet « Balades »
+### Onglet « Balades » : deux vues au choix
 
-Prototype à comparer, sur la branche `proto/balades-dispositions` seulement. Avec `EXPO_PUBLIC_DEV_LOGIN=true`, un bandeau en pointillés « Prototype · disposition » en haut de l’onglet propose « Actuelle », « Liste » et « Panneau » ; le choix est retenu (`expo-secure-store`, clé `dogo.discoverLayout`). Sans cette variable, l’onglet est exactement l’actuel, sans bandeau.
+L’onglet a deux vues, au choix de chacun dans le profil, sous **Réglages › Affichage des balades** (deux cartes avec une petite illustration : « Carte et panneau » et « Liste »). **« Carte et panneau » est la vue par défaut.** Le choix s’applique aussitôt à l’onglet et reste mémorisé sur l’appareil (`expo-secure-store`, clé `dogo.discoverLayout`) ; une valeur inconnue (ou l’ancienne « current ») redonne le panneau. Il ne dépend pas de `EXPO_PUBLIC_DEV_LOGIN`.
 
-- Le code vit dans `src/discover/` : `shared.tsx` (filtres, en-tête, recherche qui suit la carte, bouton flottant), `CurrentLayout`, `ListLayout` (A), `PanelLayout` (B), `layoutPreference.ts` et `LayoutSelector`. La route `(tabs)/index.tsx` ne fait que choisir.
-- **A, « Liste »** : liste plein écran, filtres période, gabarit et distance (5, 10, 25 km ; 10 par défaut), recherche autour de la position (ou du centre par défaut, avec une phrase), triée par date (`searchParamsAround`). Le bouton « Carte » ouvre une carte plein écran (mêmes filtres, recherche sur la zone visible) ; une épingle touchée affiche la balade en bas (« Fermer », ou toucher la balade pour l’ouvrir) ; « Liste » revient, filtres, défilement et dernière zone de carte conservés.
-- **B, « Panneau »** : carte sous un panneau à trois hauteurs (`@gorhom/bottom-sheet`). L’en-tête du panneau est un bouton : « Voir la liste » → « Agrandir la liste » → « Voir la carte ». Une épingle touchée remonte la balade en tête du panneau, mise en évidence. Pas de « tirer pour rafraîchir » dans le panneau (le geste servirait à le baisser).
-- **Mise en place** : `react-native-gesture-handler`, `react-native-reanimated` et `react-native-worklets` (versions d’Expo SDK 58, `npx expo install`) et `@gorhom/bottom-sheet` ; `GestureHandlerRootView` enveloppe l’application (`AppProviders`). Le plugin Babel des worklets est ajouté par `babel-preset-expo`, sans configuration. Dans les tests, `jest.setup.ts` charge les simulations de gesture-handler et remplace le panneau par une vue dont `snapToIndex` appelle `onChange`.
+- Le code vit dans `src/discover/` : `shared.tsx` (filtres, en-tête, recherche qui suit la carte, actualisation, bouton flottant), `PanelLayout.tsx`, `ListLayout.tsx`, `layoutPreference.ts` (la préférence) et `LayoutSetting.tsx` (le réglage du profil). La route `(tabs)/index.tsx` ne fait que choisir la vue.
+- **Préférence observable** : `layoutPreference.ts` est un petit store (`useSyncExternalStore`) lu une fois depuis le stockage sécurisé, puis partagé par l’onglet et le réglage. `useDiscoverLayout()` renvoie `{ layout, setLayout }` ; `layout` vaut `null` le temps de la lecture (quelques millisecondes), l’onglet n’affiche alors rien plutôt que la mauvaise vue.
+- **« Carte et panneau »** : carte plein écran sous un panneau à trois hauteurs (`@gorhom/bottom-sheet`). L’en-tête du panneau est un bouton : « Voir la liste » → « Agrandir la liste » → « Voir la carte ». Une épingle touchée remonte la balade en tête du panneau, mise en évidence. Pas de « tirer pour rafraîchir » (le geste servirait à baisser le panneau) : un bouton « Actualiser les balades » (icône, indicateur de chargement) se trouve à côté de la poignée.
+- **« Liste »** : liste plein écran, filtres période, gabarit et distance (5, 10, 25 km ; 10 par défaut), recherche autour de la position (ou du centre par défaut, avec une phrase), triée par date (`searchParamsAround`). Le bouton « Carte » ouvre une carte plein écran (mêmes filtres, recherche sur la zone visible) ; une épingle touchée affiche la balade en bas (« Fermer », ou toucher la balade pour l’ouvrir) ; « Liste » revient, filtres, défilement et dernière zone de carte conservés. Tirer pour rafraîchir y est conservé.
+- **Actualisation au retour sur l’onglet** : les deux vues relancent la recherche quand l’onglet reprend le focus (`useRefetchOnFocusIfStale`, `src/lib/hooks.ts`), mais pas au premier affichage ni si les données ont moins de 30 secondes.
+- **Mise en place** : `react-native-gesture-handler`, `react-native-reanimated` et `react-native-worklets` (versions d’Expo SDK 58, `npx expo install`) et `@gorhom/bottom-sheet` ; `GestureHandlerRootView` enveloppe l’application (`AppProviders`). Le plugin Babel des worklets est ajouté par `babel-preset-expo`, sans configuration. Dans les tests, `jest.setup.ts` charge les simulations de gesture-handler et remplace le panneau par une vue dont `snapToIndex` appelle `onChange` ; les tests qui changent de vue appellent `resetDiscoverLayout()` pour oublier le choix gardé en mémoire.
 
 ### Fil de balade, répétition et notifications (lot 3)
 
