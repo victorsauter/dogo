@@ -41,7 +41,7 @@ jest.mock('expo-file-system', () => {
 });
 
 // Maps are native: in tests a map is a View that forwards its events (fire
-// `regionChangeComplete` or `press` on it), and each marker a View labelled by its title
+// `regionChangeComplete` or `press` on it) and its `mapPadding`, and each marker a View labelled by its title
 // (or its accessibility label), forwarding `press` and `calloutPress`.
 jest.mock('react-native-maps', () => {
   // Shared by every map: tests read `jest.requireMock('react-native-maps').__animateToRegion`.
@@ -61,6 +61,7 @@ jest.mock('react-native-maps', () => {
         ...({
           onRegionChangeComplete: props.onRegionChangeComplete,
           onPress: props.onPress,
+          mapPadding: props.mapPadding,
         } as object),
       },
       props.children,

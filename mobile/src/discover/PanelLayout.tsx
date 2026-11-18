@@ -5,6 +5,7 @@ import BottomSheet, {
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -98,12 +99,14 @@ export function PanelLayout({
   // The low position follows the handle's real height (larger text makes it taller).
   // On a small screen with large text, half the visible map would barely differ from
   // the low position: the middle one then shows at least one more card's worth.
-  const { snapPoints, middleHeight } = useMemo(() => {
+  const { snapPoints, lowHeight, middleHeight } = useMemo(() => {
     const low = handleHeight + PEEK_HEIGHT;
     const visible = containerHeight - headerHeight;
-    if (visible <= 0) return { snapPoints: [low, '50%', '100%'], middleHeight: low + 140 };
+    if (visible <= 0) {
+      return { snapPoints: [low, '50%', '100%'], lowHeight: low, middleHeight: low + 140 };
+    }
     const middle = Math.max(Math.min(Math.max(visible / 2, low + 140), visible - 80), low + 1);
-    return { snapPoints: [low, middle, '100%'], middleHeight: middle };
+    return { snapPoints: [low, middle, '100%'], lowHeight: low, middleHeight: middle };
   }, [handleHeight, containerHeight, headerHeight]);
 
   const moveTo = useCallback((next: PanelPosition) => {
@@ -140,6 +143,16 @@ export function PanelLayout({
     };
   });
 
+  // The map's own controls (the « Plans » logo, « Légal ») sit just above the
+  // panel where it rests, low or middle; at the high position the list covers
+  // the map, so they stay where they were. This follows the position the panel
+  // is heading to, not each frame of a drag, and only moves those controls:
+  // the area searched is the whole map, under the panel too, so moving the
+  // panel searches nothing and the count does not change. On iOS the padding
+  // only moves those controls (checked); Google Maps (Android) would recentre
+  // the camera on each change, so there it keeps the middle position's.
+  const coveredBottom = Platform.OS === 'ios' && position === 0 ? lowHeight : middleHeight;
+
   const count = !located || search.isPending ? t.discover.panelLoading : searchCountLabel(sorted);
   const action = HANDLE_ACTION[position];
 
@@ -170,9 +183,8 @@ export function PanelLayout({
         onOpenWalk={openWalk}
         onSelectWalk={selectWalk}
         selectedId={selectedId}
-        // The panel opens at mid-height: centre the user in the part that stays visible.
         topInset={headerHeight}
-        bottomInset={middleHeight}
+        bottomInset={coveredBottom}
         searching={searching}
         showsUserLocation={location.status === 'granted'}
       />

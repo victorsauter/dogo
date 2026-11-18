@@ -218,6 +218,36 @@ describe('« Panneau » view — map and sliding panel', () => {
     expect(sheetPosition()).toBe(1);
   });
 
+  it('keeps the map logo just above the panel where it rests, the high position covering it', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('panel');
+    await screen.findByText(lake.title);
+    const bottom = () => screen.getByTestId('walks-map').props.mapPadding.bottom as number;
+
+    const middle = bottom();
+    await fireEvent.press(handle()); // high: the list covers the map, the logo stays put
+    expect(bottom()).toBe(middle);
+    await fireEvent.press(handle()); // low
+    const low = bottom();
+    expect(low).toBeGreaterThan(0);
+    expect(low).toBeLessThan(middle);
+    await fireEvent.press(handle()); // middle again
+    expect(bottom()).toBe(middle);
+  });
+
+  it('searches nothing when only the panel moves: the area is the whole map', async () => {
+    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake, forest]) });
+    await open('panel');
+    await screen.findByText(lake.title);
+    const searches = searchCalls(calls).length;
+
+    for (let i = 0; i < 3; i++) await fireEvent.press(handle());
+    // Past the search's debounce (the router's tests run on fake timers).
+    await act(() => jest.advanceTimersByTimeAsync(1000));
+    expect(searchCalls(calls)).toHaveLength(searches);
+    expect(screen.getByText('2 balades dans cette zone')).toBeTruthy();
+  });
+
   it('brings the walk of a tapped pin into view, highlighted', async () => {
     mockApi({ 'GET /api/v1/walks': () => ok([lake, forest]) });
     await open('panel');
