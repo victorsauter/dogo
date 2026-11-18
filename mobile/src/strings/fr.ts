@@ -110,6 +110,11 @@ export const fr = {
     emptyAction: 'Créer une balade',
     resultCount: '{count} balade|{count} balades',
     zoneCount: '{count} balade dans cette zone|{count} balades dans cette zone',
+    /** The search stopped at its maximum: the list is partial. */
+    zoneCountPartial: '{count} balades affichées : zoome pour affiner',
+    resultCountPartial: '{count} balades affichées : choisis une distance plus courte pour affiner',
+    /** Header of the panel when the search failed and nothing is shown. */
+    panelError: 'Impossible de charger les balades',
     radius: 'Distance',
     radiusOption: '{km} km',
     listLocationDenied:

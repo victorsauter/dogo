@@ -11,7 +11,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { WalkSearchResult } from '@/api/types';
-import { searchParamsAround } from '@/api/walks';
+import { isSearchCapped, searchParamsAround } from '@/api/walks';
 import {
   Button,
   EmptyState,
@@ -25,7 +25,7 @@ import {
 import { DEFAULT_CENTER, regionForRadius, type MapRegion } from '@/lib/geo';
 import { haptics } from '@/lib/haptics';
 import type { UserLocation } from '@/lib/location';
-import { plural, t } from '@/strings';
+import { format, plural, t } from '@/strings';
 import { useTheme } from '@/theme';
 
 import {
@@ -133,7 +133,9 @@ export function ListLayout({
               />
               {sorted.length > 0 ? (
                 <Text variant="caption" color="textMuted">
-                  {plural(t.discover.resultCount, sorted.length)}
+                  {isSearchCapped(sorted.length)
+                    ? format(t.discover.resultCountPartial, { count: sorted.length })
+                    : plural(t.discover.resultCount, sorted.length)}
                 </Text>
               ) : null}
             </View>

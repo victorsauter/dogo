@@ -44,6 +44,15 @@ export interface WalkSearchParams {
 
 /** Results shown at once on the map and the list (the API maximum). */
 export const SEARCH_LIMIT = 100;
+
+/**
+ * True when a search came back full: the API stops at `SEARCH_LIMIT`, so there
+ * may be more walks in the area than the list shows. The screens then say the
+ * list is partial instead of announcing « 100 balades » as the total.
+ */
+export function isSearchCapped(resultCount: number): boolean {
+  return resultCount >= SEARCH_LIMIT;
+}
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
