@@ -1,0 +1,8 @@
+# Build outputs
+bin/
+obj/
+TestResults/
+*.user
+
+# Local photo storage (Storage:Local:Path)
+data/

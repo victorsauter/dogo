@@ -1,0 +1,43 @@
+using Dogo.Api.Features.Dogs;
+using Dogo.Api.Features.Photos;
+using Dogo.Api.Infrastructure.Auth;
+
+namespace Dogo.Api.Features.Users;
+
+/// <summary>The signed-in user's own profile (<c>GET /me</c>). The only place where the e-mail appears.</summary>
+public sealed record MeResponse(
+    Guid Id,
+    string DisplayName,
+    string Bio,
+    string? PhotoUrl,
+    string? Email,
+    UserStatus Status,
+    bool IsAdmin,
+    DateTimeOffset CreatedAt)
+{
+    public static MeResponse From(User user, AdminOptions admin) => new(
+        user.Id,
+        user.DisplayName,
+        user.Bio,
+        PhotoUrls.For(user.PhotoFileName),
+        user.Email,
+        user.Status,
+        admin.IsAdmin(user.Email),
+        user.CreatedAt);
+}
+
+/// <summary>Public profile of a user with their dogs (<c>GET /users/{id}</c>). Never contains the e-mail.</summary>
+public sealed record PublicUserResponse(
+    Guid Id,
+    string DisplayName,
+    string Bio,
+    string? PhotoUrl,
+    IReadOnlyList<DogResponse> Dogs)
+{
+    public static PublicUserResponse From(User user, IEnumerable<Dog> dogs) => new(
+        user.Id,
+        user.DisplayName,
+        user.Bio,
+        PhotoUrls.For(user.PhotoFileName),
+        dogs.Select(DogResponse.From).ToList());
+}
