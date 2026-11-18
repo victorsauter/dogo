@@ -4,6 +4,7 @@ using Dogo.Api.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using NetTopologySuite.Geometries;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
@@ -200,6 +201,151 @@ namespace Dogo.Api.Infrastructure.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Dogo.Api.Features.Walks.Registration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("DogId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("dog_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("WalkId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("walk_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_registrations");
+
+                    b.HasIndex("DogId")
+                        .HasDatabaseName("ix_registrations_dog_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_registrations_user_id");
+
+                    b.HasIndex("WalkId", "DogId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_registrations_walk_id_dog_id_active")
+                        .HasFilter("status IN ('Pending', 'Accepted')");
+
+                    b.HasIndex("WalkId", "Status")
+                        .HasDatabaseName("ix_registrations_walk_id_status");
+
+                    b.ToTable("registrations", (string)null);
+                });
+
+            modelBuilder.Entity("Dogo.Api.Features.Walks.Walk", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Access")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("access");
+
+                    b.PrimitiveCollection<string[]>("AllowedSizes")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("allowed_sizes");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_minutes");
+
+                    b.Property<string>("LeashRule")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("leash_rule");
+
+                    b.Property<Point>("Location")
+                        .IsRequired()
+                        .HasColumnType("geography(Point, 4326)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("LocationLabel")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("location_label");
+
+                    b.Property<int>("MaxDogs")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_dogs");
+
+                    b.Property<Guid>("OrganizerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organizer_id");
+
+                    b.Property<string>("Rules")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("rules");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("title");
+
+                    b.HasKey("Id")
+                        .HasName("pk_walks");
+
+                    b.HasIndex("Location")
+                        .HasDatabaseName("ix_walks_location");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Location"), "gist");
+
+                    b.HasIndex("OrganizerId")
+                        .HasDatabaseName("ix_walks_organizer_id");
+
+                    b.HasIndex("StartsAt")
+                        .HasDatabaseName("ix_walks_starts_at");
+
+                    b.ToTable("walks", (string)null);
+                });
+
             modelBuilder.Entity("Dogo.Api.Features.Auth.RefreshToken", b =>
                 {
                     b.HasOne("Dogo.Api.Features.Users.User", "User")
@@ -224,9 +370,55 @@ namespace Dogo.Api.Infrastructure.Persistence.Migrations
                     b.Navigation("Owner");
                 });
 
+            modelBuilder.Entity("Dogo.Api.Features.Walks.Registration", b =>
+                {
+                    b.HasOne("Dogo.Api.Features.Dogs.Dog", "Dog")
+                        .WithMany()
+                        .HasForeignKey("DogId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_registrations_dogs_dog_id");
+
+                    b.HasOne("Dogo.Api.Features.Users.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_registrations_users_user_id");
+
+                    b.HasOne("Dogo.Api.Features.Walks.Walk", "Walk")
+                        .WithMany("Registrations")
+                        .HasForeignKey("WalkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_registrations_walks_walk_id");
+
+                    b.Navigation("Dog");
+
+                    b.Navigation("User");
+
+                    b.Navigation("Walk");
+                });
+
+            modelBuilder.Entity("Dogo.Api.Features.Walks.Walk", b =>
+                {
+                    b.HasOne("Dogo.Api.Features.Users.User", "Organizer")
+                        .WithMany()
+                        .HasForeignKey("OrganizerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_walks_users_organizer_id");
+
+                    b.Navigation("Organizer");
+                });
+
             modelBuilder.Entity("Dogo.Api.Features.Users.User", b =>
                 {
                     b.Navigation("Dogs");
+                });
+
+            modelBuilder.Entity("Dogo.Api.Features.Walks.Walk", b =>
+                {
+                    b.Navigation("Registrations");
                 });
 #pragma warning restore 612, 618
         }

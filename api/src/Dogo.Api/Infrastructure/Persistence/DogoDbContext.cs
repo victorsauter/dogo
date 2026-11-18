@@ -1,6 +1,7 @@
 using Dogo.Api.Features.Auth;
 using Dogo.Api.Features.Dogs;
 using Dogo.Api.Features.Users;
+using Dogo.Api.Features.Walks;
 using Microsoft.EntityFrameworkCore;
 
 namespace Dogo.Api.Infrastructure.Persistence;
@@ -16,6 +17,10 @@ public sealed class DogoDbContext(DbContextOptions<DogoDbContext> options, TimeP
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public DbSet<Dog> Dogs => Set<Dog>();
+
+    public DbSet<Walk> Walks => Set<Walk>();
+
+    public DbSet<Registration> Registrations => Set<Registration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
