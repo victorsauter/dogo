@@ -39,3 +39,47 @@ jest.mock('expo-file-system', () => {
   }
   return { File, Paths: {} };
 });
+
+// Maps are native: in tests a map is a View that forwards its events (fire
+// `regionChangeComplete` or `press` on it), and each marker a View labelled by its title.
+jest.mock('react-native-maps', () => {
+  const React = jest.requireActual<typeof import('react')>('react');
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  const MapView = React.forwardRef(function MapView(
+    props: Record<string, unknown> & { children?: React.ReactNode },
+    ref: React.Ref<unknown>,
+  ) {
+    React.useImperativeHandle(ref, () => ({ animateToRegion: jest.fn() }));
+    return React.createElement(
+      View,
+      {
+        testID: props.testID as string | undefined,
+        accessibilityLabel: props.accessibilityLabel as string | undefined,
+        ...({
+          onRegionChangeComplete: props.onRegionChangeComplete,
+          onPress: props.onPress,
+        } as object),
+      },
+      props.children,
+    );
+  });
+  const Marker = (props: { title?: string; onCalloutPress?: () => void; onDragEnd?: unknown }) =>
+    React.createElement(View, {
+      testID: 'map-marker',
+      accessibilityLabel: props.title,
+      ...({ onCalloutPress: props.onCalloutPress, onDragEnd: props.onDragEnd } as object),
+    });
+  return { __esModule: true, default: MapView, Marker };
+});
+
+// Location: granted, in Paris, unless a test overrides these mocks.
+jest.mock('expo-location', () => ({
+  Accuracy: { Balanced: 3 },
+  requestForegroundPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
+  getLastKnownPositionAsync: jest.fn(async () => ({
+    coords: { latitude: 48.8566, longitude: 2.3522 },
+  })),
+  getCurrentPositionAsync: jest.fn(async () => ({
+    coords: { latitude: 48.8566, longitude: 2.3522 },
+  })),
+}));

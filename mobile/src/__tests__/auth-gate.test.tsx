@@ -23,14 +23,14 @@ describe('auth gate', () => {
 
     expect(await screen.findByText(t.app.tagline)).toBeTruthy();
     expect(screen).toHavePathname('/sign-in');
-    expect(screen.queryByText(t.discover.emptyTitle)).toBeNull();
+    expect(screen.queryByLabelText(t.discover.mapLabel)).toBeNull();
   });
 
   it('shows the tabs to a signed-in user, and the sign-in screen after signing out', async () => {
     await sessionStore.set(authResponse());
     await renderRouter(APP_DIR, { initialUrl: '/' });
 
-    expect(await screen.findByText(t.discover.emptyTitle)).toBeTruthy();
+    expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
     expect(screen).toHavePathname('/');
 
     await fireEvent.press(screen.getByText(t.tabs.profile));

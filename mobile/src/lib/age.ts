@@ -1,4 +1,4 @@
-import { format, t } from '@/strings';
+import { format, plural, t } from '@/strings';
 
 /** Parses an API `birthDate` (`AAAA-MM-JJ`) as a local calendar date; `null` when invalid. */
 export function parseBirthDate(value: string): Date | null {
@@ -34,8 +34,7 @@ export function formatAge(
   if (!birth) return null;
   const { years, months } = computeAge(birth, now);
   if (years >= 1) {
-    const [one, many] = t.dog.ageYears.split('|') as [string, string];
-    return format(years === 1 ? one : many, { count: years });
+    return plural(t.dog.ageYears, years);
   }
   if (months >= 1) return format(t.dog.ageMonths, { count: months });
   return t.dog.ageNewborn;

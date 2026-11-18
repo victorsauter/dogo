@@ -70,3 +70,23 @@ describe('format', () => {
     expect(format('Bonjour {name} ({missing})', { name: 'Léa' })).toBe('Bonjour Léa ({missing})');
   });
 });
+
+describe('API error codes of walks and registrations', () => {
+  it.each([
+    'walk.not_found',
+    'walk.forbidden',
+    'walk.not_open',
+    'walk.full',
+    'walk.size_not_allowed',
+    'walk.capacity_below_registered',
+    'walk.size_in_use',
+    'walk.not_allowed',
+    'walk.members_only',
+    'registration.not_found',
+    'registration.forbidden',
+    'registration.duplicate',
+    'registration.not_active',
+  ])('%s has a French message', (code) => {
+    expect((t.errors as Record<string, string>)[code]).toEqual(expect.any(String));
+  });
+});

@@ -17,6 +17,19 @@ export function format(template: string, params: Record<string, string | number>
   );
 }
 
+/**
+ * Picks the singular or plural form of a `one|many` template and fills
+ * `{count}` (French: 0 and 1 take the singular): `plural(t.walk.registerButton, 2)`.
+ */
+export function plural(
+  template: string,
+  count: number,
+  params: Record<string, string | number> = {},
+): string {
+  const [one, many = one] = template.split('|') as [string, string?];
+  return format(Math.abs(count) < 2 ? one : many, { count, ...params });
+}
+
 /** French label of an API enum value: `enumLabel('DogSize', 'Small')` → « Petit ». */
 export function enumLabel<E extends EnumName>(name: E, value: EnumValue<E>): string {
   return (fr.enums[name] as Record<string, string>)[value] ?? value;

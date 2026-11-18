@@ -67,7 +67,7 @@ describe('sign-in: test account', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: t.auth.devLoginButton }));
 
-    expect(await screen.findByText(t.discover.emptyTitle)).toBeTruthy();
+    expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
     expect(calls[0]).toMatchObject({
       method: 'POST',
       path: '/api/v1/auth/dev',
@@ -120,7 +120,7 @@ describe('sign-in: Apple', () => {
 
     await fireEvent.press(await screen.findByRole('button', { name: t.auth.signInWithApple }));
 
-    expect(await screen.findByText(t.discover.emptyTitle)).toBeTruthy();
+    expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
     expect(calls[0]).toMatchObject({
       path: '/api/v1/auth/apple',
       json: { identityToken: 'apple-token', displayName: 'Léa Martin' },
@@ -177,7 +177,7 @@ describe('sign-in: Google', () => {
 
     await fireEvent.press(await screen.findByRole('button', { name: t.auth.signInWithGoogle }));
 
-    expect(await screen.findByText(t.discover.emptyTitle)).toBeTruthy();
+    expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
     expect(calls[0]).toMatchObject({
       path: '/api/v1/auth/google',
       json: { idToken: 'google-token' },

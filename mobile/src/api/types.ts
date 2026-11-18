@@ -18,6 +18,41 @@ export type PublicUser = Schemas['PublicUserResponse'];
 export type CreateDogRequest = Schemas['CreateDogRequest'];
 export type UpdateDogRequest = Schemas['UpdateDogRequest'];
 
+export type GeoPoint = Schemas['GeoPoint'];
+export type UserSummary = Schemas['UserSummaryResponse'];
+export type WalkSearchResult = Schemas['WalkSearchResult'];
+export type WalkDetail = Schemas['WalkDetailResponse'];
+export type MyWalk = Schemas['MyWalkResponse'];
+export type Participant = Schemas['ParticipantResponse'];
+export type MyRegistration = Schemas['MyRegistrationResponse'];
+export type Registration = Schemas['RegistrationResponse'];
+export type CreateWalkRequest = Schemas['CreateWalkRequest'];
+export type UpdateWalkRequest = Schemas['UpdateWalkRequest'];
+
+/** Fields every walk shape shares (search result, my walks, detail): what `WalkCard` shows. */
+export type WalkSummary = Pick<
+  WalkSearchResult,
+  | 'id'
+  | 'title'
+  | 'startsAt'
+  | 'durationMinutes'
+  | 'location'
+  | 'locationLabel'
+  | 'maxDogs'
+  | 'acceptedDogsCount'
+  | 'allowedSizes'
+  | 'leashRule'
+  | 'access'
+  | 'status'
+  | 'organizer'
+  | 'isProfessional'
+  | 'organization'
+  | 'hasBlockedParticipant'
+> & {
+  distanceMeters?: number;
+  myRegistrations?: MyRegistration[];
+};
+
 /** RFC 9457 problem details, with the dogo `code` extension (spec §1). */
 export interface ProblemDetails {
   type?: string;

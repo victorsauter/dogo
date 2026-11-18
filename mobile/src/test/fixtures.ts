@@ -1,4 +1,11 @@
-import type { AuthResponse, Dog, SessionUser } from '@/api/types';
+import type {
+  AuthResponse,
+  Dog,
+  Participant,
+  SessionUser,
+  WalkDetail,
+  WalkSearchResult,
+} from '@/api/types';
 
 export const testUser: SessionUser = {
   id: '6f1d3c1e-0000-4000-8000-000000000001',
@@ -53,3 +60,69 @@ export const testDog: Dog = {
   description: 'Adore les balades en forêt.',
   createdAt: '2026-11-02T10:00:00Z',
 };
+
+const inDays = (days: number, hour = 10) => {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  date.setHours(hour, 0, 0, 0);
+  return date.toISOString();
+};
+
+export const otherUser = {
+  id: '6f1d3c1e-0000-4000-8000-000000000002',
+  displayName: 'Hugo Bernard',
+  photoUrl: null,
+};
+
+export const otherDog: Dog = {
+  ...testDog,
+  id: 'd0d0c1e0-0000-4000-8000-000000000002',
+  ownerId: otherUser.id,
+  name: 'Pixel',
+  size: 'Small',
+};
+
+/** A search result, organised by someone else, in two days. */
+export function walkResult(overrides: Partial<WalkSearchResult> = {}): WalkSearchResult {
+  return {
+    id: 'a1a1a1a1-0000-4000-8000-000000000001',
+    title: 'Tour du lac',
+    startsAt: inDays(2),
+    durationMinutes: 90,
+    location: { latitude: 48.86, longitude: 2.35 },
+    locationLabel: 'Entrée du parc',
+    distanceMeters: 1250,
+    maxDogs: 6,
+    acceptedDogsCount: 2,
+    allowedSizes: ['Small', 'Medium'],
+    leashRule: 'LeashRequired',
+    access: 'Open',
+    status: 'Scheduled',
+    organizer: otherUser,
+    isProfessional: false,
+    organization: null,
+    repeatsWeekly: false,
+    hasBlockedParticipant: false,
+    ...overrides,
+  };
+}
+
+/** A walk detail, organised by someone else (not me), in two days. */
+export function walkDetail(overrides: Partial<WalkDetail> = {}): WalkDetail {
+  const { distanceMeters: _distance, ...base } = walkResult();
+  return {
+    ...base,
+    description: 'Une boucle tranquille.',
+    rules: 'Ramasser derrière son chien.',
+    createdAt: '2026-11-10T10:00:00Z',
+    isOrganizer: false,
+    participants: [],
+    myRegistrations: [],
+    pendingRegistrations: [],
+    ...overrides,
+  };
+}
+
+export function participant(dog: Dog, registrationId: string, owner = otherUser): Participant {
+  return { registrationId, dog, owner };
+}
