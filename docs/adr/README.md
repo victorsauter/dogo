@@ -32,6 +32,7 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0028](0028-balades-carte-et-panneau-coulissant.md) | Onglet Balades : deux vues au choix, panneau coulissant par défaut | Accepté |
 | [0029](0029-menus-ancres-et-finition-native.md) | Filtres en pastilles-menus ancrées, menu natif d'iOS par `@expo/ui`, matériaux et retour haptique | Accepté |
 | [0030](0030-charte-graphique-uzu.md) | Charte graphique « Uzu » : blanc cassé, fauve et noir, couleurs du pelage d'un Jack Russell | Accepté |
+| [0034](0034-robustesse-des-ecrans.md) | Robustesse des écrans : cache cumulatif du fil, écritures sans attente, navigation conditionnée au focus | Accepté |
 
 ## Statuts
 
