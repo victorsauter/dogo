@@ -1,4 +1,5 @@
 using Dogo.Api.Infrastructure.Auth;
+using Dogo.Api.Infrastructure.Push;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -10,7 +11,8 @@ namespace Dogo.Api.Tests.Infrastructure;
 
 /// <summary>
 /// In-memory API host for tests: "Testing" environment, fake identity token validator,
-/// photos in a temporary directory. <paramref name="overrides"/> replaces configuration values.
+/// photos in a temporary directory, push notifications recorded (never sent) and scheduled
+/// jobs disabled (tests call them directly with a controlled clock). <paramref name="overrides"/> replaces configuration values.
 /// </summary>
 public sealed class DogoApiFactory(
     string connectionString,
@@ -21,6 +23,8 @@ public sealed class DogoApiFactory(
     public const string AdminEmail = "admin@dogo.test";
 
     public string PhotoPath { get; } = Path.Combine(Path.GetTempPath(), "dogo-tests", Guid.NewGuid().ToString("N"));
+
+    public RecordingPushSender PushSender { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -33,6 +37,8 @@ public sealed class DogoApiFactory(
             ["Auth:Jwt:SigningKey"] = SigningKey,
             ["Storage:Local:Path"] = PhotoPath,
             ["Admin:Emails:0"] = AdminEmail,
+            ["BackgroundJobs:Enabled"] = "false",
+            ["Notifications:Provider"] = "Log",
         };
         foreach (var (key, value) in overrides ?? new Dictionary<string, string?>())
         {
@@ -44,6 +50,8 @@ public sealed class DogoApiFactory(
         {
             services.RemoveAll<IIdentityTokenValidator>();
             services.AddSingleton<IIdentityTokenValidator, FakeIdentityTokenValidator>();
+            services.RemoveAll<IPushSender>();
+            services.AddSingleton<IPushSender>(PushSender);
         });
     }
 

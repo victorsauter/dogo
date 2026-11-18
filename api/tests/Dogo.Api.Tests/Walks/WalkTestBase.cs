@@ -4,6 +4,8 @@ using Dogo.Api.Features.Dogs;
 using Dogo.Api.Features.Walks;
 using Dogo.Api.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Dogo.Api.Tests.Walks;
 
@@ -84,6 +86,21 @@ public abstract class WalkTestBase(ApiFixture fixture) : ApiTestBase(fixture)
     /// </summary>
     protected Task MoveWalkStartAsync(Guid walkId, DateTimeOffset startsAt) =>
         WithDbAsync(db => db.Walks.Where(w => w.Id == walkId).ExecuteUpdateAsync(s => s.SetProperty(w => w.StartsAt, startsAt), Ct));
+
+    /// <summary>Runs the reminder job once as if the time were <paramref name="now"/>.</summary>
+    protected Task<int> RunReminderJobAsync(DateTimeOffset now) =>
+        RunJobAsync<WalkReminderJob>(now, (job, ct) => job.RunAsync(ct));
+
+    /// <summary>Runs the weekly series job once as if the time were <paramref name="now"/>.</summary>
+    protected Task<int> RunSeriesJobAsync(DateTimeOffset now) =>
+        RunJobAsync<WalkSeriesJob>(now, (job, ct) => job.RunAsync(ct));
+
+    private async Task<int> RunJobAsync<TJob>(DateTimeOffset now, Func<TJob, CancellationToken, Task<int>> run)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var job = ActivatorUtilities.CreateInstance<TJob>(scope.ServiceProvider, new FakeTimeProvider(now));
+        return await run(job, Ct);
+    }
 
     /// <summary>A user who signed in with a dev account and owns one medium dog.</summary>
     protected async Task<(HttpClient Client, Guid UserId, DogResponse Dog)> DogOwnerAsync(string subject, string size = "Medium")
