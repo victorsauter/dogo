@@ -57,13 +57,13 @@ public static class AdminEndpoints
 
         group.MapPost("/users/{id:guid}/suspend", SuspendUser)
             .WithName("adminSuspendUser")
-            .WithSummary("Suspend an account: writes refused (except deleting the account), sessions revoked, weekly series stopped, upcoming walks cancelled with their registrants notified, push devices removed. Idempotent.")
+            .WithSummary("Suspend an account: writes refused (except deleting the account), sessions revoked, weekly series stopped, upcoming walks cancelled with their registrants notified, push devices removed, upcoming registrations to other walks cancelled. Idempotent.")
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapPost("/users/{id:guid}/unsuspend", UnsuspendUser)
             .WithName("adminUnsuspendUser")
-            .WithSummary("Lift an account's suspension. Restores nothing: series stay stopped, walks cancelled, devices and sessions gone. Idempotent.")
+            .WithSummary("Lift an account's suspension. Restores nothing: series stay stopped, walks and registrations cancelled, devices and sessions gone. Idempotent.")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return routes;

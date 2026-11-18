@@ -3987,7 +3987,7 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Suspend an account: writes refused (except deleting the account), sessions revoked, weekly series stopped, upcoming walks cancelled with their registrants notified, push devices removed. Idempotent.",
+        "summary": "Suspend an account: writes refused (except deleting the account), sessions revoked, weekly series stopped, upcoming walks cancelled with their registrants notified, push devices removed, upcoming registrations to other walks cancelled. Idempotent.",
         "operationId": "adminSuspendUser",
         "parameters": [
           {
@@ -4064,7 +4064,7 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Lift an account's suspension. Restores nothing: series stay stopped, walks cancelled, devices and sessions gone. Idempotent.",
+        "summary": "Lift an account's suspension. Restores nothing: series stay stopped, walks and registrations cancelled, devices and sessions gone. Idempotent.",
         "operationId": "adminUnsuspendUser",
         "parameters": [
           {

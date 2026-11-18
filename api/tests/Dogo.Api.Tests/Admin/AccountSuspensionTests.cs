@@ -121,6 +121,34 @@ public sealed class AccountSuspensionTests(ApiFixture fixture) : WalkTestBase(fi
     }
 
     [Fact]
+    public async Task Suspending_cancels_the_upcoming_registrations_to_other_walks_and_frees_the_places()
+    {
+        var (alice, aliceId, aliceDog) = await DogOwnerAsync("alice");
+        var (bob, _, _) = await DogOwnerAsync("bob");
+        var (carol, _, carolDog) = await DogOwnerAsync("carol");
+
+        // A full walk where Alice has the only place, an approval walk where she waits, a past walk she joined.
+        var full = await CreateWalkAsync(bob, ("maxDogs", 1), ("title", "Complète"));
+        await RegisterOkAsync(alice, full.Id, aliceDog.Id);
+        await AssertProblemAsync(await RegisterAsync(carol, full.Id, carolDog.Id), HttpStatusCode.Conflict, "walk.full");
+        var approval = await CreateWalkAsync(bob, ("access", "Approval"), ("title", "Sur demande"));
+        await RegisterOkAsync(alice, approval.Id, aliceDog.Id);
+        var past = await CreateWalkAsync(bob, ("title", "Passée"));
+        await RegisterOkAsync(alice, past.Id, aliceDog.Id);
+        await MoveWalkStartAsync(past.Id, DateTimeOffset.UtcNow.AddHours(-3));
+
+        await SuspendAsync(aliceId);
+
+        var statuses = await WithDbAsync(db => db.Registrations.Where(r => r.UserId == aliceId).ToDictionaryAsync(r => r.WalkId, r => r.Status, Ct));
+        Assert.Equal(RegistrationStatus.Cancelled, statuses[full.Id]);
+        Assert.Equal(RegistrationStatus.Cancelled, statuses[approval.Id]);
+        Assert.Equal(RegistrationStatus.Accepted, statuses[past.Id]);
+
+        // The place is free again.
+        await RegisterOkAsync(carol, full.Id, carolDog.Id);
+    }
+
+    [Fact]
     public async Task Suspending_an_unknown_account_is_not_found()
     {
         var (admin, _) = await AdminAsync();
