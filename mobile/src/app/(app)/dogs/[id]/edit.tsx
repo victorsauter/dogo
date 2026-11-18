@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { useDog, useUpdateDog, useUploadDogPhoto } from '@/api/dogs';
@@ -7,12 +7,13 @@ import type { PickedPhoto } from '@/api/photoUpload';
 import { DogForm, ErrorState, LoadingState, Screen } from '@/components';
 import { useSession } from '@/auth';
 import { dogFormFrom, toUpdateDogRequest } from '@/lib/forms';
+import { useFocusedRouter } from '@/lib/hooks';
 import { t } from '@/strings';
 
 export default function EditDogScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useSession();
-  const router = useRouter();
+  const router = useFocusedRouter();
   const dog = useDog(id);
   const updateDog = useUpdateDog(id);
   const uploadPhoto = useUploadDogPhoto();

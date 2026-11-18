@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { errorMessage } from '@/api/errors';
@@ -14,6 +14,7 @@ import {
   type FieldErrors,
   type ProfileFormValues,
 } from '@/lib/forms';
+import { useFocusedRouter } from '@/lib/hooks';
 import { t } from '@/strings';
 
 /** Edit my profile; `?welcome=1` adds the first-run sentence (new member). */
@@ -31,7 +32,7 @@ export default function EditProfileScreen() {
 function EditProfileForm({ welcome }: { welcome: boolean }) {
   const { user } = useSession();
   const scrollToFirstError = useScrollToFirstError();
-  const router = useRouter();
+  const router = useFocusedRouter();
   const update = useUpdateProfile();
   const uploadPhoto = useUploadMyPhoto();
   const [values, setValues] = useState<ProfileFormValues>({

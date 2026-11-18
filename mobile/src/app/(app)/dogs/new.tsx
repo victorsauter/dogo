@@ -1,14 +1,15 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { useCreateDog, useUploadDogPhoto } from '@/api/dogs';
 import { errorMessage } from '@/api/errors';
 import { DogForm, Screen } from '@/components';
 import { emptyDogForm, toCreateDogRequest } from '@/lib/forms';
+import { useFocusedRouter } from '@/lib/hooks';
 import { t } from '@/strings';
 
 export default function NewDogScreen() {
-  const router = useRouter();
+  const router = useFocusedRouter();
   const createDog = useCreateDog();
   const uploadPhoto = useUploadDogPhoto();
 

@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useState } from 'react';
 
 import { organizingOrganizations, useMyOrganizations } from '@/api/organizations';
@@ -7,6 +7,7 @@ import { Screen, WalkForm } from '@/components';
 import { defaultWalkStart } from '@/lib/dates';
 import { emptyWalkForm, toCreateWalkRequest } from '@/lib/forms';
 import { DEFAULT_CENTER } from '@/lib/geo';
+import { useFocusedRouter } from '@/lib/hooks';
 import { useUserLocation } from '@/lib/location';
 import { offerNotifications } from '@/notifications';
 import { t } from '@/strings';
@@ -16,7 +17,7 @@ import { t } from '@/strings';
  * with a warning), and the pin must be placed by the person before submitting.
  */
 export default function NewWalkScreen() {
-  const router = useRouter();
+  const router = useFocusedRouter();
   const createWalk = useCreateWalk();
   const location = useUserLocation();
   const mine = useMyOrganizations();
