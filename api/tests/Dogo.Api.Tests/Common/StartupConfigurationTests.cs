@@ -48,6 +48,17 @@ public sealed class StartupConfigurationTests(ApiFixture fixture)
     }
 
     [Theory]
+    [InlineData("00:10:00")]
+    [InlineData("-00:00:01")]
+    public async Task A_refresh_token_grace_period_out_of_range_prevents_startup(string gracePeriod)
+    {
+        await using var factory = new DogoApiFactory(
+            fixture.ConnectionString, new Dictionary<string, string?> { ["Auth:Jwt:RefreshTokenGracePeriod"] = gracePeriod });
+
+        AssertStartupFails(factory, "Auth:Jwt:RefreshTokenGracePeriod must be between");
+    }
+
+    [Theory]
     [InlineData("Production")]
     [InlineData("Staging")]
     public async Task Demo_data_outside_development_and_testing_prevents_startup(string environment)
