@@ -85,3 +85,31 @@ public sealed class DistinctItemsAttribute : ValidationAttribute
         return true;
     }
 }
+
+/// <summary>
+/// Requires a string whose length, once leading and trailing white space is removed, is
+/// between <paramref name="minimumLength"/> and <paramref name="maximumLength"/>. Null is valid
+/// (use [Required] to forbid it).
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
+public sealed class TrimmedLengthAttribute(int minimumLength, int maximumLength) : ValidationAttribute
+{
+    public int MinimumLength { get; } = minimumLength;
+
+    public int MaximumLength { get; } = maximumLength;
+
+    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
+    {
+        if (value is not string text)
+        {
+            return ValidationResult.Success;
+        }
+
+        var length = text.Trim().Length;
+        return length >= MinimumLength && length <= MaximumLength
+            ? ValidationResult.Success
+            : new ValidationResult(
+                $"The field must contain between {MinimumLength} and {MaximumLength} characters, not counting leading and trailing spaces.",
+                validationContext.MemberName is null ? [] : [validationContext.MemberName]);
+    }
+}

@@ -3,11 +3,15 @@ using Dogo.Api.Common;
 using Dogo.Api.Features.Auth;
 using Dogo.Api.Features.Dogs;
 using Dogo.Api.Features.Health;
+using Dogo.Api.Features.Messages;
+using Dogo.Api.Features.Notifications;
 using Dogo.Api.Features.Photos;
 using Dogo.Api.Features.Users;
 using Dogo.Api.Features.Walks;
 using Dogo.Api.Infrastructure.Auth;
+using Dogo.Api.Infrastructure.Jobs;
 using Dogo.Api.Infrastructure.Persistence;
+using Dogo.Api.Infrastructure.Push;
 using Dogo.Api.Infrastructure.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,8 +32,21 @@ builder.Services.AddDogoAuth();
 builder.Services.AddOptions<LocalStorageOptions>().BindConfiguration(LocalStorageOptions.SectionName);
 builder.Services.AddSingleton<IPhotoStorage, LocalPhotoStorage>();
 
+builder.Services.AddDogoPush();
+
 // Feature services.
 builder.Services.AddScoped<SessionService>();
+
+// Notifications: in-process queue read by a background dispatcher (ADR 0019).
+builder.Services.AddSingleton<NotificationQueue>();
+builder.Services.AddScoped<NotificationService>();
+builder.Services.AddHostedService<NotificationDispatcher>();
+
+// Scheduled jobs: plain services run by a periodic loop (BackgroundJobs:Enabled, BackgroundJobs:Interval).
+builder.Services.AddScoped<WalkReminderJob>();
+builder.Services.AddScoped<WalkSeriesJob>();
+builder.Services.AddOptions<BackgroundJobsOptions>().BindConfiguration(BackgroundJobsOptions.SectionName);
+builder.Services.AddHostedService<BackgroundJobsService>();
 
 var app = builder.Build();
 
@@ -56,6 +73,8 @@ authenticated.MapDogEndpoints();
 authenticated.MapPhotoEndpoints();
 authenticated.MapWalkEndpoints();
 authenticated.MapRegistrationEndpoints();
+authenticated.MapMessageEndpoints();
+authenticated.MapNotificationEndpoints();
 
 app.MapPhotoFiles();
 

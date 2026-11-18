@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Dogo.Api.Common;
+using Dogo.Api.Features.Notifications;
 using Dogo.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -51,6 +52,7 @@ public static class RegistrationEndpoints
         ClaimsPrincipal principal,
         DogoDbContext db,
         TimeProvider timeProvider,
+        NotificationQueue notifications,
         CancellationToken cancellationToken)
     {
         var userId = principal.GetUserId();
@@ -88,7 +90,9 @@ public static class RegistrationEndpoints
 
         await transaction.CommitAsync(cancellationToken);
 
-        // Lot 3 notifies the organizer of the new registration or request here (spec §4.4).
+        // Spec §4.4: the organizer is told (one notification for all the dogs; never for their own dogs).
+        var type = status == RegistrationStatus.Pending ? NotificationType.RegistrationRequested : NotificationType.RegistrationCreated;
+        notifications.Enqueue(new NotificationRequest(type, NotificationSubject.ForWalk(walk), userId, [walk.OrganizerId]));
         return TypedResults.Created((string?)null, registrations.Select(RegistrationResponse.From).ToList());
     }
 
@@ -129,7 +133,13 @@ public static class RegistrationEndpoints
     }
 
     private static async Task<Results<Ok<RegistrationResponse>, ProblemHttpResult>> AcceptRegistration(
-        Guid id, Guid registrationId, ClaimsPrincipal principal, DogoDbContext db, TimeProvider timeProvider, CancellationToken cancellationToken)
+        Guid id,
+        Guid registrationId,
+        ClaimsPrincipal principal,
+        DogoDbContext db,
+        TimeProvider timeProvider,
+        NotificationQueue notifications,
+        CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var (walk, registration, problem) = await LockForDecisionAsync(db, id, registrationId, principal.GetUserId(), cancellationToken);
@@ -169,12 +179,20 @@ public static class RegistrationEndpoints
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        // Lot 3 notifies the author of the registration here (spec §4.4).
+        // Spec §4.4: the author of the registration is told.
+        notifications.Enqueue(new NotificationRequest(
+            NotificationType.RegistrationAccepted, NotificationSubject.ForWalk(walk), walk.OrganizerId, [registration.UserId]));
         return TypedResults.Ok(RegistrationResponse.From(registration));
     }
 
     private static async Task<Results<Ok<RegistrationResponse>, ProblemHttpResult>> DeclineRegistration(
-        Guid id, Guid registrationId, ClaimsPrincipal principal, DogoDbContext db, TimeProvider timeProvider, CancellationToken cancellationToken)
+        Guid id,
+        Guid registrationId,
+        ClaimsPrincipal principal,
+        DogoDbContext db,
+        TimeProvider timeProvider,
+        NotificationQueue notifications,
+        CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var (walk, registration, problem) = await LockForDecisionAsync(db, id, registrationId, principal.GetUserId(), cancellationToken);
@@ -203,7 +221,9 @@ public static class RegistrationEndpoints
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        // Lot 3 notifies the author of the registration here (spec §4.4).
+        // Spec §4.4: the author of the registration is told.
+        notifications.Enqueue(new NotificationRequest(
+            NotificationType.RegistrationDeclined, NotificationSubject.ForWalk(walk), walk.OrganizerId, [registration.UserId]));
         return TypedResults.Ok(RegistrationResponse.From(registration));
     }
 

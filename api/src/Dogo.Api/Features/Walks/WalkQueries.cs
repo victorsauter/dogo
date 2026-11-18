@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Dogo.Api.Features.Walks;
 
 /// <summary>A walk with what every walk response shows next to it.</summary>
-internal sealed record WalkRow(Walk Walk, User Organizer, int AcceptedDogsCount)
+/// <param name="SeriesActive">The walk belongs to a weekly series that has not been stopped.</param>
+internal sealed record WalkRow(Walk Walk, User Organizer, int AcceptedDogsCount, bool SeriesActive)
 {
     public GeoPoint Location => new() { Latitude = Walk.Location.Y, Longitude = Walk.Location.X };
 }
@@ -20,19 +21,23 @@ internal sealed record LaterLotFields(
     bool RepeatsWeekly,
     bool HasBlockedParticipant)
 {
-    public static LaterLotFields For(Walk walk, Guid viewerId)
+    public static LaterLotFields For(WalkRow row, Guid viewerId)
         => new(
-            IsProfessional: false, // Lot 4: walk.OrganizationId is not null.
+            IsProfessional: false, // Lot 4: row.Walk.OrganizationId is not null.
             Organization: null, // Lot 4: { id, name } of the walk's organisation.
-            RepeatsWeekly: false, // Lot 3: the walk belongs to an active weekly series.
+            RepeatsWeekly: row.SeriesActive,
             HasBlockedParticipant: false); // Lot 4: the viewer blocked the organizer or an accepted participant (spec §4.7).
 }
 
 internal static class WalkQueries
 {
-    /// <summary>Projects walks to <see cref="WalkRow"/> (organizer and accepted dogs count) in one SQL query.</summary>
+    /// <summary>Projects walks to <see cref="WalkRow"/> (organizer, accepted dogs count, series) in one SQL query.</summary>
     public static IQueryable<WalkRow> ToRows(this IQueryable<Walk> walks) =>
-        walks.Select(w => new WalkRow(w, w.Organizer, w.Registrations.Count(r => r.Status == RegistrationStatus.Accepted)));
+        walks.Select(w => new WalkRow(
+            w,
+            w.Organizer,
+            w.Registrations.Count(r => r.Status == RegistrationStatus.Accepted),
+            w.Series != null && w.Series.Active));
 
     public static Task<int> CountAcceptedAsync(this DogoDbContext db, Guid walkId, CancellationToken cancellationToken) =>
         db.Registrations.CountAsync(r => r.WalkId == walkId && r.Status == RegistrationStatus.Accepted, cancellationToken);
@@ -87,6 +92,6 @@ internal static class WalkQueries
 
         var mine = registrations.Where(r => r.UserId == viewerId).Select(MyRegistrationResponse.From).ToList();
 
-        return WalkDetailResponse.From(row, LaterLotFields.For(row.Walk, viewerId), isOrganizer, participants, mine, pending);
+        return WalkDetailResponse.From(row, LaterLotFields.For(row, viewerId), isOrganizer, participants, mine, pending);
     }
 }
