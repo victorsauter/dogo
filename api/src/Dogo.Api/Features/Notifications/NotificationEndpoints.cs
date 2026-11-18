@@ -8,13 +8,19 @@ namespace Dogo.Api.Features.Notifications;
 
 public static class NotificationEndpoints
 {
+    /// <summary>
+    /// Devices kept per account. Registering one more removes the least recently registered:
+    /// a reinstalled app or a new phone gets a new token, and the app never removes the old one.
+    /// </summary>
+    public const int MaxDevicesPerUser = 10;
+
     public static IEndpointRouteBuilder MapNotificationEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/me").WithTags("Notifications");
 
         group.MapPut("/devices", RegisterDevice)
             .WithName("registerDevice")
-            .WithSummary("Register the signed-in user's device for push notifications. A token registered by another user moves to this one.")
+            .WithSummary("Register the signed-in user's device for push notifications. A token registered by another user moves to this one. At most 10 devices per user: the least recently registered ones are removed.")
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
@@ -51,6 +57,17 @@ public static class NotificationEndpoints
             VALUES ({Guid.CreateVersion7()}, {userId}, {token}, {platform}, {now})
             ON CONFLICT (expo_push_token) DO UPDATE
             SET user_id = EXCLUDED.user_id, platform = EXCLUDED.platform, updated_at = EXCLUDED.updated_at
+            """,
+            cancellationToken);
+
+        // Cap: keep the most recently registered devices, the one just registered among them.
+        await db.Database.ExecuteSqlAsync(
+            $"""
+            DELETE FROM devices
+            WHERE id IN (
+                SELECT id FROM devices WHERE user_id = {userId}
+                ORDER BY updated_at DESC, id DESC
+                OFFSET {MaxDevicesPerUser})
             """,
             cancellationToken);
         return TypedResults.Ok(new DeviceResponse(token, request.Platform, now));

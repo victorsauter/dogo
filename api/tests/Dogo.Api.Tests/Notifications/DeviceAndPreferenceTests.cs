@@ -108,6 +108,56 @@ public sealed class DeviceAndPreferenceTests(ApiFixture fixture) : ApiTestBase(f
         Assert.Equal(0, await WithDbAsync(db => db.Devices.CountAsync(Ct)));
     }
 
+    [Theory]
+    [InlineData("not-a-token")]
+    [InlineData("ExponentPushToken[]")]
+    [InlineData("ExponentPushToken[abc")]
+    [InlineData("ExponentPushToken[a b]")]
+    [InlineData("ExponentPushToken[a]]")]
+    [InlineData("SomethingPushToken[abc]")]
+    [InlineData("x ExponentPushToken[abc]")]
+    public async Task A_value_that_is_not_an_expo_push_token_is_refused(string token)
+    {
+        var (client, _) = await SignedInAsync();
+
+        await AssertValidationProblemAsync(await PutDeviceAsync(client, new { expoPushToken = token, platform = "Ios" }), "expoPushToken");
+        Assert.Equal(0, await WithDbAsync(db => db.Devices.CountAsync(Ct)));
+    }
+
+    [Theory]
+    [InlineData("ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]")]
+    [InlineData("ExpoPushToken[AbC-123_xyz]")]
+    [InlineData("a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6")]
+    public async Task Expo_push_token_formats_are_accepted(string token)
+    {
+        var (client, _) = await SignedInAsync();
+
+        Assert.Equal(HttpStatusCode.OK, (await PutDeviceAsync(client, new { expoPushToken = token, platform = "Android" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Registering_more_than_the_maximum_replaces_the_least_recently_registered_devices()
+    {
+        var (client, session) = await SignedInAsync();
+        var (bob, _) = await SignedInAsync("bob", "Bob");
+        var bobToken = await RegisterDeviceAsync(bob, "bob");
+        for (var i = 0; i < NotificationEndpoints.MaxDevicesPerUser; i++)
+        {
+            await RegisterDeviceAsync(client, $"phone-{i}");
+        }
+
+        // Registering phone-0 again makes it the most recent: phone-1 is the oldest.
+        await RegisterDeviceAsync(client, "phone-0");
+        await RegisterDeviceAsync(client, "new-phone");
+
+        var tokens = await WithDbAsync(db => db.Devices.Where(d => d.UserId == session.User.Id).Select(d => d.ExpoPushToken).ToListAsync(Ct));
+        Assert.Equal(NotificationEndpoints.MaxDevicesPerUser, tokens.Count);
+        Assert.Contains("ExponentPushToken[new-phone]", tokens);
+        Assert.Contains("ExponentPushToken[phone-0]", tokens);
+        Assert.DoesNotContain("ExponentPushToken[phone-1]", tokens);
+        Assert.True(await WithDbAsync(db => db.Devices.AnyAsync(d => d.ExpoPushToken == bobToken, Ct)));
+    }
+
     [Fact]
     public async Task Devices_require_authentication()
     {

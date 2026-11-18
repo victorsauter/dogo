@@ -2261,7 +2261,7 @@
         "tags": [
           "Notifications"
         ],
-        "summary": "Register the signed-in user's device for push notifications. A token registered by another user moves to this one.",
+        "summary": "Register the signed-in user's device for push notifications. A token registered by another user moves to this one. At most 10 devices per user: the least recently registered ones are removed.",
         "operationId": "registerDevice",
         "requestBody": {
           "content": {
@@ -5606,6 +5606,7 @@
           "expoPushToken": {
             "maxLength": 255,
             "minLength": 0,
+            "pattern": "^(?:(?:ExponentPushToken|ExpoPushToken)\\[[^\\[\\]\\s]+\\]|[0-9A-Za-z]{8}-[0-9A-Za-z]{4}-[0-9A-Za-z]{4}-[0-9A-Za-z]{4}-[0-9A-Za-z]{12})$",
             "type": "string"
           },
           "platform": {

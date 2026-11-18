@@ -7,13 +7,18 @@ public sealed partial class LoggingPushSender(ILogger<LoggingPushSender> logger)
     {
         foreach (var message in messages)
         {
-            // The token is not logged: it lets anyone send notifications to the device.
-            LogPush(message.UserId, message.Title, message.Body, string.Join(", ", message.Data.Select(d => $"{d.Key}={d.Value}")));
+            // The token is not logged: it lets anyone send notifications to the device. The body
+            // (an excerpt of a private message for message_posted) only at Debug level.
+            LogPush(message.UserId, message.Title, string.Join(", ", message.Data.Select(d => $"{d.Key}={d.Value}")));
+            LogPushBody(message.UserId, message.Body);
         }
 
         return Task.FromResult(PushResult.Empty);
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Push notification (not sent, log provider) to user {UserId}: {Title} | {Body} | {Data}")]
-    private partial void LogPush(Guid userId, string title, string body, string data);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Push notification (not sent, log provider) to user {UserId}: {Title} | {Data}")]
+    private partial void LogPush(Guid userId, string title, string data);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Push notification body (not sent, log provider) to user {UserId}: {Body}")]
+    private partial void LogPushBody(Guid userId, string body);
 }

@@ -5,10 +5,18 @@ namespace Dogo.Api.Features.Notifications;
 
 public sealed record RegisterDeviceRequest
 {
-    /// <summary>Expo push token of the device, e.g. <c>ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]</c>.</summary>
+    /// <summary>Same rule as <c>Expo.isExpoPushToken</c> (expo-server-sdk), without spaces or brackets inside.</summary>
+    public const string ExpoPushTokenPattern =
+        @"^(?:(?:ExponentPushToken|ExpoPushToken)\[[^\[\]\s]+\]|[0-9A-Za-z]{8}-[0-9A-Za-z]{4}-[0-9A-Za-z]{4}-[0-9A-Za-z]{4}-[0-9A-Za-z]{12})$";
+
+    /// <summary>
+    /// Expo push token of the device: <c>ExponentPushToken[…]</c> or <c>ExpoPushToken[…]</c>
+    /// (no spaces or brackets inside), or the legacy UUID form, as accepted by Expo's server SDK.
+    /// </summary>
     [Required]
     [NotBlank]
     [StringLength(Device.TokenMaxLength)]
+    [RegularExpression(ExpoPushTokenPattern, ErrorMessage = "The value is not an Expo push token.")]
     public required string ExpoPushToken { get; init; }
 
     public required DevicePlatform Platform { get; init; }
