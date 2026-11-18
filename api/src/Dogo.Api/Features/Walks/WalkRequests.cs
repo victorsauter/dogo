@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Dogo.Api.Common;
 using Dogo.Api.Features.Dogs;
 
@@ -16,16 +17,17 @@ public sealed record GeoPoint
 
 public sealed record CreateWalkRequest
 {
+    /// <summary>3 to 80 characters once leading and trailing white space is removed.</summary>
     [Required]
-    [NotBlank]
-    [StringLength(Walk.TitleMaxLength, MinimumLength = Walk.TitleMinLength)]
+    [TrimmedLength(Walk.TitleMinLength, Walk.TitleMaxLength)]
     public required string Title { get; init; }
 
     [StringLength(Walk.DescriptionMaxLength)]
     public string? Description { get; init; }
 
-    /// <summary>Must be in the future.</summary>
+    /// <summary>ISO 8601 with an explicit offset (<c>Z</c> or <c>±hh:mm</c>); must be in the future.</summary>
     [InFuture]
+    [JsonConverter(typeof(ExplicitOffsetDateTimeOffsetConverter))]
     public required DateTimeOffset StartsAt { get; init; }
 
     [Range(Walk.MinDurationMinutes, Walk.MaxDurationMinutes)]
@@ -75,16 +77,17 @@ public sealed record CreateWalkRequest
 /// </summary>
 public sealed record UpdateWalkRequest
 {
-    [NotBlank]
-    [StringLength(Walk.TitleMaxLength, MinimumLength = Walk.TitleMinLength)]
+    /// <summary>3 to 80 characters once leading and trailing white space is removed.</summary>
+    [TrimmedLength(Walk.TitleMinLength, Walk.TitleMaxLength)]
     public string? Title { get; init; }
 
     /// <summary>Send an empty string to clear the description.</summary>
     [StringLength(Walk.DescriptionMaxLength)]
     public string? Description { get; init; }
 
-    /// <summary>Must be in the future.</summary>
+    /// <summary>ISO 8601 with an explicit offset (<c>Z</c> or <c>±hh:mm</c>); must be in the future.</summary>
     [InFuture]
+    [JsonConverter(typeof(ExplicitOffsetDateTimeOffsetConverter))]
     public DateTimeOffset? StartsAt { get; init; }
 
     [Range(Walk.MinDurationMinutes, Walk.MaxDurationMinutes)]

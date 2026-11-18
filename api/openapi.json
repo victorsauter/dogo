@@ -4505,8 +4505,6 @@
         "type": "object",
         "properties": {
           "title": {
-            "maxLength": 80,
-            "minLength": 3,
             "type": "string"
           },
           "description": {
@@ -5965,8 +5963,6 @@
         "type": "object",
         "properties": {
           "title": {
-            "maxLength": 80,
-            "minLength": 3,
             "type": [
               "null",
               "string"
