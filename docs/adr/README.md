@@ -28,6 +28,7 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0023](0023-suppression-de-compte.md) | Suppression de compte : suppression réelle en une transaction, balades conservées sans organisateur | Accepté |
 | [0025](0025-pages-legales-hors-garde.md) | Pages légales hors de la garde d'authentification | Accepté |
 | [0026](0026-ordre-de-declaration-des-ecrans.md) | Écrans déclarés dans l'ordre de tri d'Expo Router | Accepté |
+| [0027](0027-donnees-de-demonstration.md) | Données de démonstration : fonctionnalité de développement, générée par l'API, photos téléchargées à la génération | Accepté |
 
 ## Statuts
 

@@ -245,3 +245,5 @@ Ces points n'étaient pas tranchés dans le périmètre. Ils sont faciles à cha
 | Administration | Points d'entrée `/admin`, sans écran | Suffisant à l'échelle d'un pilote |
 | Identifiant de l'application | `com.victorsauter.dogo` | Provisoire ; à confirmer avant toute publication |
 | Fuseau des séries | `Europe/Paris` | Le pilote est en France |
+| Centre de la carte par défaut | Seppois-le-Haut, réglable par configuration | C'est la zone pilote |
+| Données de démonstration | Jeu fictif autour de Seppois-le-Haut, activable en développement seulement (ADR 0027) | Essayer l'application sans attendre de vrais utilisateurs |
