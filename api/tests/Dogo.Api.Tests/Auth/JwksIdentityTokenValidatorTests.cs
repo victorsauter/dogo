@@ -98,6 +98,11 @@ public sealed class JwksIdentityTokenValidatorTests : IDisposable
         Assert.Null(await _validator.ValidateAsync(IdentityProvider.Apple, CreateToken("https://appleid.apple.com", AppleAudience, signingKey: _otherKey), Ct));
 
     [Fact]
+    public async Task Token_signed_with_the_published_key_but_another_algorithm_is_rejected() =>
+        Assert.Null(await _validator.ValidateAsync(
+            IdentityProvider.Apple, CreateToken("https://appleid.apple.com", AppleAudience, algorithm: SecurityAlgorithms.RsaSsaPssSha256), Ct));
+
+    [Fact]
     public async Task Garbage_is_rejected() =>
         Assert.Null(await _validator.ValidateAsync(IdentityProvider.Apple, "not-a-token", Ct));
 
@@ -134,7 +139,8 @@ public sealed class JwksIdentityTokenValidatorTests : IDisposable
             "https://keys.test/google");
     }
 
-    private string CreateToken(string issuer, string audience, DateTime? expires = null, RsaSecurityKey? signingKey = null, Claim[]? claims = null)
+    private string CreateToken(
+        string issuer, string audience, DateTime? expires = null, RsaSecurityKey? signingKey = null, Claim[]? claims = null, string algorithm = SecurityAlgorithms.RsaSha256)
     {
         var expiry = expires ?? DateTime.UtcNow.AddMinutes(10);
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
@@ -145,7 +151,7 @@ public sealed class JwksIdentityTokenValidatorTests : IDisposable
             IssuedAt = expiry.AddMinutes(-20),
             NotBefore = expiry.AddMinutes(-20),
             Expires = expiry,
-            SigningCredentials = new SigningCredentials(signingKey ?? _key, SecurityAlgorithms.RsaSha256),
+            SigningCredentials = new SigningCredentials(signingKey ?? _key, algorithm),
         });
     }
 
