@@ -62,7 +62,7 @@ export const fr = {
     mapLabel: 'Carte des balades proches',
     searching: 'Recherche…',
     locationDenied:
-      'Position non disponible : la carte est centrée sur Paris. Déplace-la pour chercher ailleurs.',
+      'Position non disponible : la carte affiche une zone par défaut. Déplace-la pour chercher ailleurs.',
     period: 'Période',
     size: 'Gabarit',
     periodToday: 'Aujourd’hui',
