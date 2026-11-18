@@ -61,5 +61,12 @@ export function mockApi(routes: Record<string, MockHandler>) {
   return { calls, fetchMock };
 }
 
+/**
+ * The calls a screen made itself: without the `GET /me` the root layout sends
+ * to keep the session user current (`useSessionUserSync`).
+ */
+export const screenCalls = (calls: MockRequest[]) =>
+  calls.filter((call) => !(call.method === 'GET' && call.path === '/api/v1/me'));
+
 export const ok = (body: unknown) => jsonResponse(body);
 export { jsonResponse, problemResponse };

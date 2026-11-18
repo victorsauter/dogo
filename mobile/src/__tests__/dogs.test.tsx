@@ -5,7 +5,7 @@ import { sessionStore } from '@/auth/sessionStore';
 import { pickPhoto } from '@/lib/photoPicker';
 import { t } from '@/strings';
 import { authResponse, testDog, testUser } from '@/test/fixtures';
-import { mockApi, ok, problemResponse } from '@/test/mockApi';
+import { mockApi, ok, problemResponse, screenCalls } from '@/test/mockApi';
 
 jest.mock('@/lib/photoPicker', () => ({
   pickPhoto: jest.fn(),
@@ -159,7 +159,7 @@ describe('dog form', () => {
     await fireEvent.press(await screen.findByRole('button', { name: t.dog.add }));
 
     expect(screen.getAllByText(t.common.required)).toHaveLength(5);
-    expect(calls).toHaveLength(0);
+    expect(screenCalls(calls)).toHaveLength(0);
   });
 
   it('creates the dog, then uploads its photo, then opens it', async () => {
@@ -186,12 +186,13 @@ describe('dog form', () => {
 
     expect(await screen.findByText('Nala')).toBeTruthy();
     expect(screen).toHavePathname('/dogs/new-dog-id');
-    expect(calls.map((c) => `${c.method} ${c.path}`).slice(0, 2)).toEqual([
+    const sent = screenCalls(calls);
+    expect(sent.map((c) => `${c.method} ${c.path}`).slice(0, 2)).toEqual([
       'POST /api/v1/dogs',
       'PUT /api/v1/dogs/new-dog-id/photo',
     ]);
-    expect((calls[1]!.form?.get('file') as File).name).toBe('photo.jpg');
-    expect(calls[0]!.json).toEqual({
+    expect((sent[1]!.form?.get('file') as File).name).toBe('photo.jpg');
+    expect(sent[0]!.json).toEqual({
       name: 'Nala',
       size: 'Small',
       sociability: 'Selective',

@@ -2,6 +2,7 @@ import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { useSessionUserSync } from '@/api/profile';
 import { useSession } from '@/auth';
 import { AppProviders } from '@/lib/AppProviders';
 import { NotificationsEffects } from '@/notifications';
@@ -19,12 +20,14 @@ export default function RootLayout() {
 
 /**
  * Auth gate: signed-in users only reach `(app)`, everyone else only `(auth)`.
- * The splash screen stays up while the stored session is read.
+ * The splash screen stays up while the stored session is read. The session
+ * user follows the server (`useSessionUserSync`).
  */
 function RootNavigator() {
   const { status } = useSession();
   const theme = useTheme();
   const signedIn = status === 'signedIn';
+  useSessionUserSync();
 
   useEffect(() => {
     if (status !== 'loading') SplashScreen.hide();

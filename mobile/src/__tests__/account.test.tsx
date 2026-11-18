@@ -1,11 +1,12 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { AppState, type AppStateStatus } from 'react-native';
 
 import { sessionStore } from '@/auth/sessionStore';
 import { config } from '@/lib/config';
 import { setSignInNotice } from '@/lib/signInNotice';
 import { format, t } from '@/strings';
 import { authResponse, testUser } from '@/test/fixtures';
-import { mockApi, ok, problemResponse } from '@/test/mockApi';
+import { mockApi, ok, problemResponse, screenCalls } from '@/test/mockApi';
 
 const APP_DIR = './src/app';
 
@@ -87,6 +88,50 @@ describe('suspended account', () => {
     expect(screen.queryByText(t.settings.suspendedTitle)).toBeNull();
   });
 
+  it('follows the server at start: a stored suspended user is lifted when GET /me says active', async () => {
+    mockApi(profileRoutes(testUser));
+    await openAt('/profile', { status: 'Suspended' });
+    await waitFor(() => expect(sessionStore.getSession()?.user.status).toBe('Active'));
+    await screen.findByText(t.settings.title);
+    expect(screen.queryByText(t.settings.suspendedTitle)).toBeNull();
+  });
+
+  it('reads GET /me again when the app returns to the foreground', async () => {
+    const listeners: ((state: AppStateStatus) => void)[] = [];
+    jest.spyOn(AppState, 'addEventListener').mockImplementation((type, listener) => {
+      if (type === 'change') listeners.push(listener as (state: AppStateStatus) => void);
+      return { remove: () => {} };
+    });
+    let status: 'Active' | 'Suspended' = 'Suspended';
+    mockApi({ ...profileRoutes(), 'GET /api/v1/me': () => ok({ ...testUser, status }) });
+    await openAt('/profile', { status: 'Suspended' });
+    expect(await screen.findByText(t.settings.suspendedTitle)).toBeTruthy();
+    expect(sessionStore.getSession()?.user.status).toBe('Suspended');
+
+    // The team lifts the suspension while the app is in the background.
+    status = 'Active';
+    await act(async () => listeners.forEach((listener) => listener('active')));
+    await waitFor(() => expect(sessionStore.getSession()?.user.status).toBe('Active'));
+    expect(screen.queryByText(t.settings.suspendedTitle)).toBeNull();
+  });
+
+  it('refreshes the session user when a request answers account.suspended', async () => {
+    let status: 'Active' | 'Suspended' = 'Active';
+    const { calls } = mockApi({
+      ...profileRoutes(),
+      'GET /api/v1/me': () => ok({ ...testUser, status }),
+      'POST /api/v1/organizations': () => problemResponse(403, 'account.suspended'),
+    });
+    await openAt('/organizations/new');
+    await waitFor(() => expect(calls.some((c) => c.path === '/api/v1/me')).toBe(true));
+
+    status = 'Suspended';
+    await fireEvent.changeText(await screen.findByLabelText(t.organization.name), 'Club canin');
+    await fireEvent.press(screen.getByRole('button', { name: t.organization.createSubmit }));
+    expect(await screen.findByText(t.errors['account.suspended'])).toBeTruthy();
+    await waitFor(() => expect(sessionStore.getSession()?.user.status).toBe('Suspended'));
+  });
+
   it('explains account.suspended when an action is refused', async () => {
     mockApi({
       ...profileRoutes({ ...testUser, status: 'Suspended' }),
@@ -117,7 +162,7 @@ describe('delete my account', () => {
 
     await fireEvent.changeText(screen.getByLabelText(t.deleteAccount.confirmField), 'oups');
     await fireEvent.press(button);
-    expect(calls).toHaveLength(0);
+    expect(screenCalls(calls)).toHaveLength(0);
     expect(
       screen.getByRole('button', { name: t.deleteAccount.submit }).props.accessibilityState
         .disabled,

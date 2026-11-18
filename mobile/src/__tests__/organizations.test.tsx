@@ -15,7 +15,7 @@ import {
   walkDetail,
   walkResult,
 } from '@/test/fixtures';
-import { mockApi, ok, problemResponse } from '@/test/mockApi';
+import { mockApi, ok, problemResponse, screenCalls } from '@/test/mockApi';
 
 const APP_DIR = './src/app';
 const orgPath = `/api/v1/organizations/${orgId}`;
@@ -133,7 +133,7 @@ describe('create', () => {
     await fireEvent.press(screen.getByRole('button', { name: t.organization.createSubmit }));
 
     expect(screen.getByText(format(t.organization.nameLength, { min: 3, max: 80 }))).toBeTruthy();
-    expect(calls).toHaveLength(0);
+    expect(screenCalls(calls)).toHaveLength(0);
   });
 
   it('sends the request, then shows the pending organisation', async () => {

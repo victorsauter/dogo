@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 
 import { useSession } from '@/auth';
 
 import { api, unwrap } from './client';
+import { ApiError } from './errors';
 import { photoForm, type PickedPhoto } from './photoUpload';
 import type { SessionUser } from './types';
 
@@ -13,9 +16,82 @@ export const queryKeys = {
   dog: (id: string) => ['dogs', id] as const,
 };
 
+const fetchMe = () => unwrap(api.GET('/api/v1/me'));
+
 /** The signed-in user's profile (`GET /me`). */
 export function useMe() {
-  return useQuery({ queryKey: queryKeys.me, queryFn: () => unwrap(api.GET('/api/v1/me')) });
+  return useQuery({ queryKey: queryKeys.me, queryFn: fetchMe });
+}
+
+const isSuspendedError = (error: unknown) =>
+  error instanceof ApiError && error.code === 'account.suspended';
+
+/**
+ * Keeps the user stored in the session in step with the server: the session
+ * keeps the user returned at sign-in, so a suspension or its lifting (status),
+ * made by the team meanwhile, would otherwise only show much later. Reads
+ * `GET /me` when the session starts or is restored, when the app returns to
+ * the foreground and whenever a request answers `account.suspended`. Failures
+ * are ignored (offline: the stored user stays). Mount it once, signed in or not.
+ */
+export function useSessionUserSync() {
+  const queryClient = useQueryClient();
+  const { status, user, updateUser } = useSession();
+  const signedIn = status === 'signedIn';
+  // Read through refs: `updateUser` changes with every session update, which
+  // must not restart the effect (and its first sync) each time.
+  const latest = useRef({ user, updateUser });
+  useEffect(() => {
+    latest.current = { user, updateUser };
+  });
+
+  useEffect(() => {
+    if (!signedIn) return;
+    let active = true;
+    let running = false;
+
+    async function sync() {
+      if (running) return;
+      running = true;
+      try {
+        const fresh = await queryClient.fetchQuery({
+          queryKey: queryKeys.me,
+          queryFn: fetchMe,
+          staleTime: 0,
+        });
+        const { user: stored, updateUser: update } = latest.current;
+        if (active && stored && JSON.stringify(stored) !== JSON.stringify(fresh)) {
+          await update(fresh);
+        }
+      } catch {
+        // Offline or server error: keep the stored user.
+      } finally {
+        running = false;
+      }
+    }
+
+    void sync();
+    const appState = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void sync();
+    });
+    const onEvent = (event: { type: string; action?: { type: string; error?: unknown } }) => {
+      if (
+        event.type === 'updated' &&
+        event.action?.type === 'error' &&
+        isSuspendedError(event.action.error)
+      ) {
+        void sync();
+      }
+    };
+    const unsubscribeQueries = queryClient.getQueryCache().subscribe(onEvent);
+    const unsubscribeMutations = queryClient.getMutationCache().subscribe(onEvent);
+    return () => {
+      active = false;
+      appState.remove();
+      unsubscribeQueries();
+      unsubscribeMutations();
+    };
+  }, [signedIn, queryClient]);
 }
 
 /** Public profile and dogs of any user (`GET /users/{id}`). */
