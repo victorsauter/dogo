@@ -50,7 +50,6 @@ public static class ErrorCodes
     public const string MessageForbidden = "message.forbidden";
 
     // Registration rules of Lot 4 (spec §4.3) and professional walks (spec §4.6).
-    public const string WalkNotAllowed = "walk.not_allowed";
     public const string WalkMembersOnly = "walk.members_only";
     public const string WalkOrganizationForbidden = "walk.organization_forbidden";
 

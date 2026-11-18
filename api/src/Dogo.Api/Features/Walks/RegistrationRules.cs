@@ -15,8 +15,8 @@ internal sealed record RegistrationAttempt(Walk Walk, Guid UserId, IReadOnlyList
 }
 
 /// <summary>
-/// The rules of spec §4.3 checked before creating registrations, in order; the first
-/// failure is returned. Runs while the walk row is locked, so counts cannot change underneath.
+/// The rules of spec §4.3 checked before creating registrations, in the order of its table; the
+/// first failure is returned. Runs while the walk row is locked, so counts cannot change underneath.
 /// </summary>
 internal static class RegistrationRules
 {
@@ -32,7 +32,7 @@ internal static class RegistrationRules
 
         // Spec §4.6: only an approved organisation carries walks. A walk of an organisation that was
         // closed or rejected afterwards is frozen: it stays as it is but takes no new registration.
-        if (walk.OrganizationId is { } frozenCandidate && !await IsOrganizationApprovedAsync(db, frozenCandidate, cancellationToken))
+        if (walk.OrganizationId is { } carrierId && !await IsOrganizationApprovedAsync(db, carrierId, cancellationToken))
         {
             return NotOpen();
         }
@@ -61,10 +61,16 @@ internal static class RegistrationRules
             return Duplicate();
         }
 
-        // Spec §4.7: the organizer blocked the user. The answer must not reveal the block.
-        if (await db.Blocks.AnyAsync(b => b.BlockerId == walk.OrganizerId && b.BlockedId == attempt.UserId, cancellationToken))
+        // Only accepted dogs take a place. A pending request does not, but it is refused when
+        // the walk could not take these dogs right now; acceptance checks again.
+        // Spec §4.7: a user blocked by the organizer gets exactly the answer of a full walk, at the
+        // same place in the order of the checks, so that the block cannot be told apart. Both
+        // queries always run, so that the response time does not depend on the block either.
+        var accepted = await db.CountAcceptedAsync(walk.Id, cancellationToken);
+        var blocked = await db.Blocks.AnyAsync(b => b.BlockerId == walk.OrganizerId && b.BlockedId == attempt.UserId, cancellationToken);
+        if (accepted + dogs.Count > walk.MaxDogs || blocked)
         {
-            return NotAllowed();
+            return Full();
         }
 
         // Spec §4.6: a professional walk is reserved to accepted members of its organisation
@@ -74,13 +80,6 @@ internal static class RegistrationRules
             && !await IsAcceptedMemberAsync(db, organizationId, attempt.UserId, cancellationToken))
         {
             return MembersOnly();
-        }
-
-        // Only accepted dogs take a place. A pending request does not, but it is refused when
-        // the walk could not take these dogs right now; acceptance checks again.
-        if (await db.CountAcceptedAsync(walk.Id, cancellationToken) + dogs.Count > walk.MaxDogs)
-        {
-            return Full();
         }
 
         return null;
@@ -122,10 +121,6 @@ internal static class RegistrationRules
 
     public static ProblemHttpResult Duplicate() =>
         Problems.Conflict(ErrorCodes.RegistrationDuplicate, "A dog is already registered to this walk.");
-
-    /// <summary>Deliberately generic: a blocked user must not learn that they are blocked (spec §4.7).</summary>
-    public static ProblemHttpResult NotAllowed() =>
-        Problems.Forbidden(ErrorCodes.WalkNotAllowed, "Registration to this walk is not possible.");
 
     public static ProblemHttpResult Full() =>
         Problems.Conflict(ErrorCodes.WalkFull, "There are not enough places left on this walk.");

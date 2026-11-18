@@ -100,7 +100,7 @@ public sealed class BlockTests(ApiFixture fixture) : WalkTestBase(fixture)
 
         var response = await RegisterAsync(bob, walk.Id, dog.Id);
 
-        var problem = await AssertProblemAsync(response, HttpStatusCode.Forbidden, "walk.not_allowed");
+        var problem = await AssertProblemAsync(response, HttpStatusCode.Conflict, "walk.full");
         Assert.DoesNotContain("block", problem.ToString(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(0, await WithDbAsync(db => db.Registrations.CountAsync(Ct)));
 
@@ -213,9 +213,42 @@ public sealed class BlockTests(ApiFixture fixture) : WalkTestBase(fixture)
         Assert.Equal(before, after);
         Assert.Empty(await SentPushesAsync());
 
-        // Refused registration: the same answer as for any walk closed to the user, nothing about a block.
-        var problem = await AssertProblemAsync(await RegisterAsync(bob, later.Id, dog.Id), HttpStatusCode.Forbidden, "walk.not_allowed");
-        Assert.Equal("Registration to this walk is not possible.", problem.GetProperty("title").GetString());
-        Assert.False(problem.TryGetProperty("detail", out _));
+        // Refused registration: exactly the answer of a full walk (ADR 0037), nothing about a block.
+        var (other, _) = await SignedInAsync("other", "Other");
+        var full = await CreateWalkAsync(other, ("maxDogs", 1));
+        await RegisterOkAsync(other, full.Id, (await CreateDogAsync(other)).Id);
+        var blockedResponse = await RegisterAsync(bob, later.Id, dog.Id);
+        var fullResponse = await RegisterAsync(bob, full.Id, dog.Id);
+
+        Assert.Equal(fullResponse.StatusCode, blockedResponse.StatusCode);
+        Assert.Equal(fullResponse.Content.Headers.ContentType, blockedResponse.Content.Headers.ContentType);
+        Assert.Equal(await ComparableProblemAsync(fullResponse), await ComparableProblemAsync(blockedResponse));
+        await AssertProblemAsync(blockedResponse, HttpStatusCode.Conflict, "walk.full");
+    }
+
+    [Fact]
+    public async Task The_block_is_checked_where_the_capacity_is_so_the_order_of_errors_reveals_nothing()
+    {
+        var (organizer, _) = await SignedInAsync("organizer", "Organizer");
+        var (bob, bobId, dog) = await DogOwnerAsync("bob");
+        var large = await CreateDogOfSizeAsync(bob, "Large", "Large");
+        var smallOnly = await CreateWalkAsync(organizer, ("allowedSizes", new[] { "Small" }));
+        var walk = await CreateWalkAsync(organizer, ("startsAt", Tomorrow.AddHours(1)));
+        await RegisterOkAsync(bob, walk.Id, large.Id);
+        await BlockOkAsync(organizer, bobId);
+
+        // The earlier rules of spec §4.3 still answer first, as they would on a full walk.
+        await AssertProblemAsync(await RegisterAsync(bob, smallOnly.Id, dog.Id), HttpStatusCode.Conflict, "walk.size_not_allowed");
+        await AssertProblemAsync(await RegisterAsync(bob, walk.Id, large.Id), HttpStatusCode.Conflict, "registration.duplicate");
+        await AssertProblemAsync(await RegisterAsync(bob, walk.Id, Guid.NewGuid()), HttpStatusCode.NotFound, "dog.not_found");
+        await AssertProblemAsync(await RegisterAsync(bob, walk.Id, dog.Id), HttpStatusCode.Conflict, "walk.full");
+    }
+
+    /// <summary>The problem body without <c>traceId</c>, which differs on every request.</summary>
+    private static async Task<string> ComparableProblemAsync(HttpResponseMessage response)
+    {
+        var body = System.Text.Json.Nodes.JsonNode.Parse(await response.Content.ReadAsStringAsync(Ct))!.AsObject();
+        body.Remove("traceId");
+        return body.ToJsonString();
     }
 }
