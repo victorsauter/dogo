@@ -103,6 +103,13 @@ function googleSignInPlugin(env: ConfigEnv): [string, { iosUrlScheme: string }][
   ];
 }
 
+/** Android Maps key as the `react-native-maps` plugin wants it (Expo SDK 58 documentation). */
+function googleMapsPlugin(
+  apiKey: string | undefined,
+): [string, { androidGoogleMapsApiKey: string }][] {
+  return apiKey ? [['react-native-maps', { androidGoogleMapsApiKey: apiKey }]] : [];
+}
+
 /**
  * Builds the Expo configuration from the environment. Everything that differs
  * between development, `preview` and `production` comes from variables (EAS
@@ -164,9 +171,6 @@ export function createConfig({ config }: ConfigContext, env: ConfigEnv = process
         'android.permission.POST_NOTIFICATIONS',
       ],
       predictiveBackGestureEnabled: false,
-      ...(googleMapsAndroidApiKey
-        ? { config: { googleMaps: { apiKey: googleMapsAndroidApiKey } } }
-        : {}),
       ...(googleServicesFile ? { googleServicesFile } : {}),
     },
     web: {
@@ -189,6 +193,9 @@ export function createConfig({ config }: ConfigContext, env: ConfigEnv = process
       // Apple Maps on iOS needs no key; Android uses Google Maps (Expo Go's key in
       // development, `GOOGLE_MAPS_ANDROID_API_KEY` for a build, see mobile/README.md).
       ['expo-location', { locationWhenInUsePermission: permissions.locationWhenInUse }],
+      // The plugin of react-native-maps is added only with a key: without a key it would
+      // remove any Maps key from the Android manifest.
+      ...googleMapsPlugin(googleMapsAndroidApiKey),
       [
         'expo-notifications',
         {

@@ -104,7 +104,7 @@ describe('createConfig', () => {
   it('builds in development without any variable, keeping the previous behaviour', () => {
     const config = createConfig(context, {});
     expect(config.extra).toBeUndefined();
-    expect(config.android?.config).toBeUndefined();
+    expect(JSON.stringify(config.plugins)).not.toContain('react-native-maps');
     expect(config.android?.googleServicesFile).toBeUndefined();
     const plugins = (config.plugins ?? []).map((p) => (Array.isArray(p) ? p[0] : p));
     expect(plugins).not.toContain('@react-native-google-signin/google-signin');
@@ -132,7 +132,10 @@ describe('createConfig', () => {
       GOOGLE_MAPS_ANDROID_API_KEY: ' key-1 ',
       GOOGLE_SERVICES_JSON: '/eas/google-services.json',
     });
-    expect(config.android?.config?.googleMaps?.apiKey).toBe('key-1');
+    expect(config.plugins).toContainEqual([
+      'react-native-maps',
+      { androidGoogleMapsApiKey: 'key-1' },
+    ]);
     expect(config.android?.googleServicesFile).toBe('/eas/google-services.json');
   });
 
