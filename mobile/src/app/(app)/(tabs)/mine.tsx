@@ -47,7 +47,7 @@ export default function MyWalksScreen() {
     if (when === 'Past') {
       return (
         <EmptyState
-          icon="calendar"
+          icon="paw"
           title={t.myWalks.emptyPastTitle}
           message={t.myWalks.emptyPastMessage}
         />
@@ -55,7 +55,7 @@ export default function MyWalksScreen() {
     }
     return role === 'Organizer' ? (
       <EmptyState
-        icon="calendar"
+        icon="paw"
         title={t.myWalks.emptyOrganizedTitle}
         message={t.myWalks.emptyOrganizedMessage}
         action={{ label: t.myWalks.createWalk, onPress: () => router.push('/walks/new') }}

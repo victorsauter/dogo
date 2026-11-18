@@ -8,6 +8,7 @@ import type { MapRegion } from '@/lib/geo';
 import { t } from '@/strings';
 import { useTheme } from '@/theme';
 
+import { Icon } from './Icon';
 import { Material } from './Material';
 import { Text } from './Text';
 
@@ -21,7 +22,7 @@ export interface WalksMapProps {
    * shows the walk itself. Tapping the map elsewhere selects nothing (`null`).
    */
   onSelectWalk?: (id: string | null) => void;
-  /** The selected walk's pin is drawn larger, in the text colour. */
+  /** The selected walk's pin is drawn larger. */
   selectedId?: string | null;
   /** Shows a « Recherche… » pill over the map. */
   searching?: boolean;
@@ -35,7 +36,7 @@ export interface WalksMapProps {
 /** Height of the « Recherche… » capsule. */
 const SEARCHING_HEIGHT = 32;
 
-/** Map of walks: one pin per walk (`pro` colour for professional walks), callout opens it. */
+/** Map of walks: one pin per walk (see `WalkPin`), callout opens it. */
 export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
   {
     initialRegion,
@@ -84,16 +85,11 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
               identifier={walk.id}
               coordinate={walk.location}
               accessibilityLabel={`${walk.title}, ${formatWalkStart(walk.startsAt)}`}
-              pinColor={
-                walk.id === selectedId
-                  ? colors.text
-                  : walk.isProfessional
-                    ? colors.pro
-                    : colors.primary
-              }
               zIndex={walk.id === selectedId ? 1 : 0}
               onPress={() => onSelectWalk(walk.id)}
-            />
+            >
+              <WalkPin professional={walk.isProfessional} selected={walk.id === selectedId} />
+            </Marker>
           ) : (
             <Marker
               key={walk.id}
@@ -101,9 +97,10 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
               coordinate={walk.location}
               title={walk.title}
               description={formatWalkStart(walk.startsAt)}
-              pinColor={walk.isProfessional ? colors.pro : colors.primary}
               onCalloutPress={() => onOpenWalk(walk.id)}
-            />
+            >
+              <WalkPin professional={walk.isProfessional} />
+            </Marker>
           ),
         )}
       </MapView>
@@ -132,3 +129,50 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
     </View>
   );
 });
+
+/** Diameter of a walk's pin, and of the selected one. */
+const PIN_SIZE = 30;
+const PIN_SIZE_SELECTED = 40;
+
+/**
+ * A walk's pin: a round mark with a paw, centred on the meeting point, in the
+ * primary colour (fawn), or in the `pro` colour for a professional walk (the
+ * « Pro » label on its card says it too). The selected one is larger. Drawn by
+ * the app (native pins take no glyph); the marker carries the accessible name.
+ */
+export function WalkPin({
+  professional = false,
+  selected = false,
+}: {
+  professional?: boolean;
+  selected?: boolean;
+}) {
+  const { colors, radii, shadows } = useTheme();
+  const size = selected ? PIN_SIZE_SELECTED : PIN_SIZE;
+  return (
+    <View
+      testID="walk-pin"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[
+        shadows.floating,
+        {
+          width: size,
+          height: size,
+          borderRadius: radii.pill,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: selected ? 3 : 2,
+          borderColor: colors.surface,
+          backgroundColor: professional ? colors.pro : colors.primary,
+        },
+      ]}
+    >
+      <Icon
+        name="pawFilled"
+        size={Math.round(size * 0.5)}
+        color={professional ? 'onPro' : 'onPrimary'}
+      />
+    </View>
+  );
+}

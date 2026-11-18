@@ -166,7 +166,7 @@ export function PanelLayout({
       <ErrorState error={search.error} onRetry={() => search.refetch()} />
     ) : (
       <EmptyState
-        icon="map"
+        icon="paw"
         title={t.discover.emptyTitle}
         message={t.discover.emptyMessage}
         action={{ label: t.discover.emptyAction, onPress: createWalk }}

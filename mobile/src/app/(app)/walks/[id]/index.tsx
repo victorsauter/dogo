@@ -27,6 +27,7 @@ import {
   Screen,
   sizesLabel,
   Text,
+  WalkPin,
   WalkRegistrationPanel,
 } from '@/components';
 import { formatDuration, formatWalkStart, walkTiming } from '@/lib/dates';
@@ -256,7 +257,9 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
             pitchEnabled={false}
             toolbarEnabled={false}
           >
-            <Marker coordinate={walk.location} title={walk.locationLabel} />
+            <Marker coordinate={walk.location} title={walk.locationLabel}>
+              <WalkPin professional={walk.isProfessional} />
+            </Marker>
           </MapView>
         </View>
         <Text>{walk.locationLabel}</Text>
