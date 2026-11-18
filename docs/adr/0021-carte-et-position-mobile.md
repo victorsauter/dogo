@@ -1,8 +1,8 @@
 # ADR 0021 — Carte et position dans l'application mobile
 
-- **Statut :** Proposé
+- **Statut :** Accepté
 - **Date :** 18/11/2026
-- **Note :** décidé par l'agent mobile M3, sur délégation ; à confirmer.
+- **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
 
 ## Contexte
 
