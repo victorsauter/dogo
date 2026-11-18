@@ -105,13 +105,13 @@ Chaque événement est déposé dans une file en mémoire **après** la validati
 | --- | --- | --- | --- | --- |
 | `registration_created` | Organisateur (balade `Open`) | `registrations` | Nouvelle inscription | « {nom} participera à « {titre} ». » |
 | `registration_requested` | Organisateur (balade `Approval`) | `registrations` | Nouvelle demande | « {nom} demande à participer à « {titre} ». » |
-| `registration_accepted` | Auteur de l'inscription | `registrations` | Inscription acceptée | « Votre participation à « {titre} » est confirmée. » |
-| `registration_declined` | Auteur (refus ou retrait) | `registrations` | Inscription refusée | « Votre inscription à « {titre} » n'a pas été retenue. » |
+| `registration_accepted` | Auteur de l'inscription | `registrations` | Inscription acceptée | « Ta participation à « {titre} » est confirmée. » |
+| `registration_declined` | Auteur (refus ou retrait) | `registrations` | Inscription refusée | « Ton inscription à « {titre} » n'a pas été retenue. » |
 | `walk_updated` | Inscrits `Accepted` et `Pending` | `walkChanges` | Balade modifiée | « « {titre} » a changé : prévue le {jour date à HH:MM}. » |
 | `walk_cancelled` | Inscrits `Accepted` et `Pending` | `walkChanges` | Balade annulée | « « {titre} », prévue le {…}, est annulée. » |
 | `message_posted` | Organisateur et inscrits `Accepted`, sauf l'auteur | `messages` | {titre} | « {nom} : {début du message, 120 caractères} » |
 | `walk_reminder` | Organisateur et inscrits `Accepted` | `reminders` | Balade bientôt | « « {titre} » commence à {HH:MM}. » |
-| `series_walk_created` | Inscrits `Accepted` de la balade précédente | `walkChanges` | Nouvelle date | « « {titre} » revient le {…}. Inscrivez-vous à nouveau pour y participer. » |
+| `series_walk_created` | Inscrits `Accepted` de la balade précédente | `walkChanges` | Nouvelle date | « « {titre} » revient le {…}. Inscris-toi à nouveau pour y participer. » |
 
 Les heures sont données dans le fuseau `Europe/Paris`. Les textes sont tous dans `Features/Notifications/NotificationTexts.cs` : ajouter un type, c'est une valeur de `NotificationType` et une ligne dans ce fichier. Une modification (`PATCH`) ne notifie que si une valeur change réellement.
 

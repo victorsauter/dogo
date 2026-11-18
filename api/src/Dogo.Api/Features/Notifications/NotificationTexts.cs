@@ -32,13 +32,13 @@ internal static class NotificationTexts
     {
         [NotificationType.RegistrationCreated] = (NotificationCategory.Registrations, c => new("Nouvelle inscription", $"{c.ActorName} participera à « {c.Subject.Name} ».")),
         [NotificationType.RegistrationRequested] = (NotificationCategory.Registrations, c => new("Nouvelle demande", $"{c.ActorName} demande à participer à « {c.Subject.Name} ».")),
-        [NotificationType.RegistrationAccepted] = (NotificationCategory.Registrations, c => new("Inscription acceptée", $"Votre participation à « {c.Subject.Name} » est confirmée.")),
-        [NotificationType.RegistrationDeclined] = (NotificationCategory.Registrations, c => new("Inscription refusée", $"Votre inscription à « {c.Subject.Name} » n'a pas été retenue.")),
+        [NotificationType.RegistrationAccepted] = (NotificationCategory.Registrations, c => new("Inscription acceptée", $"Ta participation à « {c.Subject.Name} » est confirmée.")),
+        [NotificationType.RegistrationDeclined] = (NotificationCategory.Registrations, c => new("Inscription refusée", $"Ton inscription à « {c.Subject.Name} » n'a pas été retenue.")),
         [NotificationType.WalkUpdated] = (NotificationCategory.WalkChanges, c => new("Balade modifiée", $"« {c.Subject.Name} » a changé : prévue le {c.When}.")),
         [NotificationType.WalkCancelled] = (NotificationCategory.WalkChanges, c => new("Balade annulée", $"« {c.Subject.Name} », prévue le {c.When}, est annulée.")),
         [NotificationType.MessagePosted] = (NotificationCategory.Messages, c => new(c.Subject.Name, $"{c.ActorName} : {Excerpt(c.Detail)}")),
         [NotificationType.WalkReminder] = (NotificationCategory.Reminders, c => new("Balade bientôt", $"« {c.Subject.Name} » commence à {c.Time}.")),
-        [NotificationType.SeriesWalkCreated] = (NotificationCategory.WalkChanges, c => new("Nouvelle date", $"« {c.Subject.Name} » revient le {c.When}. Inscrivez-vous à nouveau pour y participer.")),
+        [NotificationType.SeriesWalkCreated] = (NotificationCategory.WalkChanges, c => new("Nouvelle date", $"« {c.Subject.Name} » revient le {c.When}. Inscris-toi à nouveau pour y participer.")),
     };
 
     /// <summary>Shown when the actor's account no longer exists.</summary>

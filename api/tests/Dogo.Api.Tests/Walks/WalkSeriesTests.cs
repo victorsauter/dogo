@@ -103,7 +103,7 @@ public sealed class WalkSeriesTests(ApiFixture fixture) : WalkTestBase(fixture)
         Assert.Equal(next.Id.ToString(), push.Data["walkId"]);
         Assert.Equal($"dogo://walks/{next.Id}", push.Data["url"]);
         Assert.Equal("Nouvelle date", push.Title);
-        Assert.Equal("« Balade du mardi » revient le mardi 10 juin à 10:00. Inscrivez-vous à nouveau pour y participer.", push.Body);
+        Assert.Equal("« Balade du mardi » revient le mardi 10 juin à 10:00. Inscris-toi à nouveau pour y participer.", push.Body);
 
         // Only one upcoming walk per series.
         Assert.Equal(0, await RunSeriesJobAsync(JuneStart.AddMinutes(2)));

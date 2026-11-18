@@ -108,6 +108,8 @@ Une inscription concerne un chien. On peut inscrire plusieurs de ses chiens en u
 | Demande d'adhésion reçue, adhésion acceptée, organisation validée | Personnes concernées | `registrations` |
 
 - Chaque rappel n'est envoyé qu'une fois, même si le serveur redémarre.
+- Les notifications sont envoyées au mieux : une notification en file est perdue si le serveur s'arrête, et un rappel n'est jamais envoyé deux fois (ADR 0019).
+- Écrire dans le fil d'une balade annulée est refusé (`walk.not_open`) ; la lecture reste possible.
 
 ### 4.5 Récurrence
 
@@ -115,6 +117,7 @@ Une inscription concerne un chien. On peut inscrire plusieurs de ses chiens en u
 - Quand une balade de série commence, la suivante est créée sept jours plus tard à la même heure locale (`Europe/Paris`, changements d'heure compris). Il n'existe jamais plus d'une balade à venir par série.
 - Les inscriptions ne sont pas reportées ; les inscrits de la précédente sont prévenus.
 - L'organisateur peut arrêter la série. Annuler une balade n'arrête pas la série.
+- La balade suivante reprend l'heure locale de la dernière balade de la série : modifier l'heure d'une balade décale les suivantes.
 
 ### 4.6 Organisations
 

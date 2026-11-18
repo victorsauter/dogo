@@ -107,8 +107,8 @@ public sealed class NotificationEventTests(ApiFixture fixture) : WalkTestBase(fi
 
         var pushes = (await SentPushesAsync()).Skip(before).ToList();
         Assert.Equal(
-            [(alice.Id, "registration_accepted", "Inscription acceptée", "Votre participation à « Tour du lac » est confirmée."),
-             (bob.Id, "registration_declined", "Inscription refusée", "Votre inscription à « Tour du lac » n'a pas été retenue.")],
+            [(alice.Id, "registration_accepted", "Inscription acceptée", "Ta participation à « Tour du lac » est confirmée."),
+             (bob.Id, "registration_declined", "Inscription refusée", "Ton inscription à « Tour du lac » n'a pas été retenue.")],
             pushes.Select(p => (p.UserId, p.Data["type"], p.Title, p.Body)));
     }
 

@@ -21,6 +21,7 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0015](0015-concurrence-des-inscriptions.md) | Capacité des balades : verrou sur la ligne de la balade et index unique partiel | Accepté |
 | [0017](0017-ecrans-empiles-sur-les-onglets.md) | Écrans empilés au-dessus des onglets | Accepté |
 | [0018](0018-connexion-native-chargee-a-la-demande.md) | Connexion Apple et Google : modules natifs chargés à la demande | Accepté |
+| [0019](0019-notifications-et-taches-planifiees.md) | Notifications et tâches planifiées : file en mémoire, boucle périodique, rappels au plus une fois | Accepté |
 
 ## Statuts
 
