@@ -34,6 +34,7 @@ import {
   FLOATING_BUTTON_HEIGHT,
   FloatingButton,
   LocateButton,
+  locationNoticeAction,
   locationUnknown,
   MapNotice,
   MapTopControls,
@@ -128,6 +129,7 @@ export function ListLayout({
                 onFiltersChange={setFilters}
                 radius={{ value: radiusKm, onChange: setRadiusKm }}
                 notice={locationUnknown(location) ? t.discover.listLocationDenied : null}
+                noticeAction={locationNoticeAction(location)}
               />
               {sorted.length > 0 ? (
                 <Text variant="caption" color="textMuted">

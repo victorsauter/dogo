@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { AppState, View } from 'react-native';
 
 import type { PickedPhoto } from '@/api/photoUpload';
+import { openAppSettings } from '@/lib/linking';
 import { CameraPermissionError, pickPhoto, type PhotoSource } from '@/lib/photoPicker';
 import { t } from '@/strings';
 import { useTheme } from '@/theme';
@@ -38,14 +39,30 @@ export function PhotoPicker({
 }: PhotoPickerProps) {
   const { spacing } = useTheme();
   const [pickError, setPickError] = useState<string | null>(null);
+  const [cameraDenied, setCameraDenied] = useState(false);
+
+  // Back from the system settings, where the camera may have been allowed: the
+  // refusal no longer holds until the camera is tried again.
+  useEffect(() => {
+    if (!cameraDenied) return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      setCameraDenied(false);
+      setPickError(null);
+    });
+    return () => subscription.remove();
+  }, [cameraDenied]);
 
   async function choose(source: PhotoSource) {
     setPickError(null);
+    setCameraDenied(false);
     try {
       const photo = await pickPhoto(source);
       if (photo) onPick(photo);
     } catch (e) {
-      setPickError(e instanceof CameraPermissionError ? t.photo.cameraDenied : t.photo.pickFailed);
+      const denied = e instanceof CameraPermissionError;
+      setCameraDenied(denied);
+      setPickError(denied ? t.photo.cameraDenied : t.photo.pickFailed);
     }
   }
 
@@ -76,6 +93,13 @@ export function PhotoPicker({
         <Text variant="caption" color="danger" align="center" accessibilityLiveRegion="polite">
           {message}
         </Text>
+      ) : null}
+      {cameraDenied ? (
+        <Button
+          label={t.common.openSettings}
+          variant="secondary"
+          onPress={() => void openAppSettings()}
+        />
       ) : null}
     </View>
   );

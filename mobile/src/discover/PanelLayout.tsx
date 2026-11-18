@@ -40,6 +40,7 @@ import { useTheme } from '@/theme';
 import {
   byStartDate,
   LocateButton,
+  locationNoticeAction,
   locationUnknown,
   MapTopControls,
   useDiscoverNavigation,
@@ -324,6 +325,7 @@ export function PanelLayout({
         onFiltersChange={setFilters}
         onCreate={createWalk}
         notice={locationUnknown(location) ? t.discover.locationDenied : null}
+        noticeAction={locationNoticeAction(location)}
         onHeightChange={setControlsHeight}
       />
     </View>

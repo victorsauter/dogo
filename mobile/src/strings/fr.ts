@@ -22,6 +22,7 @@ export const fr = {
     delete: 'Supprimer',
     edit: 'Modifier',
     back: 'Retour',
+    openSettings: 'Ouvrir les réglages',
     fieldInvalid: 'Valeur invalide : vérifie ce champ.',
     tooLong: 'Maximum {max} caractères.',
     /** Pill opening a menu of choices: what is chosen, then the current choice. */

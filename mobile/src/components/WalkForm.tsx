@@ -5,6 +5,7 @@ import { ApiError, errorMessage } from '@/api/errors';
 import type { GeoPoint } from '@/api/types';
 import type { LocationStatus } from '@/lib/location';
 import { formatDuration } from '@/lib/dates';
+import { openAppSettings } from '@/lib/linking';
 import {
   limits,
   serverFieldErrors,
@@ -200,7 +201,15 @@ export function WalkForm({
         />
       </FieldAnchor>
       {locationStatus === 'denied' || locationStatus === 'unavailable' ? (
-        <Banner tone="warning" message={t.walk.meetingPointNoLocation} />
+        <Banner
+          tone="warning"
+          message={t.walk.meetingPointNoLocation}
+          action={
+            locationStatus === 'denied'
+              ? { label: t.common.openSettings, onPress: () => void openAppSettings() }
+              : undefined
+          }
+        />
       ) : null}
       <MeetingPointPicker
         name="location"

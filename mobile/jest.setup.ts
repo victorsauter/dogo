@@ -108,6 +108,7 @@ jest.mock('react-native-maps', () => {
 jest.mock('expo-location', () => ({
   Accuracy: { Balanced: 3 },
   requestForegroundPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
+  getForegroundPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
   getLastKnownPositionAsync: jest.fn(async () => ({
     coords: { latitude: 47.6234, longitude: 7.2376 },
   })),
