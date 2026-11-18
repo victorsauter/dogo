@@ -1,0 +1,51 @@
+name: API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - ".github/workflows/api.yml"
+  pull_request:
+    paths:
+      - "api/**"
+      - ".github/workflows/api.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: api/global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      # Warnings are errors (Directory.Build.props). The build also regenerates openapi.json.
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Check that openapi.json is up to date
+        run: |
+          if ! git diff --exit-code -- openapi.json; then
+            echo "::error file=api/openapi.json::openapi.json is stale. Run 'dotnet build' in api/ and commit the result."
+            exit 1
+          fi
+
+      # Integration tests start PostGIS with Testcontainers (Docker is available on ubuntu-latest).
+      - name: Test
+        run: dotnet test --no-build --configuration Release
