@@ -31,6 +31,7 @@ import {
   DiscoverHeader,
   FLOATING_BUTTON_HEIGHT,
   FloatingButton,
+  LocateButton,
   locationUnknown,
   MapNotice,
   useDiscoverNavigation,
@@ -249,6 +250,7 @@ function FullScreenMap({
             gap: spacing.md,
           }}
         >
+          <LocateButton location={location} map={map} style={{ alignSelf: 'flex-end' }} />
           {notice}
           {selected ? (
             <View

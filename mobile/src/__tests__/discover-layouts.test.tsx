@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import * as Location from 'expo-location';
 import * as SecureStore from 'expo-secure-store';
+import { StyleSheet } from 'react-native';
 
 import { sessionStore } from '@/auth/sessionStore';
 import { DISCOVER_LAYOUT_STORAGE_KEY, resetDiscoverLayout } from '@/discover/layoutPreference';
@@ -46,6 +48,10 @@ async function openFilters() {
 
 afterEach(async () => {
   config.devLogin = devLogin;
+  jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValue({
+    granted: true,
+    status: 'granted',
+  } as never);
   await act(() => sessionStore.clear());
   jest.restoreAllMocks();
 });
@@ -558,5 +564,75 @@ describe('« Liste » view, full-screen map', () => {
     expect(screen.queryByLabelText(t.discover.radius)).toBeNull();
     await fireEvent.press(screen.getByRole('radio', { name: 'Petit' }));
     await waitFor(() => expect(lastSearch(calls).size).toBe('Small'));
+  });
+});
+
+describe.each(['panel', 'list'] as const)('« %s » view, « Ma position » button', (view) => {
+  const animateToRegion = () =>
+    (jest.requireMock('react-native-maps') as { __animateToRegion: jest.Mock }).__animateToRegion;
+  const locateButtons = () => screen.queryAllByRole('button', { name: t.discover.locate });
+
+  /** The map of the view: the panel's, or the full-screen one behind the « Carte » button. */
+  async function showMap() {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open(view);
+    await screen.findByText(lake.title);
+    if (view === 'list') {
+      expect(locateButtons()).toHaveLength(0);
+      await fireEvent.press(screen.getByRole('button', { name: t.discover.showMapA11y }));
+      await screen.findByLabelText(t.discover.mapLabel);
+    }
+  }
+
+  it('recentres the map on the user', async () => {
+    await showMap();
+    expect(locateButtons()).toHaveLength(1);
+    animateToRegion().mockClear();
+
+    await fireEvent.press(locateButtons()[0]!);
+
+    expect(animateToRegion()).toHaveBeenCalledTimes(1);
+    expect(animateToRegion()).toHaveBeenCalledWith(
+      expect.objectContaining({ latitude: 47.6234, longitude: 7.2376 }),
+      expect.any(Number),
+    );
+  });
+
+  it('is not shown when the location is refused', async () => {
+    jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValue({
+      granted: false,
+    } as never);
+    await showMap();
+
+    expect(locateButtons()).toHaveLength(0);
+  });
+
+  it('is not shown when the position is unavailable', async () => {
+    jest.mocked(Location.getLastKnownPositionAsync).mockResolvedValueOnce(null);
+    jest.mocked(Location.getCurrentPositionAsync).mockResolvedValueOnce(null as never);
+    await showMap();
+
+    expect(locateButtons()).toHaveLength(0);
+  });
+});
+
+describe('« Panneau » view, « Ma position » button and the panel', () => {
+  it('stays above the panel at its low and middle positions, and gives way at the high one', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('panel');
+    await screen.findByText(lake.title);
+    const bottom = () => {
+      const style = StyleSheet.flatten(
+        screen.getByRole('button', { name: t.discover.locate }).props.style,
+      );
+      return style.bottom as number;
+    };
+    const middle = bottom();
+    await fireEvent.press(screen.getByTestId('panel-handle')); // high
+    expect(screen.queryByRole('button', { name: t.discover.locate })).toBeNull();
+    await fireEvent.press(screen.getByTestId('panel-handle')); // low
+    expect(bottom()).toBeLessThan(middle);
+    await fireEvent.press(screen.getByTestId('panel-handle')); // middle
+    expect(bottom()).toBe(middle);
   });
 });

@@ -137,6 +137,7 @@ export const fr = {
     panelA11yHint: 'Change la hauteur du panneau des balades.',
     panelLoading: 'Recherche des balades…',
     refresh: 'Actualiser les balades',
+    locate: 'Recentrer sur ma position',
   },
   /** Setting « Affichage des balades » of the profile. */
   discoverLayout: {

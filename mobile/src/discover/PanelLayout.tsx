@@ -19,6 +19,7 @@ import {
   ActiveFilterTags,
   byStartDate,
   DiscoverHeader,
+  LocateButton,
   locationUnknown,
   useDiscoverNavigation,
   useMapAreaSearch,
@@ -75,11 +76,13 @@ export function PanelLayout({ location }: { location: UserLocation }) {
   // The low position follows the handle's real height (larger text makes it taller).
   // On a small screen with large text, half the area would barely differ from the
   // low position: the middle one then shows at least one more card's worth.
-  const snapPoints = useMemo(() => {
+  const { snapPoints, heights } = useMemo(() => {
     const low = handleHeight + PEEK_HEIGHT;
-    if (mapHeight === 0) return [low, '50%', '100%'];
-    const middle = Math.min(Math.max(mapHeight / 2, low + 140), mapHeight - 80);
-    return [low, Math.max(middle, low + 1), '100%'];
+    if (mapHeight === 0) {
+      return { snapPoints: [low, '50%', '100%'], heights: [low, low + 140] as const };
+    }
+    const middle = Math.max(Math.min(Math.max(mapHeight / 2, low + 140), mapHeight - 80), low + 1);
+    return { snapPoints: [low, middle, '100%'], heights: [low, middle] as const };
   }, [handleHeight, mapHeight]);
 
   const moveTo = useCallback((next: PanelPosition) => {
@@ -291,6 +294,18 @@ export function PanelLayout({ location }: { location: UserLocation }) {
             ListEmptyComponent={listEmpty}
           />
         </BottomSheet>
+        {/* Drawn after the panel so it stays on top while the panel moves; above the panel at its low and middle positions; at the high one it covers the map. */}
+        {position < 2 ? (
+          <LocateButton
+            location={location}
+            map={map}
+            style={{
+              position: 'absolute',
+              right: spacing.lg,
+              bottom: heights[position] + spacing.md,
+            }}
+          />
+        ) : null}
       </View>
       <FiltersSheet
         visible={filtersOpen}

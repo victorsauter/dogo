@@ -44,13 +44,15 @@ jest.mock('expo-file-system', () => {
 // `regionChangeComplete` or `press` on it), and each marker a View labelled by its title
 // (or its accessibility label), forwarding `press` and `calloutPress`.
 jest.mock('react-native-maps', () => {
+  // Shared by every map: tests read `jest.requireMock('react-native-maps').__animateToRegion`.
+  const animateToRegion = jest.fn();
   const React = jest.requireActual<typeof import('react')>('react');
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   const MapView = React.forwardRef(function MapView(
     props: Record<string, unknown> & { children?: React.ReactNode },
     ref: React.Ref<unknown>,
   ) {
-    React.useImperativeHandle(ref, () => ({ animateToRegion: jest.fn() }));
+    React.useImperativeHandle(ref, () => ({ animateToRegion }));
     return React.createElement(
       View,
       {
@@ -80,7 +82,7 @@ jest.mock('react-native-maps', () => {
         onDragEnd: props.onDragEnd,
       } as object),
     });
-  return { __esModule: true, default: MapView, Marker };
+  return { __esModule: true, default: MapView, Marker, __animateToRegion: animateToRegion };
 });
 
 // Location: granted, in Altkirch (near the default centre, Seppois-le-Haut), unless a test overrides these mocks.

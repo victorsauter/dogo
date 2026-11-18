@@ -13,7 +13,7 @@ import {
   type WalkSearchParams,
 } from '@/api/walks';
 import { Button, Icon, SegmentedControl, Text, type IconName } from '@/components';
-import type { MapRegion } from '@/lib/geo';
+import { regionAround, type MapRegion } from '@/lib/geo';
 import { useDebouncedValue, useDelayedFlag, useRefetchOnFocusIfStale } from '@/lib/hooks';
 import type { UserLocation } from '@/lib/location';
 import { format, plural, t } from '@/strings';
@@ -335,6 +335,53 @@ export function FloatingButton({
 }
 
 export const FLOATING_BUTTON_HEIGHT = 52;
+
+/**
+ * Round « Ma position » button over a map: recentres it on the user. Not shown
+ * without a position (permission refused or services off: the screen already
+ * says so in a sentence, and there is nothing to centre on).
+ */
+export function LocateButton({
+  location,
+  map,
+  style,
+}: {
+  location: UserLocation;
+  map: RefObject<MapView | null>;
+  style?: ViewStyle;
+}) {
+  const { colors, radii, minTouchSize } = useTheme();
+  const { coords } = location;
+  if (location.status !== 'granted' || !coords) return null;
+  return (
+    <Pressable
+      testID="locate-button"
+      accessibilityRole="button"
+      accessibilityLabel={t.discover.locate}
+      onPress={() => map.current?.animateToRegion(regionAround(coords), 400)}
+      style={({ pressed }) => [
+        {
+          width: minTouchSize,
+          height: minTouchSize,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: radii.pill,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: pressed ? colors.surfaceMuted : colors.surface,
+          shadowColor: '#000',
+          shadowOpacity: 0.2,
+          shadowRadius: 5,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 4,
+        },
+        style,
+      ]}
+    >
+      <Icon name="locate" color="primary" size={22} />
+    </Pressable>
+  );
+}
 
 /** Small rounded label over the map (hint, empty area, error with retry). */
 export function MapNotice({
