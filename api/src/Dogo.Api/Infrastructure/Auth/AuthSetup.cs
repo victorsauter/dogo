@@ -14,7 +14,8 @@ public static class AuthSetup
         services.AddOptions<JwtOptions>().BindConfiguration(JwtOptions.SectionName).ValidateOnStart();
         services.AddOptions<IdentityProviderOptions>(IdentityProviderOptions.AppleSectionName).BindConfiguration(IdentityProviderOptions.AppleSectionName);
         services.AddOptions<IdentityProviderOptions>(IdentityProviderOptions.GoogleSectionName).BindConfiguration(IdentityProviderOptions.GoogleSectionName);
-        services.AddOptions<AdminOptions>().BindConfiguration(AdminOptions.SectionName);
+        services.AddOptions<AdminOptions>().BindConfiguration(AdminOptions.SectionName)
+            .PostConfigure<IHostEnvironment>((admin, environment) => admin.DevAccountsCanBeAdmins = environment.AllowsDevTools());
         if (!BuildContext.IsOpenApiGeneration)
         {
             services.AddSingleton<IValidateOptions<AuthOptions>, AuthOptionsValidator>();

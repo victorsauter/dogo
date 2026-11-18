@@ -14,6 +14,7 @@ public static class ErrorCodes
     public const string UnsupportedMediaType = "request.unsupported_media_type";
     public const string NotFound = "not_found";
     public const string MethodNotAllowed = "method_not_allowed";
+    public const string RateLimitExceeded = "rate_limit.exceeded";
     public const string Unauthenticated = "auth.unauthenticated";
     public const string Forbidden = "auth.forbidden";
     public const string ServerError = "server.error";

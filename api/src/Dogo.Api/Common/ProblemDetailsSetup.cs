@@ -60,6 +60,7 @@ public static partial class ProblemDetailsSetup
         StatusCodes.Status405MethodNotAllowed => ErrorCodes.MethodNotAllowed,
         StatusCodes.Status413PayloadTooLarge => ErrorCodes.RequestTooLarge,
         StatusCodes.Status415UnsupportedMediaType => ErrorCodes.UnsupportedMediaType,
+        StatusCodes.Status429TooManyRequests => ErrorCodes.RateLimitExceeded,
         >= 500 => ErrorCodes.ServerError,
         _ => ErrorCodes.Error,
     };

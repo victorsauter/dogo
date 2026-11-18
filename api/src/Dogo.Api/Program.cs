@@ -14,6 +14,8 @@ using Dogo.Api.Features.Reports;
 using Dogo.Api.Features.Users;
 using Dogo.Api.Features.Walks;
 using Dogo.Api.Infrastructure.Auth;
+using Dogo.Api.Infrastructure.Hosting;
+using Dogo.Api.Infrastructure.Http;
 using Dogo.Api.Infrastructure.Jobs;
 using Dogo.Api.Infrastructure.Persistence;
 using Dogo.Api.Infrastructure.Push;
@@ -31,6 +33,11 @@ builder.Services.AddDogoProblemDetails();
 builder.Services.AddValidation();
 builder.Services.AddDogoOpenApi();
 builder.Services.AddSingleton(TimeProvider.System);
+
+// Hardening (ADR 0031): deployment checks, proxy headers, HSTS, body size, rate limits.
+builder.Services.AddDogoStartupChecks();
+builder.Services.AddDogoHttpHardening();
+builder.Services.AddDogoRateLimiting();
 
 builder.Services.AddDogoPersistence();
 builder.Services.AddDogoAuth();
@@ -62,9 +69,13 @@ builder.Services.AddHostedService<BackgroundJobsService>();
 
 var app = builder.Build();
 
+app.UseDogoHttpHardening();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseDogoRequestBodyLimit();
 app.UseAuthentication();
+// After authentication (limits per user) and before the account lookup of AccountStatusMiddleware.
+app.UseRateLimiter();
 app.UseAuthorization();
 app.UseMiddleware<AccountStatusMiddleware>();
 
