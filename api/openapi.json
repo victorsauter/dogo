@@ -950,7 +950,7 @@
         "tags": [
           "Photos"
         ],
-        "summary": "Upload or replace the signed-in user's photo (JPEG, PNG, WebP or HEIC, 5 MB max).",
+        "summary": "Upload or replace the signed-in user's photo (JPEG, PNG or WebP, 5 MB max, metadata removed).",
         "operationId": "uploadMyPhoto",
         "requestBody": {
           "content": {
@@ -1041,7 +1041,7 @@
         "tags": [
           "Photos"
         ],
-        "summary": "Upload or replace a dog's photo (JPEG, PNG, WebP or HEIC, 5 MB max).",
+        "summary": "Upload or replace a dog's photo (JPEG, PNG or WebP, 5 MB max, metadata removed).",
         "operationId": "uploadDogPhoto",
         "parameters": [
           {
