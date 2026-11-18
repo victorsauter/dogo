@@ -7,11 +7,11 @@ import {
 } from '@tanstack/react-query';
 
 import { endOfDay } from '@/lib/dates';
-import { radiusForRegion, roundCoordinate, type MapRegion } from '@/lib/geo';
+import { MAX_SEARCH_RADIUS_KM, radiusForRegion, roundCoordinate, type MapRegion } from '@/lib/geo';
 
 import { api, unwrap } from './client';
 import type { DogSize, MyWalksPeriod, MyWalksRole } from './enums';
-import type { CreateWalkRequest, UpdateWalkRequest, WalkDetail } from './types';
+import type { CreateWalkRequest, GeoPoint, UpdateWalkRequest, WalkDetail } from './types';
 
 export const walkKeys = {
   all: ['walks'] as const,
@@ -56,10 +56,25 @@ export function searchParamsFor(
   filters: WalkFilters,
   now: Date = new Date(),
 ): WalkSearchParams {
+  return searchParamsAround(region, radiusForRegion(region), filters, now);
+}
+
+/** Radius choices of the list-first layout (« autour de moi »), in km. */
+export const SEARCH_RADII_KM = [5, 10, 25] as const;
+export type SearchRadiusKm = (typeof SEARCH_RADII_KM)[number];
+export const DEFAULT_SEARCH_RADIUS_KM: SearchRadiusKm = 10;
+
+/** Search parameters for a circle around a point (the user, or the default centre). */
+export function searchParamsAround(
+  center: GeoPoint,
+  radiusKm: number,
+  filters: WalkFilters,
+  now: Date = new Date(),
+): WalkSearchParams {
   const params: WalkSearchParams = {
-    lat: roundCoordinate(region.latitude),
-    lng: roundCoordinate(region.longitude),
-    radiusKm: radiusForRegion(region),
+    lat: roundCoordinate(center.latitude),
+    lng: roundCoordinate(center.longitude),
+    radiusKm: Math.min(MAX_SEARCH_RADIUS_KM, radiusKm),
     limit: SEARCH_LIMIT,
   };
   if (filters.period === 'today') params.to = endOfDay(now).toISOString();

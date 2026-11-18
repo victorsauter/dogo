@@ -9,6 +9,24 @@ import { WalkCard } from '../WalkCard';
 const cardLabel = () => screen.getByRole('button').props.accessibilityLabel as string;
 
 describe('WalkCard', () => {
+  it('says when it is the walk selected on the map', async () => {
+    await renderWithTheme(<WalkCard walk={walkResult()} selected onPress={() => {}} />);
+    expect(screen.getByText(t.walk.selected)).toBeTruthy();
+    expect(cardLabel().startsWith(t.walk.selected)).toBe(true);
+  });
+
+  it('keeps title, time, distance and places in its compact form, the rest in its label', async () => {
+    await renderWithTheme(
+      <WalkCard walk={walkResult({ repeatsWeekly: true })} compact onPress={() => {}} />,
+    );
+    expect(screen.getByText('Tour du lac')).toBeTruthy();
+    expect(screen.getByText('2/6 chiens')).toBeTruthy();
+    expect(screen.queryByText('Petit, Moyen')).toBeNull();
+    expect(screen.queryByText(t.walk.weekly)).toBeNull();
+    expect(cardLabel()).toContain('Petit, Moyen');
+    expect(cardLabel()).toContain(t.walk.weekly);
+  });
+
   it('shows a walk whose organiser deleted their account, without crashing', async () => {
     await renderWithTheme(<WalkCard walk={walkResult({ organizer: null })} onPress={() => {}} />);
     expect(screen.getByText('Tour du lac')).toBeTruthy();

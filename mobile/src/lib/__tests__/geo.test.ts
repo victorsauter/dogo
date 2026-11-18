@@ -1,6 +1,12 @@
-import { searchParamsFor } from '@/api/walks';
+import { searchParamsAround, searchParamsFor } from '@/api/walks';
 
-import { DEFAULT_CENTER, formatDistance, MAX_SEARCH_RADIUS_KM, radiusForRegion } from '../geo';
+import {
+  DEFAULT_CENTER,
+  formatDistance,
+  MAX_SEARCH_RADIUS_KM,
+  radiusForRegion,
+  regionForRadius,
+} from '../geo';
 
 const seppois = { latitude: 47.5339, longitude: 7.1844 };
 
@@ -67,5 +73,18 @@ describe('formatDistance', () => {
     expect(formatDistance(342)).toBe('340 m');
     expect(formatDistance(2440)).toBe('2,4 km');
     expect(formatDistance(12_400)).toBe('12 km');
+  });
+});
+
+describe('search around a point (list-first layout)', () => {
+  it('searches the chosen radius around the point, with the filters', () => {
+    const params = searchParamsAround(seppois, 25, { period: 'all', size: 'Small' });
+    expect(params).toEqual({ lat: 47.5339, lng: 7.1844, radiusKm: 25, limit: 100, size: 'Small' });
+  });
+
+  it('opens the map on a region that shows the whole circle', () => {
+    const region = regionForRadius(seppois, 10);
+    expect(region).toMatchObject(seppois);
+    expect(radiusForRegion(region)).toBeGreaterThanOrEqual(10);
   });
 });

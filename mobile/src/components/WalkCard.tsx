@@ -16,6 +16,10 @@ export interface WalkCardProps {
   /** Distance is measured from here when known (the user's position), else the API's. */
   origin?: GeoPoint | null;
   now?: Date;
+  /** Highlighted (the walk whose pin was tapped on the map). */
+  selected?: boolean;
+  /** Title, time, distance and places only (a card over a map); the rest stays in the label. */
+  compact?: boolean;
 }
 
 /** « Complet » when every place is taken (only accepted dogs count, spec §4.3). */
@@ -42,7 +46,14 @@ export function sizesLabel(sizes: WalkSummary['allowedSizes']): string {
  * and access. Professional walks get an accent border and the organisation's
  * name; walks with a participant I blocked get a discreet warning.
  */
-export function WalkCard({ walk, onPress, origin, now = new Date() }: WalkCardProps) {
+export function WalkCard({
+  walk,
+  onPress,
+  origin,
+  now = new Date(),
+  selected = false,
+  compact = false,
+}: WalkCardProps) {
   const { colors, spacing } = useTheme();
   const full = isWalkFull(walk);
   const cancelled = walk.status === 'Cancelled';
@@ -59,6 +70,7 @@ export function WalkCard({ walk, onPress, origin, now = new Date() }: WalkCardPr
       : walk.locationLabel;
 
   const summary = [
+    selected ? t.walk.selected : null,
     walk.title,
     walk.isProfessional ? t.walk.professional : null,
     walk.organization?.name ?? null,
@@ -80,6 +92,7 @@ export function WalkCard({ walk, onPress, origin, now = new Date() }: WalkCardPr
     .join(', ');
 
   const topBadges = [
+    selected ? <Badge key="selected" tone="primary" icon="pin" label={t.walk.selected} /> : null,
     walk.isProfessional ? (
       <Badge
         key="pro"
@@ -116,6 +129,7 @@ export function WalkCard({ walk, onPress, origin, now = new Date() }: WalkCardPr
       style={[
         walk.isProfessional && { borderColor: colors.accent, borderLeftWidth: 6 },
         cancelled && { opacity: 0.75 },
+        selected && { borderColor: colors.primary, borderWidth: 3 },
       ]}
     >
       {topBadges.length > 0 ? (
@@ -134,10 +148,14 @@ export function WalkCard({ walk, onPress, origin, now = new Date() }: WalkCardPr
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
         <Badge tone={full ? 'danger' : 'primary'} label={full ? t.walk.full : places} />
-        <Badge label={sizesLabel(walk.allowedSizes)} />
-        <Badge label={enumLabel('LeashRule', walk.leashRule)} />
-        {walk.access === 'Approval' ? <Badge tone="info" label={t.walk.approval} /> : null}
-        {walk.repeatsWeekly ? <Badge tone="info" icon="repeat" label={t.walk.weekly} /> : null}
+        {compact ? null : (
+          <>
+            <Badge label={sizesLabel(walk.allowedSizes)} />
+            <Badge label={enumLabel('LeashRule', walk.leashRule)} />
+            {walk.access === 'Approval' ? <Badge tone="info" label={t.walk.approval} /> : null}
+            {walk.repeatsWeekly ? <Badge tone="info" icon="repeat" label={t.walk.weekly} /> : null}
+          </>
+        )}
       </View>
     </Card>
   );

@@ -15,14 +15,33 @@ export interface WalksMapProps {
   walks: readonly WalkSummary[];
   onRegionChange: (region: MapRegion) => void;
   onOpenWalk: (id: string) => void;
+  /**
+   * When given, tapping a pin selects its walk (no native callout): the screen
+   * shows the walk itself. Tapping the map elsewhere selects nothing (`null`).
+   */
+  onSelectWalk?: (id: string | null) => void;
+  /** The selected walk's pin is drawn larger, in the text colour. */
+  selectedId?: string | null;
   /** Shows a « Recherche… » pill over the map. */
   searching?: boolean;
   showsUserLocation?: boolean;
+  /** Height (pt) covered at the bottom by a panel: centring and the map's logo stay above it. */
+  bottomInset?: number;
 }
 
 /** Map of walks: one pin per walk (accent colour for professional walks), callout opens it. */
 export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
-  { initialRegion, walks, onRegionChange, onOpenWalk, searching, showsUserLocation },
+  {
+    initialRegion,
+    walks,
+    onRegionChange,
+    onOpenWalk,
+    onSelectWalk,
+    selectedId,
+    searching,
+    showsUserLocation,
+    bottomInset = 0,
+  },
   ref,
 ) {
   const { colors, radii, spacing } = useTheme();
@@ -37,18 +56,47 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
         onRegionChangeComplete={(region) => onRegionChange(region)}
         showsUserLocation={showsUserLocation}
         toolbarEnabled={false}
+        mapPadding={
+          bottomInset > 0 ? { top: 0, left: 0, right: 0, bottom: bottomInset } : undefined
+        }
+        onPress={
+          onSelectWalk
+            ? (event) => {
+                // iOS also reports pin taps to the map, flagged as such.
+                if (event.nativeEvent.action !== 'marker-press') onSelectWalk(null);
+              }
+            : undefined
+        }
       >
-        {walks.map((walk) => (
-          <Marker
-            key={walk.id}
-            identifier={walk.id}
-            coordinate={walk.location}
-            title={walk.title}
-            description={formatWalkStart(walk.startsAt)}
-            pinColor={walk.isProfessional ? colors.accent : colors.primary}
-            onCalloutPress={() => onOpenWalk(walk.id)}
-          />
-        ))}
+        {walks.map((walk) =>
+          onSelectWalk ? (
+            <Marker
+              key={walk.id}
+              identifier={walk.id}
+              coordinate={walk.location}
+              accessibilityLabel={`${walk.title}, ${formatWalkStart(walk.startsAt)}`}
+              pinColor={
+                walk.id === selectedId
+                  ? colors.text
+                  : walk.isProfessional
+                    ? colors.accent
+                    : colors.primary
+              }
+              zIndex={walk.id === selectedId ? 1 : 0}
+              onPress={() => onSelectWalk(walk.id)}
+            />
+          ) : (
+            <Marker
+              key={walk.id}
+              identifier={walk.id}
+              coordinate={walk.location}
+              title={walk.title}
+              description={formatWalkStart(walk.startsAt)}
+              pinColor={walk.isProfessional ? colors.accent : colors.primary}
+              onCalloutPress={() => onOpenWalk(walk.id)}
+            />
+          ),
+        )}
       </MapView>
       {searching ? (
         <View
