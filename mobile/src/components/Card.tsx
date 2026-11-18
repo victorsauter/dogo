@@ -1,7 +1,9 @@
 import type { PropsWithChildren } from 'react';
-import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/theme';
+
+import { PressableScale } from './PressableScale';
 
 export interface CardProps {
   /** Makes the whole card pressable. */
@@ -27,13 +29,14 @@ export function Card({
   };
   if (!onPress) return <View style={[base, style]}>{children}</View>;
   return (
-    <Pressable
+    <PressableScale
+      size="large"
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
       style={({ pressed }) => [base, pressed && { backgroundColor: colors.surfaceMuted }, style]}
     >
       {children}
-    </Pressable>
+    </PressableScale>
   );
 }

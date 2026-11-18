@@ -27,6 +27,14 @@ export interface ColorTokens {
   success: string;
   warning: string;
   info: string;
+  /**
+   * Translucent layer of a floating material (header over the map, menu): laid
+   * over the system blur on iOS, alone (nearly opaque) where blur is not available.
+   */
+  materialTint: string;
+  materialFallback: string;
+  /** Hairline between rows of a material (menu items, under a floating header). */
+  separator: string;
 }
 
 export const lightColors: ColorTokens = {
@@ -47,6 +55,9 @@ export const lightColors: ColorTokens = {
   success: '#2E6B34',
   warning: '#7A4F00',
   info: '#2B5C8A',
+  materialTint: '#FAF7F299',
+  materialFallback: '#FAF7F2F2',
+  separator: '#1F1B1626',
 };
 
 export const darkColors: ColorTokens = {
@@ -67,6 +78,9 @@ export const darkColors: ColorTokens = {
   success: '#9BD3A0',
   warning: '#F0C36A',
   info: '#9EC5EC',
+  materialTint: '#221F1BA6',
+  materialFallback: '#221F1BF2',
+  separator: '#F3EEE726',
 };
 
 /** Spacing scale, in points. Use these instead of raw numbers. */
@@ -89,6 +103,9 @@ export const radii = {
 /** Minimum touch target (Apple HIG 44 pt, Material 48 dp). */
 export const minTouchSize = 48;
 
+/** Visible height of a compact pill (filter, « Créer »), centred in a `minTouchSize` touch area. */
+export const pillHeight = 36;
+
 export const typography = {
   title: { fontSize: 28, lineHeight: 34, fontWeight: '700' },
   heading: { fontSize: 22, lineHeight: 28, fontWeight: '700' },
@@ -100,6 +117,70 @@ export const typography = {
 
 export type TypographyVariant = keyof typeof typography;
 
+/** A Reanimated spring (`withSpring`): critically damped or close, short. */
+export interface SpringConfig {
+  damping: number;
+  stiffness: number;
+  mass: number;
+}
+
+/**
+ * Motion, iOS-like: short springs, no bounce that draws the eye. Every
+ * animation also honours the system « Réduire les animations » setting.
+ */
+export const motion = {
+  /** Scale of a pressed control (pill, button, card). */
+  pressedScale: 0.96,
+  /** A larger surface (a card) moves less. */
+  pressedScaleLarge: 0.98,
+  springs: {
+    /** Press in and out. */
+    press: { damping: 20, stiffness: 420, mass: 0.6 },
+    /** A menu growing from its pill (~200 ms). */
+    menu: { damping: 24, stiffness: 380, mass: 0.7 },
+  } satisfies Record<string, SpringConfig>,
+  durations: {
+    /** A menu fading away. */
+    menuOut: 140,
+    /** Plain fade (reduced motion, appearing controls). */
+    fade: 180,
+  },
+} as const;
+
+/** Soft shadows of floating elements (iOS shadow props, Android elevation). */
+export const shadows = {
+  /** Round button over the map. */
+  floating: {
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  /** Menu open under its pill. */
+  menu: {
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+  },
+  /** Sliding panel, casting upwards. */
+  panel: {
+    shadowColor: '#000',
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 12,
+  },
+} as const;
+
+/** Blur of the floating materials on iOS (expo-blur), by colour scheme. */
+export const materials = {
+  light: { tint: 'systemChromeMaterialLight', intensity: 80 },
+  dark: { tint: 'systemChromeMaterialDark', intensity: 80 },
+} as const;
+
 export interface Theme {
   dark: boolean;
   colors: ColorTokens;
@@ -107,6 +188,10 @@ export interface Theme {
   radii: typeof radii;
   typography: typeof typography;
   minTouchSize: number;
+  pillHeight: number;
+  motion: typeof motion;
+  shadows: typeof shadows;
+  material: (typeof materials)['light' | 'dark'];
 }
 
 export const lightTheme: Theme = {
@@ -116,6 +201,15 @@ export const lightTheme: Theme = {
   radii,
   typography,
   minTouchSize,
+  pillHeight,
+  motion,
+  shadows,
+  material: materials.light,
 };
 
-export const darkTheme: Theme = { ...lightTheme, dark: true, colors: darkColors };
+export const darkTheme: Theme = {
+  ...lightTheme,
+  dark: true,
+  colors: darkColors,
+  material: materials.dark,
+};

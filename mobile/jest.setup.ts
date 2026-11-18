@@ -193,3 +193,16 @@ jest.mock('@gorhom/bottom-sheet', () => {
   });
   return { __esModule: true, default: BottomSheet, BottomSheetFlatList, BottomSheetView: View };
 });
+
+// Haptics do nothing in tests; tests may check they were asked for.
+jest.mock('expo-haptics', () => ({
+  ImpactFeedbackStyle: { Light: 'light' },
+  selectionAsync: jest.fn(async () => undefined),
+  impactAsync: jest.fn(async () => undefined),
+}));
+
+// The blur of the floating materials is native: a plain View in tests.
+jest.mock('expo-blur', () => {
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  return { BlurView: View };
+});
