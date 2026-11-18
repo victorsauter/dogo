@@ -1002,6 +1002,846 @@
           }
         ]
       }
+    },
+    "/api/v1/walks": {
+      "post": {
+        "tags": [
+          "Walks"
+        ],
+        "summary": "Create a walk organised by the signed-in user.",
+        "operationId": "createWalk",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWalkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalkDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "get": {
+        "tags": [
+          "Walks"
+        ],
+        "summary": "Search scheduled upcoming walks around a point, soonest first, then nearest.",
+        "operationId": "searchWalks",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "maximum": 90,
+              "minimum": -90,
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "maximum": 180,
+              "minimum": -180,
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "radiusKm",
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "exclusiveMinimum": 0,
+              "type": "number",
+              "format": "double",
+              "default": 10
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/DogSize"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WalkSearchResult"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/walks/{id}": {
+      "get": {
+        "tags": [
+          "Walks"
+        ],
+        "summary": "Get a walk with its participants, as seen by the signed-in user.",
+        "operationId": "getWalk",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalkDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Walks"
+        ],
+        "summary": "Update a walk before it starts (organizer only).",
+        "operationId": "updateWalk",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWalkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalkDetailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/walks/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Walks"
+        ],
+        "summary": "Cancel a walk before it starts (organizer only). Idempotent.",
+        "operationId": "cancelWalk",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalkDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/me/walks": {
+      "get": {
+        "tags": [
+          "Walks"
+        ],
+        "summary": "List the walks the signed-in user organises or takes part in, upcoming or past.",
+        "operationId": "listMyWalks",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/MyWalksRole"
+            }
+          },
+          {
+            "name": "when",
+            "in": "query",
+            "schema": {
+              "default": "Upcoming",
+              "$ref": "#/components/schemas/MyWalksPeriod"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MyWalkResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/walks/{id}/registrations": {
+      "post": {
+        "tags": [
+          "Registrations"
+        ],
+        "summary": "Register one or more of the signed-in user's dogs to a walk; all or none are registered.",
+        "operationId": "createRegistrations",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRegistrationsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RegistrationResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/walks/{id}/registrations/{registrationId}": {
+      "delete": {
+        "tags": [
+          "Registrations"
+        ],
+        "summary": "Cancel one of the signed-in user's registrations before the walk starts. Idempotent.",
+        "operationId": "cancelRegistration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "registrationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/walks/{id}/registrations/{registrationId}/accept": {
+      "post": {
+        "tags": [
+          "Registrations"
+        ],
+        "summary": "Accept a pending registration (organizer only). Capacity is checked again.",
+        "operationId": "acceptRegistration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "registrationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
+    },
+    "/api/v1/walks/{id}/registrations/{registrationId}/decline": {
+      "post": {
+        "tags": [
+          "Registrations"
+        ],
+        "summary": "Decline a pending registration or remove an accepted participant (organizer only).",
+        "operationId": "declineRegistration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "registrationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistrationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": [ ]
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1074,6 +1914,96 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "CreateRegistrationsRequest": {
+        "required": [
+          "dogIds"
+        ],
+        "type": "object",
+        "properties": {
+          "dogIds": {
+            "maxItems": 10,
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "CreateWalkRequest": {
+        "required": [
+          "title",
+          "startsAt",
+          "location",
+          "locationLabel",
+          "maxDogs",
+          "allowedSizes",
+          "leashRule",
+          "access"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "maxLength": 80,
+            "minLength": 3,
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "maximum": 480,
+            "minimum": 15,
+            "type": "integer",
+            "format": "int32"
+          },
+          "location": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "locationLabel": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxDogs": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "allowedSizes": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DogSize"
+            }
+          },
+          "leashRule": {
+            "$ref": "#/components/schemas/LeashRule"
+          },
+          "rules": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "access": {
+            "$ref": "#/components/schemas/WalkAccess"
           }
         }
       },
@@ -1172,6 +2102,27 @@
         ],
         "type": "string"
       },
+      "GeoPoint": {
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "maximum": 90,
+            "minimum": -90,
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "maximum": 180,
+            "minimum": -180,
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "GoogleSignInRequest": {
         "required": [
           "idToken"
@@ -1258,6 +2209,13 @@
         ],
         "type": "string"
       },
+      "LeashRule": {
+        "enum": [
+          "LeashRequired",
+          "OffLeashAllowed"
+        ],
+        "type": "string"
+      },
       "MeResponse": {
         "required": [
           "id",
@@ -1302,6 +2260,161 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "MyRegistrationResponse": {
+        "required": [
+          "id",
+          "dogId",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dogId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RegistrationStatus"
+          }
+        }
+      },
+      "MyWalkResponse": {
+        "required": [
+          "id",
+          "title",
+          "startsAt",
+          "durationMinutes",
+          "location",
+          "locationLabel",
+          "maxDogs",
+          "acceptedDogsCount",
+          "allowedSizes",
+          "leashRule",
+          "access",
+          "status",
+          "organizer",
+          "isProfessional",
+          "organization",
+          "repeatsWeekly",
+          "hasBlockedParticipant",
+          "myRegistrations"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "location": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "locationLabel": {
+            "type": "string"
+          },
+          "maxDogs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "acceptedDogsCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "allowedSizes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DogSize"
+            }
+          },
+          "leashRule": {
+            "$ref": "#/components/schemas/LeashRule"
+          },
+          "access": {
+            "$ref": "#/components/schemas/WalkAccess"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WalkStatus"
+          },
+          "organizer": {
+            "$ref": "#/components/schemas/UserSummaryResponse"
+          },
+          "isProfessional": {
+            "type": "boolean"
+          },
+          "organization": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WalkOrganizationResponse"
+              }
+            ]
+          },
+          "repeatsWeekly": {
+            "type": "boolean"
+          },
+          "hasBlockedParticipant": {
+            "type": "boolean"
+          },
+          "myRegistrations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyRegistrationResponse"
+            }
+          }
+        }
+      },
+      "MyWalksPeriod": {
+        "enum": [
+          "Upcoming",
+          "Past"
+        ],
+        "type": "string"
+      },
+      "MyWalksRole": {
+        "enum": [
+          "Organizer",
+          "Participant"
+        ],
+        "type": "string"
+      },
+      "ParticipantResponse": {
+        "required": [
+          "registrationId",
+          "dog",
+          "owner"
+        ],
+        "type": "object",
+        "properties": {
+          "registrationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dog": {
+            "$ref": "#/components/schemas/DogResponse"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserSummaryResponse"
           }
         }
       },
@@ -1400,6 +2513,54 @@
             "type": "string"
           }
         }
+      },
+      "RegistrationResponse": {
+        "required": [
+          "id",
+          "walkId",
+          "dogId",
+          "userId",
+          "status",
+          "createdAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "walkId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dogId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RegistrationStatus"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "RegistrationStatus": {
+        "enum": [
+          "Pending",
+          "Accepted",
+          "Declined",
+          "Cancelled"
+        ],
+        "type": "string"
       },
       "SessionResponse": {
         "required": [
@@ -1530,10 +2691,388 @@
           }
         }
       },
+      "UpdateWalkRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "maxLength": 80,
+            "minLength": 3,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startsAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "maximum": 480,
+            "minimum": 15,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "location": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/GeoPoint"
+              }
+            ]
+          },
+          "locationLabel": {
+            "maxLength": 120,
+            "minLength": 1,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "maxDogs": {
+            "maximum": 50,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "allowedSizes": {
+            "minItems": 1,
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/DogSize"
+            }
+          },
+          "leashRule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LeashRule"
+              }
+            ]
+          },
+          "rules": {
+            "maxLength": 1000,
+            "minLength": 0,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "access": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WalkAccess"
+              }
+            ]
+          }
+        }
+      },
       "UserStatus": {
         "enum": [
           "Active",
           "Suspended"
+        ],
+        "type": "string"
+      },
+      "UserSummaryResponse": {
+        "required": [
+          "id",
+          "displayName",
+          "photoUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "WalkAccess": {
+        "enum": [
+          "Open",
+          "Approval"
+        ],
+        "type": "string"
+      },
+      "WalkDetailResponse": {
+        "required": [
+          "id",
+          "title",
+          "description",
+          "startsAt",
+          "durationMinutes",
+          "location",
+          "locationLabel",
+          "maxDogs",
+          "acceptedDogsCount",
+          "allowedSizes",
+          "leashRule",
+          "rules",
+          "access",
+          "status",
+          "organizer",
+          "isProfessional",
+          "organization",
+          "repeatsWeekly",
+          "hasBlockedParticipant",
+          "createdAt",
+          "isOrganizer",
+          "participants",
+          "myRegistrations",
+          "pendingRegistrations"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "location": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "locationLabel": {
+            "type": "string"
+          },
+          "maxDogs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "acceptedDogsCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "allowedSizes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DogSize"
+            }
+          },
+          "leashRule": {
+            "$ref": "#/components/schemas/LeashRule"
+          },
+          "rules": {
+            "type": "string"
+          },
+          "access": {
+            "$ref": "#/components/schemas/WalkAccess"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WalkStatus"
+          },
+          "organizer": {
+            "$ref": "#/components/schemas/UserSummaryResponse"
+          },
+          "isProfessional": {
+            "type": "boolean"
+          },
+          "organization": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WalkOrganizationResponse"
+              }
+            ]
+          },
+          "repeatsWeekly": {
+            "type": "boolean"
+          },
+          "hasBlockedParticipant": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isOrganizer": {
+            "type": "boolean"
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParticipantResponse"
+            }
+          },
+          "myRegistrations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyRegistrationResponse"
+            }
+          },
+          "pendingRegistrations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParticipantResponse"
+            }
+          }
+        }
+      },
+      "WalkOrganizationResponse": {
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "WalkSearchResult": {
+        "required": [
+          "id",
+          "title",
+          "startsAt",
+          "durationMinutes",
+          "location",
+          "locationLabel",
+          "distanceMeters",
+          "maxDogs",
+          "acceptedDogsCount",
+          "allowedSizes",
+          "leashRule",
+          "access",
+          "status",
+          "organizer",
+          "isProfessional",
+          "organization",
+          "repeatsWeekly",
+          "hasBlockedParticipant"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "startsAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "location": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "locationLabel": {
+            "type": "string"
+          },
+          "distanceMeters": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxDogs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "acceptedDogsCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "allowedSizes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DogSize"
+            }
+          },
+          "leashRule": {
+            "$ref": "#/components/schemas/LeashRule"
+          },
+          "access": {
+            "$ref": "#/components/schemas/WalkAccess"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WalkStatus"
+          },
+          "organizer": {
+            "$ref": "#/components/schemas/UserSummaryResponse"
+          },
+          "isProfessional": {
+            "type": "boolean"
+          },
+          "organization": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WalkOrganizationResponse"
+              }
+            ]
+          },
+          "repeatsWeekly": {
+            "type": "boolean"
+          },
+          "hasBlockedParticipant": {
+            "type": "boolean"
+          }
+        }
+      },
+      "WalkStatus": {
+        "enum": [
+          "Scheduled",
+          "Cancelled"
         ],
         "type": "string"
       }
@@ -1562,6 +3101,12 @@
     },
     {
       "name": "Photos"
+    },
+    {
+      "name": "Walks"
+    },
+    {
+      "name": "Registrations"
     }
   ]
 }

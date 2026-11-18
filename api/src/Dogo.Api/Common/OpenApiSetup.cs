@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
@@ -68,9 +69,19 @@ public static class OpenApiSetup
             options.AddSchemaTransformer((schema, context, _) =>
             {
                 // Enums are serialized as strings (JsonStringEnumConverter): say so explicitly.
-                if (context.JsonTypeInfo.Type.IsEnum)
+                // A nullable enum used only as an optional query parameter would otherwise
+                // produce an enum schema containing null and no type.
+                var type = context.JsonTypeInfo.Type;
+                if (type.IsEnum || (Nullable.GetUnderlyingType(type)?.IsEnum ?? false))
                 {
                     schema.Type = JsonSchemaType.String;
+                    if (schema.Enum is { } values)
+                    {
+                        foreach (var value in values.Where(v => v is null || v.GetValueKind() == JsonValueKind.Null).ToList())
+                        {
+                            values.Remove(value);
+                        }
+                    }
                 }
 
                 // Every problem carries the stable "code" extension (see ErrorCodes).
@@ -91,4 +102,23 @@ public static class OpenApiSetup
         });
         return services;
     }
+
+    /// <summary>
+    /// Marks query parameters as required in the description. Used for parameters bound as
+    /// nullable so that a missing value is reported by the handler as <c>validation.failed</c>
+    /// naming the field, instead of a generic binding failure.
+    /// </summary>
+    public static RouteHandlerBuilder WithRequiredQueryParameters(this RouteHandlerBuilder builder, params string[] names) =>
+        builder.AddOpenApiOperationTransformer((operation, _, _) =>
+        {
+            foreach (var parameter in operation.Parameters?.OfType<OpenApiParameter>() ?? [])
+            {
+                if (parameter.In == ParameterLocation.Query && names.Contains(parameter.Name))
+                {
+                    parameter.Required = true;
+                }
+            }
+
+            return Task.CompletedTask;
+        });
 }

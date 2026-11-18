@@ -5,6 +5,7 @@ using Dogo.Api.Features.Dogs;
 using Dogo.Api.Features.Health;
 using Dogo.Api.Features.Photos;
 using Dogo.Api.Features.Users;
+using Dogo.Api.Features.Walks;
 using Dogo.Api.Infrastructure.Auth;
 using Dogo.Api.Infrastructure.Persistence;
 using Dogo.Api.Infrastructure.Storage;
@@ -53,6 +54,8 @@ var authenticated = api.MapGroup("").ProducesProblem(StatusCodes.Status401Unauth
 authenticated.MapUserEndpoints();
 authenticated.MapDogEndpoints();
 authenticated.MapPhotoEndpoints();
+authenticated.MapWalkEndpoints();
+authenticated.MapRegistrationEndpoints();
 
 app.MapPhotoFiles();
 

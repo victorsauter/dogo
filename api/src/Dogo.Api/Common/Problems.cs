@@ -25,6 +25,10 @@ public static class Problems
     public static ProblemHttpResult Unauthorized(string code, string title) =>
         Create(StatusCodes.Status401Unauthorized, code, title);
 
+    /// <summary>A business rule forbids the request in the current state, e.g. <c>walk.full</c>.</summary>
+    public static ProblemHttpResult Conflict(string code, string title) =>
+        Create(StatusCodes.Status409Conflict, code, title);
+
     public static ProblemHttpResult BadRequest(string code, string title, string? detail = null) =>
         Create(StatusCodes.Status400BadRequest, code, title, detail);
 
@@ -33,7 +37,11 @@ public static class Problems
 
     /// <summary>A 400 <c>validation.failed</c> problem listing the faulty fields (camelCase keys).</summary>
     public static ProblemHttpResult Validation(string field, string message) =>
-        TypedResults.Problem(new HttpValidationProblemDetails(new Dictionary<string, string[]> { [field] = [message] })
+        Validation(new Dictionary<string, string[]> { [field] = [message] });
+
+    /// <summary>A 400 <c>validation.failed</c> problem listing several faulty fields (camelCase keys).</summary>
+    public static ProblemHttpResult Validation(IDictionary<string, string[]> errors) =>
+        TypedResults.Problem(new HttpValidationProblemDetails(errors)
         {
             Status = StatusCodes.Status400BadRequest,
             Title = "One or more validation errors occurred.",
