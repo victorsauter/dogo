@@ -44,6 +44,8 @@ export default function AppLayout() {
       <Stack.Screen name="walks/new" options={{ title: t.walk.newTitle }} />
       <Stack.Screen name="walks/[id]/index" options={{ title: t.walk.detailTitle }} />
       <Stack.Screen name="walks/[id]/edit" options={{ title: t.walk.editTitle }} />
+      <Stack.Screen name="walks/[id]/messages" options={{ title: t.thread.title }} />
+      <Stack.Screen name="notifications" options={{ title: t.notifications.title }} />
     </Stack>
   );
 }
