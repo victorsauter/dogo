@@ -31,6 +31,9 @@ function googleSignInPlugin(): [string, { iosUrlScheme: string }][] {
   ];
 }
 
+/** EAS project ID, absent until an EAS project exists: push notifications are then unavailable. */
+const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim();
+
 const brandColor = '#F4EFE6';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
@@ -73,6 +76,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   web: {
     favicon: './assets/favicon.png',
   },
+  ...(easProjectId ? { extra: { ...config.extra, eas: { projectId: easProjectId } } } : {}),
   plugins: [
     'expo-router',
     'expo-secure-store',
@@ -89,6 +93,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // Apple Maps on iOS needs no key; Android uses Google Maps (Expo Go's key in
     // development, a key of our own for a store build, see mobile/README.md).
     ['expo-location', { locationWhenInUsePermission: permissions.locationWhenInUse }],
+    ['expo-notifications', { defaultChannel: 'default' }],
     ...googleSignInPlugin(),
     [
       'expo-splash-screen',
