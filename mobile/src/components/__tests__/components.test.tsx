@@ -14,6 +14,7 @@ import {
   createFieldRegistry,
   ErrorState,
   initials,
+  SegmentedControl,
   TextField,
 } from '..';
 
@@ -52,6 +53,33 @@ describe('TextField', () => {
     await fireEvent.changeText(screen.getByLabelText('Nom du chien'), 'Filou');
     expect(onChangeText).toHaveBeenCalledWith('Filou');
     expect(screen.getByText(t.common.required)).toBeTruthy();
+  });
+});
+
+describe('SegmentedControl', () => {
+  const options = [
+    { value: 'a', label: 'Un' },
+    { value: 'b', label: 'Deux' },
+  ] as const;
+
+  it('announces a radio group, marks the chosen segment (bold too) and reports changes', async () => {
+    const onChange = jest.fn();
+    await renderWithTheme(
+      <SegmentedControl
+        accessibilityLabel="Choix"
+        options={options}
+        value="a"
+        onChange={onChange}
+      />,
+    );
+    expect(screen.getByLabelText('Choix').props.accessibilityRole).toBe('radiogroup');
+    expect(screen.getByRole('radio', { name: 'Un' })).toBeSelected();
+    expect(screen.getByRole('radio', { name: 'Deux' })).not.toBeSelected();
+    expect(StyleSheet.flatten(screen.getByText('Un').props.style).fontWeight).toBe('700');
+    expect(StyleSheet.flatten(screen.getByText('Deux').props.style).fontWeight).toBe('400');
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'Deux' }));
+    expect(onChange).toHaveBeenCalledWith('b');
   });
 });
 

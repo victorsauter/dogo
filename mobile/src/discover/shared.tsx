@@ -3,23 +3,20 @@ import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { ActivityIndicator, Pressable, View, type ViewStyle } from 'react-native';
 import type MapView from 'react-native-maps';
 
-import { enumValues, type DogSize } from '@/api/enums';
 import type { WalkSearchResult } from '@/api/types';
 import {
+  defaultWalkFilters,
   searchParamsFor,
-  SEARCH_RADII_KM,
   useWalkSearch,
   type PeriodFilter,
-  type SearchRadiusKm,
-  type SizeFilter,
   type WalkFilters,
   type WalkSearchParams,
 } from '@/api/walks';
-import { Button, ChoiceGroup, Icon, Text, type IconName } from '@/components';
+import { Button, Icon, SegmentedControl, Text, type IconName } from '@/components';
 import type { MapRegion } from '@/lib/geo';
 import { useDebouncedValue, useDelayedFlag, useRefetchOnFocusIfStale } from '@/lib/hooks';
 import type { UserLocation } from '@/lib/location';
-import { enumLabel, format, t } from '@/strings';
+import { format, plural, t } from '@/strings';
 import { useTheme } from '@/theme';
 
 /**
@@ -36,19 +33,6 @@ export const periodOptions: { value: PeriodFilter; label: string }[] = [
   { value: 'all', label: t.discover.periodAll },
 ];
 
-export const sizeOptions: { value: SizeFilter; label: string }[] = [
-  { value: 'all', label: t.discover.sizeAll },
-  ...enumValues.DogSize.map((size) => ({
-    value: size as DogSize,
-    label: enumLabel('DogSize', size),
-  })),
-];
-
-const radiusOptions = SEARCH_RADII_KM.map((km) => ({
-  value: String(km) as `${SearchRadiusKm}`,
-  label: format(t.discover.radiusOption, { km }),
-}));
-
 export function useDiscoverNavigation() {
   const router = useRouter();
   return {
@@ -57,11 +41,16 @@ export function useDiscoverNavigation() {
   };
 }
 
+/** Number of filters that differ from their default (the radius and the period do not count). */
+export function activeFilterCount(filters: WalkFilters): number {
+  return filters.size === defaultWalkFilters.size ? 0 : 1;
+}
+
 export interface DiscoverHeaderProps {
   filters: WalkFilters;
   onFiltersChange: (update: (current: WalkFilters) => WalkFilters) => void;
-  /** The radius choice of the « Liste » view. */
-  radius?: { value: SearchRadiusKm; onChange: (km: SearchRadiusKm) => void };
+  /** Opens the « Filtres » sheet. */
+  onOpenFilters: () => void;
   /** Sentence under the filters (position unknown). */
   notice?: string | null;
   /** Hides the title row (the full-screen map has its own bottom buttons). */
@@ -69,11 +58,11 @@ export interface DiscoverHeaderProps {
   style?: ViewStyle;
 }
 
-/** Title with « Créer », then the filter chips. */
+/** Title with « Créer », then one row: the period and the « Filtres » button. */
 export function DiscoverHeader({
   filters,
   onFiltersChange,
-  radius,
+  onOpenFilters,
   notice,
   showTitle = true,
   style,
@@ -94,31 +83,117 @@ export function DiscoverHeader({
           />
         </View>
       ) : null}
-      <ChoiceGroup
-        accessibilityLabel={t.discover.period}
-        options={periodOptions}
-        value={filters.period}
-        onChange={(period) => onFiltersChange((current) => ({ ...current, period }))}
-      />
-      <ChoiceGroup
-        accessibilityLabel={t.discover.size}
-        options={sizeOptions}
-        value={filters.size}
-        onChange={(size) => onFiltersChange((current) => ({ ...current, size }))}
-      />
-      {radius ? (
-        <ChoiceGroup
-          accessibilityLabel={t.discover.radius}
-          options={radiusOptions}
-          value={String(radius.value) as `${SearchRadiusKm}`}
-          onChange={(km) => radius.onChange(Number(km) as SearchRadiusKm)}
-        />
-      ) : null}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        <View style={{ flex: 1 }}>
+          <SegmentedControl
+            accessibilityLabel={t.discover.period}
+            options={periodOptions}
+            value={filters.period}
+            onChange={(period) => onFiltersChange((current) => ({ ...current, period }))}
+          />
+        </View>
+        <FiltersButton count={activeFilterCount(filters)} onPress={onOpenFilters} />
+      </View>
       {notice ? (
         <Text variant="caption" color="textMuted">
           {notice}
         </Text>
       ) : null}
+    </View>
+  );
+}
+
+/** Round « Filtres » button with the number of active filters in a badge. */
+function FiltersButton({ count, onPress }: { count: number; onPress: () => void }) {
+  const { colors, radii, minTouchSize } = useTheme();
+  return (
+    <View style={{ width: minTouchSize, height: minTouchSize }}>
+      <Pressable
+        testID="filters-button"
+        accessibilityRole="button"
+        accessibilityLabel={
+          count > 0 ? plural(t.discover.filtersActive, count) : t.discover.filters
+        }
+        onPress={onPress}
+        style={({ pressed }) => ({
+          width: minTouchSize,
+          height: minTouchSize,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: radii.pill,
+          borderWidth: 1,
+          borderColor: count > 0 ? colors.primary : colors.border,
+          backgroundColor:
+            count > 0 ? colors.primarySoft : pressed ? colors.surfaceMuted : colors.surface,
+        })}
+      >
+        <Icon name="sliders" color={count > 0 ? 'primary' : 'text'} size={22} />
+      </Pressable>
+      {count > 0 ? (
+        <View
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={{
+            position: 'absolute',
+            top: -4,
+            right: -4,
+            minWidth: 20,
+            height: 20,
+            paddingHorizontal: 5,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: radii.pill,
+            backgroundColor: colors.primary,
+          }}
+        >
+          <Text variant="caption" style={{ color: colors.onPrimary, fontWeight: '700' }}>
+            {count}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** Removable labels of the active filters (the size), above the list of walks. */
+export function ActiveFilterTags({
+  filters,
+  onFiltersChange,
+  style,
+}: {
+  filters: WalkFilters;
+  onFiltersChange: (update: (current: WalkFilters) => WalkFilters) => void;
+  style?: ViewStyle;
+}) {
+  const { colors, radii, spacing } = useTheme();
+  if (filters.size === 'all') return null;
+  const label = t.discover.sizeTag[filters.size];
+  return (
+    <View style={[{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }, style]}>
+      <Pressable
+        testID="filter-tag-size"
+        accessibilityRole="button"
+        accessibilityLabel={format(t.discover.removeFilter, { label })}
+        onPress={() => onFiltersChange((current) => ({ ...current, size: 'all' }))}
+        // 32 pt tall to look like a label, 44 pt to touch.
+        hitSlop={6}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.xs,
+          minHeight: 32,
+          paddingLeft: spacing.md,
+          paddingRight: spacing.sm,
+          borderRadius: radii.pill,
+          backgroundColor: pressed ? colors.surfaceMuted : colors.primarySoft,
+        })}
+      >
+        <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>
+          {label}
+        </Text>
+        <Icon name="close" color="primary" size={14} />
+      </Pressable>
     </View>
   );
 }
@@ -153,7 +228,14 @@ export function useRefreshableSearch(params: WalkSearchParams | null) {
       setRefreshing(false);
     }
   }
-  return { search, walks: search.data ?? [], refreshing, refresh };
+  return {
+    search,
+    walks: search.data ?? [],
+    refreshing,
+    refresh,
+    /** Number of walks found, `null` while loading or when the search failed. */
+    resultCount: search.isSuccess && !search.isFetching ? (search.data?.length ?? 0) : null,
+  };
 }
 
 /**
@@ -191,6 +273,8 @@ export function useMapAreaSearch({
   );
   return {
     ...result,
+    // The area is still being debounced: the count would be the previous area's.
+    resultCount: region === searchRegion ? result.resultCount : null,
     searching,
     /** Where the map should open: the last area seen, else the start region. */
     mapRegion: pannedRegion ?? startRegion,

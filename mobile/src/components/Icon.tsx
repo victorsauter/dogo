@@ -27,6 +27,8 @@ const icons = {
   close: { ios: 'xmark', android: 'close', web: 'close' },
   check: { ios: 'checkmark', android: 'check', web: 'check' },
   refresh: { ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' },
+  sliders: { ios: 'slider.horizontal.3', android: 'tune', web: 'tune' },
+  locate: { ios: 'location', android: 'my_location', web: 'my_location' },
 } as const;
 
 export type IconName = keyof typeof icons;

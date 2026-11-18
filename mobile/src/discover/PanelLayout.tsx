@@ -14,7 +14,9 @@ import type { UserLocation } from '@/lib/location';
 import { plural, t } from '@/strings';
 import { useTheme } from '@/theme';
 
+import { FiltersSheet } from './FiltersSheet';
 import {
+  ActiveFilterTags,
   byStartDate,
   DiscoverHeader,
   locationUnknown,
@@ -55,13 +57,14 @@ export function PanelLayout({ location }: { location: UserLocation }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [handleHeight, setHandleHeight] = useState(64);
   const [mapHeight, setMapHeight] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const located = location.status !== 'pending';
   const startRegion = useMemo(
     () => regionAround(location.coords ?? DEFAULT_CENTER),
     [location.coords],
   );
-  const { search, walks, searching, refresh, onRegionChange } = useMapAreaSearch({
+  const { search, walks, searching, refresh, onRegionChange, resultCount } = useMapAreaSearch({
     located,
     startRegion,
     filters,
@@ -119,6 +122,7 @@ export function PanelLayout({ location }: { location: UserLocation }) {
       <DiscoverHeader
         filters={filters}
         onFiltersChange={setFilters}
+        onOpenFilters={() => setFiltersOpen(true)}
         notice={locationUnknown(location) ? t.discover.locationDenied : null}
         style={{
           paddingHorizontal: spacing.lg,
@@ -185,71 +189,78 @@ export function PanelLayout({ location }: { location: UserLocation }) {
               const height = Math.ceil(event.nativeEvent.layout.height);
               if (Math.abs(height - handleHeight) > 1) setHandleHeight(height);
             }}
-            style={{ flexDirection: 'row', alignItems: 'flex-end' }}
           >
-            <Pressable
-              testID="panel-handle"
-              accessibilityRole="button"
-              accessibilityLabel={`${count}. ${action}`}
-              accessibilityHint={t.discover.panelA11yHint}
-              accessibilityValue={{ min: 0, max: 2, now: position }}
-              onPress={() => moveTo(NEXT_POSITION[position])}
-              style={({ pressed }) => ({
-                flex: 1,
-                paddingLeft: spacing.lg,
-                paddingRight: spacing.xs,
-                paddingTop: spacing.sm,
-                paddingBottom: spacing.md,
-                gap: spacing.sm,
-                borderTopLeftRadius: radii.lg,
-                backgroundColor: pressed ? colors.surfaceMuted : 'transparent',
-              })}
-            >
-              <View
-                style={{
-                  alignSelf: 'center',
-                  width: 44,
-                  height: 5,
-                  borderRadius: radii.pill,
-                  backgroundColor: colors.border,
-                }}
-              />
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between',
-                  columnGap: spacing.md,
-                  rowGap: spacing.xs,
-                }}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+              <Pressable
+                testID="panel-handle"
+                accessibilityRole="button"
+                accessibilityLabel={`${count}. ${action}`}
+                accessibilityHint={t.discover.panelA11yHint}
+                accessibilityValue={{ min: 0, max: 2, now: position }}
+                onPress={() => moveTo(NEXT_POSITION[position])}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  paddingLeft: spacing.lg,
+                  paddingRight: spacing.xs,
+                  paddingTop: spacing.sm,
+                  paddingBottom: spacing.md,
+                  gap: spacing.sm,
+                  borderTopLeftRadius: radii.lg,
+                  backgroundColor: pressed ? colors.surfaceMuted : 'transparent',
+                })}
               >
-                <Text variant="subheading">{count}</Text>
+                <View
+                  style={{
+                    alignSelf: 'center',
+                    width: 44,
+                    height: 5,
+                    borderRadius: radii.pill,
+                    backgroundColor: colors.border,
+                  }}
+                />
                 <View
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: spacing.xs,
-                    minHeight: 36,
-                    paddingHorizontal: spacing.md,
-                    borderRadius: radii.pill,
-                    borderWidth: 1.5,
-                    borderColor: colors.primary,
-                    backgroundColor: colors.surface,
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between',
+                    columnGap: spacing.md,
+                    rowGap: spacing.xs,
                   }}
                 >
-                  <Text variant="label" color="primary">
-                    {action}
-                  </Text>
-                  <Icon name={HANDLE_ICON[position]} color="primary" size={18} />
+                  <Text variant="subheading">{count}</Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: spacing.xs,
+                      minHeight: 36,
+                      paddingHorizontal: spacing.md,
+                      borderRadius: radii.pill,
+                      borderWidth: 1.5,
+                      borderColor: colors.primary,
+                      backgroundColor: colors.surface,
+                    }}
+                  >
+                    <Text variant="label" color="primary">
+                      {action}
+                    </Text>
+                    <Icon name={HANDLE_ICON[position]} color="primary" size={18} />
+                  </View>
                 </View>
-              </View>
-            </Pressable>
-            {/* Beside the handle, not inside it (a button cannot nest in a button), at the
+              </Pressable>
+              {/* Beside the handle, not inside it (a button cannot nest in a button), at the
                 height of its second row. */}
-            <View style={{ paddingRight: spacing.sm, paddingBottom: spacing.xs }}>
-              <RefreshButton busy={search.isFetching} onPress={() => void refresh()} />
+              <View style={{ paddingRight: spacing.sm, paddingBottom: spacing.xs }}>
+                <RefreshButton busy={search.isFetching} onPress={() => void refresh()} />
+              </View>
             </View>
+            {/* Inside the measured block: the low position leaves room for the label. */}
+            <ActiveFilterTags
+              filters={filters}
+              onFiltersChange={setFilters}
+              style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}
+            />
           </View>
           {/* No pull-to-refresh here: at the high position it captures the downward
               drag meant to lower the panel. The refresh button next to the handle, coming
@@ -278,6 +289,13 @@ export function PanelLayout({ location }: { location: UserLocation }) {
           />
         </BottomSheet>
       </View>
+      <FiltersSheet
+        visible={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        filters={filters}
+        onFiltersChange={setFilters}
+        resultCount={resultCount}
+      />
     </View>
   );
 }

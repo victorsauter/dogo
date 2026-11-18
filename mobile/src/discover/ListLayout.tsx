@@ -24,7 +24,9 @@ import type { UserLocation } from '@/lib/location';
 import { plural, t } from '@/strings';
 import { useTheme } from '@/theme';
 
+import { FiltersSheet } from './FiltersSheet';
 import {
+  ActiveFilterTags,
   byStartDate,
   DiscoverHeader,
   FLOATING_BUTTON_HEIGHT,
@@ -49,6 +51,7 @@ export function ListLayout({ location }: { location: UserLocation }) {
   const [filters, setFilters] = useState<WalkFilters>(defaultWalkFilters);
   const [radiusKm, setRadiusKm] = useState<SearchRadiusKm>(DEFAULT_SEARCH_RADIUS_KM);
   const [mapOpen, setMapOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   // Last area seen on the map: reopening the map shows it again.
   const [mapArea, setMapArea] = useState<MapRegion | null>(null);
 
@@ -58,7 +61,7 @@ export function ListLayout({ location }: { location: UserLocation }) {
     () => (located ? searchParamsAround(center, radiusKm, filters) : null),
     [located, center, radiusKm, filters],
   );
-  const { search, walks, refreshing, refresh } = useRefreshableSearch(params);
+  const { search, walks, refreshing, refresh, resultCount } = useRefreshableSearch(params);
   const sorted = useMemo(() => byStartDate(walks), [walks]);
 
   const listEmpty =
@@ -100,9 +103,10 @@ export function ListLayout({ location }: { location: UserLocation }) {
               <DiscoverHeader
                 filters={filters}
                 onFiltersChange={setFilters}
-                radius={{ value: radiusKm, onChange: setRadiusKm }}
+                onOpenFilters={() => setFiltersOpen(true)}
                 notice={locationUnknown(location) ? t.discover.listLocationDenied : null}
               />
+              <ActiveFilterTags filters={filters} onFiltersChange={setFilters} />
               {sorted.length > 0 ? (
                 <Text variant="caption" color="textMuted">
                   {plural(t.discover.resultCount, sorted.length)}
@@ -135,6 +139,14 @@ export function ListLayout({ location }: { location: UserLocation }) {
           />
         </View>
       </View>
+      <FiltersSheet
+        visible={filtersOpen && !mapOpen}
+        onClose={() => setFiltersOpen(false)}
+        filters={filters}
+        onFiltersChange={setFilters}
+        radius={{ value: radiusKm, onChange: setRadiusKm }}
+        resultCount={resultCount}
+      />
       {mapOpen ? (
         <FullScreenMap
           location={location}
@@ -176,13 +188,14 @@ function FullScreenMap({
   const located = location.status !== 'pending';
   // Fixed for this opening: the map must not jump when the reported area comes back as a prop.
   const [initialRegion] = useState(startRegion);
-  const { search, walks, searching, onRegionChange } = useMapAreaSearch({
+  const { search, walks, searching, onRegionChange, resultCount } = useMapAreaSearch({
     located,
     startRegion: initialRegion,
     filters,
     map,
   });
   const [selected, setSelected] = useState<WalkSearchResult | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const notice = search.isError ? (
     <MapNotice
@@ -200,6 +213,7 @@ function FullScreenMap({
       <DiscoverHeader
         filters={filters}
         onFiltersChange={onFiltersChange}
+        onOpenFilters={() => setFiltersOpen(true)}
         showTitle={false}
         style={{
           paddingHorizontal: spacing.lg,
@@ -283,6 +297,13 @@ function FullScreenMap({
           />
         </View>
       </View>
+      <FiltersSheet
+        visible={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+        resultCount={resultCount}
+      />
     </View>
   );
 }

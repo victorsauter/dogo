@@ -35,6 +35,15 @@ beforeEach(() => {
   resetDiscoverLayout();
 });
 
+const filtersButton = () => screen.getByRole('button', { name: /^Filtres/ });
+const sizeRadio = (name: string) =>
+  within(screen.getByLabelText(t.discover.sizeSection)).getByRole('radio', { name });
+const sheetOpen = () => screen.queryByText(t.discover.sizeSection) !== null;
+async function openFilters() {
+  await fireEvent.press(filtersButton());
+  expect(sheetOpen()).toBe(true);
+}
+
 afterEach(async () => {
   config.devLogin = devLogin;
   await act(() => sessionStore.clear());
@@ -90,6 +99,7 @@ describe('« Liste » view — list first, map on demand', () => {
       .map((node) => node.props.children);
     expect(titles).toEqual([lake.title, later.title]);
 
+    await openFilters();
     await fireEvent.press(screen.getByRole('radio', { name: '25 km' }));
     await waitFor(() => expect(lastSearch(calls).radiusKm).toBe('25'));
     expect(lastSearch(calls)).toMatchObject({ lat: '47.6234', lng: '7.2376' });
@@ -99,7 +109,9 @@ describe('« Liste » view — list first, map on demand', () => {
     const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open('list');
     await screen.findByText(lake.title);
+    await openFilters();
     await fireEvent.press(screen.getByRole('radio', { name: '5 km' }));
+    await fireEvent.press(screen.getByRole('button', { name: t.discover.filtersClose }));
     await fireEvent.press(screen.getByRole('radio', { name: t.discover.periodAll }));
 
     await fireEvent.press(screen.getByRole('button', { name: t.discover.showMapA11y }));
@@ -109,14 +121,17 @@ describe('« Liste » view — list first, map on demand', () => {
     expect(lastSearch(calls).to).toBeUndefined();
 
     // A filter changed on the map is the list's filter too.
-    await fireEvent.press(screen.getAllByRole('radio', { name: 'Grand' }).at(-1)!);
+    await openFilters();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Grand' }));
     await waitFor(() => expect(lastSearch(calls).size).toBe('Large'));
+    await fireEvent.press(screen.getByRole('button', { name: t.discover.filtersClose }));
 
     await fireEvent.press(screen.getByRole('button', { name: t.discover.showListA11y }));
     await waitFor(() => expect(screen.queryByLabelText(t.discover.mapLabel)).toBeNull());
     await waitFor(() => expect(lastSearch(calls)).toMatchObject({ radiusKm: '5', size: 'Large' }));
-    expect(screen.getByRole('radio', { name: '5 km' })).toBeSelected();
     expect(screen.getByRole('radio', { name: t.discover.periodAll })).toBeSelected();
+    await openFilters();
+    expect(screen.getByRole('radio', { name: '5 km' })).toBeSelected();
     expect(screen.getByRole('radio', { name: 'Grand' })).toBeSelected();
   });
 
@@ -321,5 +336,207 @@ describe('refreshing the walks', () => {
 
     await waitFor(() => expect(searchCalls(calls)).toHaveLength(2));
     expect(screen.queryByRole('button', { name: t.discover.refresh })).toBeNull();
+  });
+});
+
+describe.each(['panel', 'list'] as const)('« %s » view, filters row and sheet', (view) => {
+  const closeButton = () => screen.getByRole('button', { name: t.discover.filtersClose });
+
+  it('has one row: the period, and a « Filtres » button without badge at first', async () => {
+    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open(view);
+    await screen.findByText(lake.title);
+
+    expect(screen.getByLabelText(t.discover.period)).toBeTruthy();
+    expect(screen.getByRole('radio', { name: t.discover.periodWeek })).toBeSelected();
+    expect(filtersButton()).toHaveAccessibleName(t.discover.filters);
+    // Size and radius chips live in the sheet only.
+    expect(screen.queryByRole('radio', { name: 'Grand' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: '5 km' })).toBeNull();
+
+    await fireEvent.press(screen.getByRole('radio', { name: t.discover.periodToday }));
+    expect(screen.getByRole('radio', { name: t.discover.periodToday })).toBeSelected();
+    await waitFor(() => expect(lastSearch(calls).to).toBeDefined());
+    await fireEvent.press(screen.getByRole('radio', { name: t.discover.periodAll }));
+    await waitFor(() => expect(lastSearch(calls).to).toBeUndefined());
+    // The period is not counted as an active filter.
+    expect(filtersButton()).toHaveAccessibleName(t.discover.filters);
+  });
+
+  it('counts the size as an active filter, in the badge and the accessible name', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open(view);
+    await screen.findByText(lake.title);
+    expect(
+      within(filtersButton().parent!).queryByText('1', { includeHiddenElements: true }),
+    ).toBeNull();
+
+    await openFilters();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Petit' }));
+    await fireEvent.press(closeButton());
+
+    expect(filtersButton()).toHaveAccessibleName('Filtres, 1 actif');
+    expect(
+      within(filtersButton().parent!).getByText('1', { includeHiddenElements: true }),
+    ).toBeTruthy();
+  });
+
+  it('opens a sheet with title, size choices and close button; changes apply at once', async () => {
+    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open(view);
+    await screen.findByText(lake.title);
+    expect(sheetOpen()).toBe(false);
+
+    await openFilters();
+    expect(screen.getByLabelText(t.discover.sizeSection)).toBeTruthy();
+    for (const name of ['Toutes', 'Petit', 'Moyen', 'Grand']) {
+      expect(sizeRadio(name)).toBeTruthy();
+    }
+    expect(sizeRadio('Toutes')).toBeSelected();
+    // Later filters of the mock-up are not shown.
+    expect(within(screen.getByTestId('filters-sheet')).queryByText(/laisse|places/i)).toBeNull();
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'Moyen' }));
+    await waitFor(() => expect(lastSearch(calls).size).toBe('Medium'));
+    expect(screen.getByRole('radio', { name: 'Moyen' })).toBeSelected();
+  });
+
+  it('shows the distance only in the « Liste » view', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open(view);
+    await screen.findByText(lake.title);
+    await openFilters();
+
+    if (view === 'list') {
+      expect(screen.getByLabelText(t.discover.radius)).toBeTruthy();
+      expect(screen.getByRole('radio', { name: '10 km' })).toBeSelected();
+    } else {
+      expect(screen.queryByLabelText(t.discover.radius)).toBeNull();
+      expect(screen.queryByRole('radio', { name: '10 km' })).toBeNull();
+    }
+  });
+
+  it('says how many walks it finds, and closes with that button', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake, forest]) });
+    await open(view);
+    await screen.findByText(forest.title);
+
+    await openFilters();
+    await screen.findByRole('button', { name: 'Voir 2 balades' });
+    await fireEvent.press(screen.getByRole('button', { name: 'Voir 2 balades' }));
+    expect(sheetOpen()).toBe(false);
+  });
+
+  it('says « Voir les balades » while the search is loading', async () => {
+    let release: (() => void) | undefined;
+    let count = 0;
+    mockApi({
+      'GET /api/v1/walks': async () => {
+        count += 1;
+        if (count === 2) await new Promise<void>((resolve) => (release = resolve));
+        return ok([lake]);
+      },
+    });
+    await open(view);
+    await screen.findByText(lake.title);
+
+    await openFilters();
+    expect(await screen.findByRole('button', { name: 'Voir 1 balade' })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Grand' }));
+    expect(await screen.findByRole('button', { name: t.discover.seeWalksUnknown })).toBeTruthy();
+
+    await act(async () => release?.());
+    expect(await screen.findByRole('button', { name: 'Voir 1 balade' })).toBeTruthy();
+  });
+
+  it('resets the filters of the sheet to their defaults', async () => {
+    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open(view);
+    await screen.findByText(lake.title);
+    await openFilters();
+    const reset = () => screen.getByRole('button', { name: t.discover.filtersReset });
+    expect(reset()).toBeDisabled();
+
+    await fireEvent.press(screen.getByRole('radio', { name: 'Grand' }));
+    if (view === 'list') await fireEvent.press(screen.getByRole('radio', { name: '25 km' }));
+    await waitFor(() => expect(lastSearch(calls).size).toBe('Large'));
+    await fireEvent.press(reset());
+
+    expect(sizeRadio('Toutes')).toBeSelected();
+    if (view === 'list') {
+      expect(screen.getByRole('radio', { name: '10 km' })).toBeSelected();
+    }
+    expect(reset()).toBeDisabled();
+    // The period is not part of the sheet: it stays.
+    expect(screen.getByRole('radio', { name: t.discover.periodWeek })).toBeSelected();
+  });
+
+  it('closes with the close button, the background and the Android back button', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open(view);
+    await screen.findByText(lake.title);
+
+    await openFilters();
+    await fireEvent.press(closeButton());
+    expect(sheetOpen()).toBe(false);
+
+    await openFilters();
+    await fireEvent.press(screen.getByTestId('filters-backdrop', { includeHiddenElements: true }));
+    expect(sheetOpen()).toBe(false);
+
+    await openFilters();
+    await fireEvent(screen.getByTestId('filters-sheet'), 'requestClose');
+    expect(sheetOpen()).toBe(false);
+  });
+
+  it('shows a removable label for the size, above the walks', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open(view);
+    await screen.findByText(lake.title);
+    expect(screen.queryByTestId('filter-tag-size')).toBeNull();
+
+    await openFilters();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Petit' }));
+    await fireEvent.press(closeButton());
+    const tag = screen.getByRole('button', { name: 'Retirer le filtre Petits chiens' });
+    expect(within(tag).getByText('Petits chiens')).toBeTruthy();
+
+    await fireEvent.press(tag);
+
+    expect(screen.queryByTestId('filter-tag-size')).toBeNull();
+    expect(filtersButton()).toHaveAccessibleName(t.discover.filters);
+  });
+
+  it.each([
+    ['Medium', 'Chiens moyens'],
+    ['Large', 'Grands chiens'],
+  ] as const)('labels the %s size « %s »', async (size, label) => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open(view);
+    await screen.findByText(lake.title);
+    await openFilters();
+    await fireEvent.press(
+      screen.getByRole('radio', { name: size === 'Medium' ? 'Moyen' : 'Grand' }),
+    );
+    await fireEvent.press(closeButton());
+
+    expect(screen.getByRole('button', { name: `Retirer le filtre ${label}` })).toBeTruthy();
+  });
+});
+
+describe('« Liste » view, full-screen map', () => {
+  it('has the same row and sheet, without the distance (the map follows its area)', async () => {
+    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('list');
+    await screen.findByText(lake.title);
+    await fireEvent.press(screen.getByRole('button', { name: t.discover.showMapA11y }));
+    await screen.findByLabelText(t.discover.mapLabel);
+
+    // Only the map's row is shown: the list is hidden under it.
+    await fireEvent.press(screen.getAllByRole('button', { name: /^Filtres/ }).at(-1)!);
+    expect(screen.getByText(t.discover.sizeSection)).toBeTruthy();
+    expect(screen.queryByLabelText(t.discover.radius)).toBeNull();
+    await fireEvent.press(screen.getByRole('radio', { name: 'Petit' }));
+    await waitFor(() => expect(lastSearch(calls).size).toBe('Small'));
   });
 });

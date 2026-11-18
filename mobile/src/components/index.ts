@@ -33,6 +33,7 @@ export { MessageBubble, PendingBubble } from './MessageBubble';
 export { MessageComposer } from './MessageComposer';
 export { MeetingPointPicker, type MeetingPointPickerProps } from './MeetingPointPicker';
 export { PhotoPicker, type PhotoPickerProps } from './PhotoPicker';
+export { SegmentedControl, type SegmentedControlProps } from './SegmentedControl';
 export { SwitchRow, type SwitchRowProps } from './SwitchRow';
 export { Screen, type ScreenProps } from './Screen';
 export { Stepper, type StepperProps } from './Stepper';

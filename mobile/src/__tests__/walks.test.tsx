@@ -74,7 +74,9 @@ describe('« Balades » tab (default view: map and panel)', () => {
       radiusKm: '100',
     });
 
+    await fireEvent.press(screen.getByRole('button', { name: t.discover.filters }));
     await fireEvent.press(screen.getByRole('radio', { name: 'Grand' }));
+    await fireEvent.press(screen.getByRole('button', { name: t.discover.filtersClose }));
     await fireEvent.press(screen.getByRole('radio', { name: t.discover.periodAll }));
     await waitFor(() => {
       const last = query(searchCalls(calls).at(-1)!.path);
