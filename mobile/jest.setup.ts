@@ -128,6 +128,7 @@ jest.mock('expo-notifications', () => {
     token: 'ExponentPushToken[test-token]',
     received: new Set<Listener>(),
     responses: new Set<Listener>(),
+    pushTokens: new Set<Listener>(),
     last: null as unknown,
   };
   const subscribe = (set: Set<Listener>) => (listener: Listener) => {
@@ -141,6 +142,7 @@ jest.mock('expo-notifications', () => {
       state.token = 'ExponentPushToken[test-token]';
       state.received.clear();
       state.responses.clear();
+      state.pushTokens.clear();
       state.last = null;
     },
     /** Delivers a notification tap (`data` is the payload) to the listeners. */
@@ -153,6 +155,13 @@ jest.mock('expo-notifications', () => {
       const notification = { request: { content: { data } } };
       state.received.forEach((listener) => (listener as unknown as Emit)(notification));
     },
+    /** The system rolls the push token: `token` is the new Expo token, the listeners hear of the device token. */
+    __renewToken(token: string) {
+      state.token = token;
+      state.pushTokens.forEach((listener) =>
+        (listener as unknown as Emit)({ type: 'ios', data: `device-${token}` }),
+      );
+    },
     AndroidImportance: { DEFAULT: 3 },
     setNotificationHandler: jest.fn(),
     setNotificationChannelAsync: jest.fn(async () => null),
@@ -164,6 +173,7 @@ jest.mock('expo-notifications', () => {
     getExpoPushTokenAsync: jest.fn(async () => ({ type: 'expo', data: state.token })),
     addNotificationReceivedListener: jest.fn(subscribe(state.received)),
     addNotificationResponseReceivedListener: jest.fn(subscribe(state.responses)),
+    addPushTokenListener: jest.fn(subscribe(state.pushTokens)),
     getLastNotificationResponse: jest.fn(() => state.last),
     clearLastNotificationResponse: jest.fn(() => {
       state.last = null;

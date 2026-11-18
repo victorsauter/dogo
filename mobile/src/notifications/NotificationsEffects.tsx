@@ -16,7 +16,11 @@ import { targetForNotification } from './routing';
  * - registers the device after sign-in and at app start (permission granted);
  * - shows notifications received in the foreground and refreshes the walks;
  * - opens the right screen when a notification is tapped, whether the app was
- *   running, in the background or closed (a tap before sign-in waits for it).
+ *   running, in the background or closed (a tap while the stored session is
+ *   still being read waits for it; once the person is known to be signed out, a
+ *   tap is dropped, and so is one that was waiting: it belongs to an account
+ *   that may not be the one signing in next);
+ * - registers the device again when the system renews its push token.
  */
 export function NotificationsEffects() {
   const { status } = useSession();
@@ -24,11 +28,15 @@ export function NotificationsEffects() {
   const queryClient = useQueryClient();
   const signedIn = status === 'signedIn';
   const signedInRef = useRef(signedIn);
+  const statusRef = useRef(status);
   const waiting = useRef<Href | null>(null);
 
   useEffect(() => {
     signedInRef.current = signedIn;
-  }, [signedIn]);
+    statusRef.current = status;
+    // Signed out for good: a tap kept from before belongs to some other session.
+    if (status === 'signedOut') waiting.current = null;
+  }, [signedIn, status]);
 
   useEffect(() => {
     if (signedIn) void registerDevice();
@@ -60,7 +68,7 @@ export function NotificationsEffects() {
         const target = targetForNotification(data);
         if (!target) return;
         if (signedInRef.current) router.push(target.href);
-        else waiting.current = target.href;
+        else if (statusRef.current === 'loading') waiting.current = target.href;
       };
 
       const received = notifications.addNotificationReceivedListener((notification) => {
@@ -76,6 +84,11 @@ export function NotificationsEffects() {
         notifications.clearLastNotificationResponse();
       });
 
+      // A rolled push token makes the registered one useless: register the new one.
+      const renewed = notifications.addPushTokenListener(() => {
+        if (signedInRef.current) void registerDevice();
+      });
+
       const last = notifications.getLastNotificationResponse();
       if (last) {
         open(last.notification.request.content.data);
@@ -84,6 +97,7 @@ export function NotificationsEffects() {
       return () => {
         received.remove();
         tapped.remove();
+        renewed.remove();
       };
     } catch (error) {
       devLog('cannot listen to notifications', error);
