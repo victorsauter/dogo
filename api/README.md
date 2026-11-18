@@ -60,7 +60,8 @@ Ajouter une fonctionnalité : voir l'[ADR 0011](../docs/adr/0011-conventions-api
 - `PATCH` modifie seulement les propriétés envoyées ; `null` laisse un champ obligatoire inchangé mais efface `birthDate` et `breed` ; une chaîne vide efface `bio`, `description` et `rules`.
 - Trop de requêtes : 429 `rate_limit.exceeded`, avec l'en-tête `Retry-After` (secondes entières). Voir « Durcissement ».
 - Corps de requête limité à 256 Ko (413 `request.too_large`), sauf le téléversement de photos (6 Mo).
-- Toute écriture d'un compte suspendu renvoie 403 `account.suspended`, et toute requête d'un compte qui n'existe plus (supprimé avec un jeton d'accès encore valide) renvoie 401 `auth.invalid_token` : un middleware global (`AccountStatusMiddleware`) relit le compte à chaque requête authentifiée.
+- Toute écriture d'un compte suspendu renvoie 403 `account.suspended`, sauf `DELETE /me` (droit à l'effacement, ADR 0036), et toute requête d'un compte qui n'existe plus (supprimé avec un jeton d'accès encore valide) renvoie 401 `auth.invalid_token` : un middleware global (`AccountStatusMiddleware`) relit le compte à chaque requête authentifiée. Une route s'ouvre aux comptes suspendus par `.AllowWhileSuspended()` ; seule `DELETE /me` l'utilise.
+- **Sessions** (ADR 0009, précisé par l'ADR 0035). `POST /auth/refresh` remplace le jeton de rafraîchissement à chaque usage ; les jetons issus d'une même connexion forment une famille. Représenter un jeton remplacé depuis moins de `Auth:Jwt:RefreshTokenGracePeriod` (60 s) rend une nouvelle session de la même famille, sans rien révoquer : réponse perdue, ou deux renouvellements simultanés (les deux réussissent). Après ce délai, c'est une alerte (journal en avertissement) : la famille entière est révoquée, les autres appareils de la personne restent connectés. `POST /auth/logout` révoque toute la famille du jeton. Les jetons expirés ou révoqués depuis plus de `Auth:Jwt:RefreshTokenRetention` (30 jours) sont purgés (voir « Tâches planifiées »).
 
 ### Photos
 
@@ -103,7 +104,7 @@ curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/registrations -H "Au
 
 #### Notifications
 
-Chaque événement est déposé dans une file en mémoire **après** la validation de la transaction ; un service d'arrière-plan l'envoie (ADR 0019). La requête n'attend jamais l'envoi et n'échoue jamais à cause de lui ; les échecs sont journalisés. Le service retire l'auteur de l'action et les doublons, applique les préférences, puis envoie une notification par appareil. `data` vaut `{ "type": "<type>", "walkId": "<id>", "url": "dogo://walks/<id>" }` pour une balade, `{ "type": "<type>", "organizationId": "<id>", "url": "dogo://organizations/<id>" }` pour une organisation.
+Chaque événement est déposé dans une file en mémoire **après** la validation de la transaction ; un service d'arrière-plan l'envoie (ADR 0019). La requête n'attend jamais l'envoi et n'échoue jamais à cause de lui ; les échecs sont journalisés. Le service retire l'auteur de l'action et les doublons, applique les préférences, puis envoie une notification par appareil. `data` vaut `{ "type": "<type>", "walkId": "<id>", "url": "dogo://walks/<id>" }` pour une balade, `{ "type": "<type>", "organizationId": "<id>", "url": "dogo://organizations/<id>" }` pour une organisation, `{ "type": "report_created", "reportId": "<id>" }` pour un signalement (sans `url` : aucun écran ne l'affiche, l'application montre la notification et ignore le toucher).
 
 | `type` | Destinataires | Préférence | Titre | Texte |
 | --- | --- | --- | --- | --- |
@@ -119,14 +120,17 @@ Chaque événement est déposé dans une file en mémoire **après** la validati
 | `membership_requested` | Responsable et éducateurs de l'organisation | `registrations` | Nouvelle demande d'adhésion | « {nom} demande à rejoindre « {organisation} ». » |
 | `membership_accepted` | Auteur de la demande | `registrations` | Adhésion acceptée | « Tu fais maintenant partie de « {organisation} ». » |
 | `organization_approved` | Responsable de l'organisation | `registrations` | Organisation validée | « « {organisation} » est validée : tu peux y proposer des balades. » |
+| `report_created` | Administrateurs, sauf le signalant | aucune (toujours envoyée) | Nouveau signalement | « Un signalement « {catégorie} » attend d'être examiné. » |
 
-Une suppression de compte envoie aussi `walk_cancelled` aux inscrits de ses balades à venir. Une demande d'adhésion refusée n'est pas notifiée. Les heures sont données dans le fuseau `Europe/Paris`. Les textes sont tous dans `Features/Notifications/NotificationTexts.cs` : ajouter un type, c'est une valeur de `NotificationType` et une ligne dans ce fichier. Une modification (`PATCH`) ne notifie que si une valeur change réellement.
+Une suppression de compte et une suspension envoient aussi `walk_cancelled` aux inscrits des balades à venir de la personne. `report_created` ne donne que la catégorie (libellé français de `ReportType`) : ni les faits ni les personnes, puisque le texte s'affiche sur l'écran verrouillé. Une demande d'adhésion refusée n'est pas notifiée. Les heures sont données dans le fuseau `Europe/Paris`. Les textes sont tous dans `Features/Notifications/NotificationTexts.cs` : ajouter un type, c'est une valeur de `NotificationType` et une ligne dans ce fichier. Une modification (`PATCH`) ne notifie que si une valeur change réellement.
 
 **Envoi.** `Notifications:Provider` vaut `Log` (par défaut : le titre et les données sont écrits dans le journal au niveau Information, le texte seulement au niveau Debug, jamais le jeton ; refusé en Production) ou `Expo` (envoi par `https://exp.host/--/api/v2/push/send`, par lots de 100, un message par appareil ; un appareil signalé `DeviceNotRegistered` est supprimé). Pour activer l'envoi réel : `Notifications__Provider=Expo`, et `Notifications__Expo__AccessToken=<jeton>` seulement si la « sécurité renforcée des notifications » est activée dans le projet Expo. Les accusés de réception d'Expo ne sont pas consultés ; un échec HTTP (429, 5xx) ou une réponse illisible (page d'erreur d'un proxy) est journalisé sans nouvel essai. Les jetons cités par Expo dans ses réponses sont masqués dans le journal (`ExponentPushToken[***]`). Les tests remplacent l'envoi par un faux qui enregistre les messages : aucun test n'envoie de notification.
 
 #### Tâches planifiées
 
-`BackgroundJobsService` appelle toutes les `BackgroundJobs:Interval` (une minute par défaut) deux services, chacun dans sa portée ; une exception est journalisée et la boucle continue. `BackgroundJobs:Enabled=false` l'éteint (c'est le cas dans les tests, qui appellent les services directement avec une horloge `FakeTimeProvider`).
+`BackgroundJobsService` appelle toutes les `BackgroundJobs:Interval` (une minute par défaut) le rappel et les séries, et toutes les `BackgroundJobs:PurgeInterval` (une heure) la purge des jetons, chacun dans sa portée ; une exception est journalisée et la boucle continue. Chaque passage dure au plus `BackgroundJobs:JobTimeout` (2 minutes) : au-delà, son jeton d'annulation est déclenché et la boucle cesse de l'attendre, même s'il l'ignore (erreur journalisée). `BackgroundJobs:Enabled=false` l'éteint (c'est le cas dans les tests, qui appellent les services directement avec une horloge `FakeTimeProvider`).
+
+- **Purge des jetons** (`RefreshTokenPurgeJob`) : supprime par lots de 1 000 les jetons de rafraîchissement expirés ou révoqués depuis plus de `Auth:Jwt:RefreshTokenRetention`. Les lignes sont prises avec `FOR UPDATE SKIP LOCKED` : plusieurs instances se partagent le travail sans s'attendre (ADR 0035).
 
 - **Rappel** (`WalkReminderJob`) : deux heures avant le début, pour les balades `Scheduled` pas encore commencées. Chaque rappel est réservé en base avant l'envoi (`UPDATE … SET reminder_sent_at … WHERE reminder_sent_at IS NULL … RETURNING`) : au plus un envoi, même avec plusieurs instances ou après un redémarrage. Changer l'heure de début d'une balade rend son rappel de nouveau dû.
 - **Série** (`WalkSeriesJob`) : quand la dernière balade d'une série active a commencé (annulée ou non), crée la suivante sept jours plus tard à la même heure locale `Europe/Paris` (10:00 reste 10:00 aux changements d'heure ; une heure inexistante est avancée d'une heure, une heure ambiguë prend sa première occurrence). Après une longue interruption, seule la première occurrence future est créée. Les champs sont copiés, pas les inscriptions ; les inscrits `Accepted` de la précédente sont prévenus. La ligne de la série est verrouillée (`FOR UPDATE`) et la condition revérifiée : jamais plus d'une balade à venir par série.
@@ -172,16 +176,18 @@ curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/messages -H "Authori
 #### Signalements
 
 - `POST /reports` `{ "type": "IncidentNoInjury" | "Altercation" | "BiteOrInjury" | "HumanBehavior", "facts" (10 à 4 000), "targetUserId"?, "targetDogId"?, "walkId"? }` → 201 `{ id, createdAt }`. Au moins une cible (400 `validation.failed` sur `target`), chacune doit exister (404 `user.not_found`, `dog.not_found`, `walk.not_found`), pas soi-même (400 `report.self`).
-- Un signalement n'est lisible que par les administrateurs. À sa création, `IReportNotifier` prévient l'administration ; l'implémentation actuelle (`LoggingReportNotifier`) journalise seulement l'identifiant et le type, jamais les faits ni les personnes. L'adresse prévue est `Admin:ReportEmail` (aucun fournisseur d'e-mails n'est choisi).
+- Un signalement n'est lisible que par les administrateurs. Une fois enregistré, `IReportNotifier` prévient l'administration (ADR 0036) : `AdminReportNotifier` journalise l'identifiant et le type, et envoie la notification `report_created` à chaque administrateur (même règle que les routes `/admin`), sauf au signalant, quelles que soient ses préférences. Ni le journal ni la notification ne contiennent les faits ou les personnes. Aucun e-mail n'est envoyé : `Admin:ReportEmail` reste inutilisée (aucun fournisseur d'e-mails n'est choisi). Un administrateur sans appareil enregistré ne voit les signalements qu'avec `GET /admin/reports`.
 
 #### Administration
 
-Les administrateurs sont les comptes actifs dont l'e-mail (vérifié par Apple ou Google) figure dans `Admin:Emails` (ADR 0020). Un compte suspendu n'est plus administrateur ; un compte de la connexion de test ne l'est qu'en Development et Testing (ADR 0031). Le champ `isAdmin` de `GET /me` ne regarde encore que l'e-mail (voir « Durcissement »). Tout `/admin/*` répond 403 `admin.forbidden` aux autres. Pas d'écran : ces routes s'appellent avec curl.
+Les administrateurs sont les comptes actifs dont l'e-mail (vérifié par Apple ou Google) figure dans `Admin:Emails` (ADR 0020). Un compte suspendu n'est plus administrateur ; un compte de la connexion de test ne l'est qu'en Development et Testing (ADR 0031). Le champ `isAdmin` de `GET /me` et des sessions suit la même règle. Tout `/admin/*` répond 403 `admin.forbidden` aux autres. Pas d'écran : ces routes s'appellent avec curl.
 
 - `GET /admin/organizations?status&limit` (`Pending` par défaut, plus anciennes d'abord) → `[{ id, name, description, city, status, createdBy, memberCount, createdAt }]`.
 - `POST /admin/organizations/{id}/approve` (notifie le responsable) et `/reject` (aussi pour retirer une organisation validée), idempotents ; 409 `organization.closed`.
 - `GET /admin/reports?status&limit` (`Open` par défaut) → `[{ id, type, facts, status, adminNote, createdAt, reporter, targetUser, targetDog: { id, name, ownerId }, walk: { id, title, startsAt } }]` (références nulles si absentes ou supprimées). `PATCH /admin/reports/{id}` `{ "status"?, "adminNote"? }` (chaîne vide pour effacer la note) ; 404 `report.not_found`.
-- `POST /admin/users/{id}/suspend` (révoque ses jetons de rafraîchissement ; ses écritures sont refusées aussitôt) et `/unsuspend` → `{ id, displayName, status }` ; 409 `admin.self_suspension`, 404 `user.not_found`.
+- `POST /admin/users/{id}/suspend` et `/unsuspend` → `{ id, displayName, status }`, idempotents ; 409 `admin.self_suspension`, 404 `user.not_found`.
+- **Suspendre** (ADR 0036, « geler, annuler, laisser partir ») fait, en une transaction (`AccountSuspension`) : le compte passe à `Suspended` (écritures refusées aussitôt, sauf `DELETE /me`) et ses jetons de rafraîchissement sont révoqués ; ses séries hebdomadaires s'arrêtent (`active = false`) ; ses balades à venir passent à `Cancelled`, inscrits `Accepted` et `Pending` prévenus (`walk_cancelled`) après la validation, comme pour une annulation par l'organisateur ; ses appareils de notification sont supprimés ; ses inscriptions `Pending` et `Accepted` aux balades non commencées des autres passent à `Cancelled`, ce qui libère les places (sans notification, comme une annulation par la personne). Ses balades passées, ses chiens, ses messages, ses adhésions et les signalements restent.
+- **Rétablir** remet seulement le compte à `Active` : rien n'est restauré (séries arrêtées, balades et inscriptions annulées, appareils et sessions supprimés). La personne se reconnecte et l'application réenregistre son appareil.
 
 #### Agir en administrateur en local
 
@@ -196,7 +202,7 @@ curl -s -X POST http://localhost:5080/api/v1/admin/organizations/<id>/approve -H
 
 #### Suppression de compte
 
-`DELETE /me` → 204, en une transaction (spécification §4.8, ADR 0023) : ses balades à venir passent à `Cancelled` (inscrits `Accepted` et `Pending` prévenus après la validation) et toutes ses balades restent, avec `organizer: null` ; ses séries s'arrêtent ; ses chiens, inscriptions, appareils, préférences, adhésions, blocages (dans les deux sens) et jetons sont supprimés, ainsi que ses fichiers de photos ; les organisations dont il était le seul responsable passent à `Closed` ; ses messages et ses signalements restent sans auteur, et les signalements qui le visaient perdent cette cible. Ensuite, son jeton d'accès encore valide reçoit 401 `auth.invalid_token` partout. Un compte suspendu ne peut pas se supprimer (403 `account.suspended`).
+`DELETE /me` → 204, en une transaction (spécification §4.8, ADR 0023) : ses balades à venir passent à `Cancelled` (inscrits `Accepted` et `Pending` prévenus après la validation) et toutes ses balades restent, avec `organizer: null` ; ses séries s'arrêtent ; ses chiens, inscriptions, appareils, préférences, adhésions, blocages (dans les deux sens) et jetons sont supprimés, ainsi que ses fichiers de photos ; les organisations dont il était le seul responsable passent à `Closed` ; ses messages et ses signalements restent sans auteur, et les signalements qui le visaient perdent cette cible. Ensuite, son jeton d'accès encore valide reçoit 401 `auth.invalid_token` partout. Un compte suspendu peut se supprimer : c'est la seule écriture qui lui reste (droit à l'effacement, ADR 0036) ; les signalements qui le visent sont conservés, sans cette cible.
 
 Essai rapide (comptes de test, `$ADMIN` comme ci-dessus) :
 
@@ -276,7 +282,9 @@ Au-delà : 429 `application/problem+json` avec `code` = `rate_limit.exceeded` et
 
 **Journaux.** Le fournisseur `Log` n'écrit le texte des notifications (extrait des messages du fil) qu'au niveau Debug ; l'envoi par Expo masque les jetons d'appareil et tronque les réponses journalisées à 500 caractères.
 
-**Limite connue.** Le champ `isAdmin` renvoyé par `GET /me` et les sessions vient de `MeResponse` (`Features/Users/`), qui ne regarde que l'e-mail : un compte suspendu ou un compte de test hors Development y verrait encore `true`, sans pouvoir rien faire (les routes `/admin` et la visibilité des organisations vérifient le compte complet).
+**Administrateur affiché.** Le champ `isAdmin` renvoyé par `GET /me` et les sessions suit la règle complète (compte actif, compte de test seulement en Development et Testing), comme les routes `/admin`.
+
+**Jetons d'identité.** Seul RS256 est accepté pour les jetons Apple et Google (`ValidAlgorithms`), le seul algorithme que publient leurs configurations OpenID.
 
 ## Migrations
 
@@ -312,7 +320,9 @@ dotnet ef migrations script --idempotent --project src/Dogo.Api --output migrate
 | `Auth:Apple:Audiences` | `Auth__Apple__Audiences__0`, … | vide | Identifiants acceptés comme audience des jetons Apple (bundle id) |
 | `Auth:Google:Audiences` | `Auth__Google__Audiences__0`, … | vide | Identifiants client OAuth acceptés pour Google ; en Production, démarrage refusé si Apple et Google sont tous deux vides |
 | `Admin:Emails` | `Admin__Emails__0`, … | vide (Development : `admin@dogo.local`) | E-mails des administrateurs (`isAdmin`, routes `/admin`), ADR 0020 |
-| `Admin:ReportEmail` | `Admin__ReportEmail` | vide | Adresse à prévenir de chaque signalement ; pas encore utilisée (signalements journalisés seulement) |
+| `Admin:ReportEmail` | `Admin__ReportEmail` | vide | Adresse à prévenir de chaque signalement ; pas encore utilisée (signalements journalisés et notifiés aux administrateurs par push) |
+| `Auth:Jwt:RefreshTokenGracePeriod` | `Auth__Jwt__RefreshTokenGracePeriod` | `00:01:00` | Délai pendant lequel un jeton de rafraîchissement remplacé est encore accepté (ADR 0035) ; entre 0 (désactivé) et 5 minutes, démarrage refusé sinon |
+| `Auth:Jwt:RefreshTokenRetention` | `Auth__Jwt__RefreshTokenRetention` | `30.00:00:00` | Durée de conservation des jetons expirés ou révoqués avant la purge |
 | `Storage:Local:Path` | `Storage__Local__Path` | `./data/photos` | Dossier des photos |
 | `Notifications:Provider` | `Notifications__Provider` | `Log` | `Log` (journal seulement) ou `Expo` (envoi réel) ; `Log` refusé en Production |
 | `Notifications:Expo:AccessToken` | `Notifications__Expo__AccessToken` | vide | Jeton d'accès Expo, seulement si la sécurité renforcée des notifications est activée |
@@ -328,10 +338,12 @@ dotnet ef migrations script --idempotent --project src/Dogo.Api --output migrate
 | `Proxy:KnownProxies`, `Proxy:KnownNetworks` | `Proxy__KnownProxies__0`, `Proxy__KnownNetworks__0`, … | vide (boucle locale seulement) | Adresses IP et réseaux CIDR des proxys de confiance ; démarrage refusé si une valeur est invalide |
 | `Proxy:ForwardLimit` | `Proxy__ForwardLimit` | `1` | Nombre de proxys entre le client et l'API |
 | `AllowedHosts` | `AllowedHosts` | `*` | Noms d'hôte acceptés (séparés par `;`) ; en production, le nom public de l'API |
-| `BackgroundJobs:Enabled` | `BackgroundJobs__Enabled` | `true` | Fait tourner les rappels et les séries dans cette instance |
+| `BackgroundJobs:Enabled` | `BackgroundJobs__Enabled` | `true` | Fait tourner les rappels, les séries et la purge des jetons dans cette instance |
 | `BackgroundJobs:Interval` | `BackgroundJobs__Interval` | `00:01:00` | Intervalle entre deux passages des tâches |
+| `BackgroundJobs:PurgeInterval` | `BackgroundJobs__PurgeInterval` | `01:00:00` | Intervalle entre deux purges des jetons de rafraîchissement |
+| `BackgroundJobs:JobTimeout` | `BackgroundJobs__JobTimeout` | `00:02:00` | Durée maximale d'un passage d'une tâche ; au-delà, elle est annulée et la boucle continue |
 
-Exemple complet : [`.env.example`](.env.example). Durées fixées dans le code : jeton d'accès 15 minutes, jeton de rafraîchissement 30 jours, renouvelé à chaque usage (ADR 0009).
+Exemple complet : [`.env.example`](.env.example). Durées par défaut : jeton d'accès 15 minutes, jeton de rafraîchissement 30 jours, renouvelé à chaque usage (ADR 0009), rejeu accepté 60 secondes (ADR 0035).
 
 ## Dépannage
 
