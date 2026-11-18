@@ -228,7 +228,10 @@ export function PanelLayout({ location }: { location: UserLocation }) {
                     rowGap: spacing.xs,
                   }}
                 >
-                  <Text variant="subheading">{count}</Text>
+                  {/* Own line when the buttons leave no room; shrinks rather than being cut. */}
+                  <Text variant="subheading" style={{ flexShrink: 1 }}>
+                    {count}
+                  </Text>
                   <View
                     style={{
                       flexDirection: 'row',
@@ -330,5 +333,5 @@ function RefreshButton({ busy, onPress }: { busy: boolean; onPress: () => void }
 }
 
 function searchCountLabel(walks: readonly WalkSearchResult[]): string {
-  return walks.length === 0 ? t.discover.emptyTitle : plural(t.discover.resultCount, walks.length);
+  return walks.length === 0 ? t.discover.emptyTitle : plural(t.discover.zoneCount, walks.length);
 }

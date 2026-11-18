@@ -110,9 +110,11 @@ export const fr = {
     seeWalks: 'Voir {count} balade|Voir {count} balades',
     seeWalksUnknown: 'Voir les balades',
     emptyTitle: 'Aucune balade dans cette zone',
-    emptyMessage: 'Dézoome ou déplace la carte pour élargir la recherche, ou organise la tienne.',
+    emptyMessage:
+      'Déplace la carte ou dézoome pour chercher ailleurs : la liste suit la zone visible. Tu peux aussi organiser ta propre balade.',
     emptyAction: 'Créer une balade',
     resultCount: '{count} balade|{count} balades',
+    zoneCount: '{count} balade dans cette zone|{count} balades dans cette zone',
     radius: 'Distance',
     radiusOption: '{km} km',
     radiusA11y: 'Jusqu’à {km} km',

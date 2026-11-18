@@ -166,8 +166,28 @@ describe('« Panneau » view — map and sliding panel', () => {
 
     expect(await screen.findByText(forest.title)).toBeTruthy();
     expect(screen.getByText(lake.title)).toBeTruthy();
-    expect(screen.getByText('2 balades')).toBeTruthy();
+    expect(screen.getByText('2 balades dans cette zone')).toBeTruthy();
     expect(screen.getAllByTestId('map-marker')).toHaveLength(2);
+  });
+
+  it('says in the header that the list depends on the map, with singular and zero', async () => {
+    let walks = [lake];
+    mockApi({ 'GET /api/v1/walks': () => ok(walks) });
+    await open('panel');
+    await screen.findByText(lake.title);
+    expect(screen.getByText('1 balade dans cette zone')).toBeTruthy();
+
+    walks = [];
+    await fireEvent.press(screen.getByRole('button', { name: t.discover.refresh }));
+    expect(await screen.findAllByText(t.discover.emptyTitle)).toHaveLength(2);
+    expect(screen.getByTestId('panel-handle')).toHaveAccessibleName(
+      `${t.discover.emptyTitle}. ${t.discover.panelExpand}`,
+    );
+    // The empty state invites to move or zoom out the map, and to create a walk.
+    expect(screen.getByText(/Déplace la carte ou dézoome/)).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: t.discover.emptyAction }).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it('moves through its three positions with the handle button', async () => {
@@ -176,13 +196,13 @@ describe('« Panneau » view — map and sliding panel', () => {
     await screen.findByText(lake.title);
 
     expect(sheetPosition()).toBe(1);
-    expect(handle()).toHaveAccessibleName(`1 balade. ${t.discover.panelExpand}`);
+    expect(handle()).toHaveAccessibleName(`1 balade dans cette zone. ${t.discover.panelExpand}`);
     await fireEvent.press(handle());
     expect(sheetPosition()).toBe(2);
-    expect(handle()).toHaveAccessibleName(`1 balade. ${t.discover.panelShowMap}`);
+    expect(handle()).toHaveAccessibleName(`1 balade dans cette zone. ${t.discover.panelShowMap}`);
     await fireEvent.press(handle());
     expect(sheetPosition()).toBe(0);
-    expect(handle()).toHaveAccessibleName(`1 balade. ${t.discover.panelShowList}`);
+    expect(handle()).toHaveAccessibleName(`1 balade dans cette zone. ${t.discover.panelShowList}`);
     await fireEvent.press(handle());
     expect(sheetPosition()).toBe(1);
   });
@@ -323,7 +343,7 @@ describe('refreshing the walks', () => {
 
     const handle = screen.getByTestId('panel-handle');
     expect(within(handle).queryByRole('button', { name: t.discover.refresh })).toBeNull();
-    expect(handle).toHaveAccessibleName(`1 balade. ${t.discover.panelExpand}`);
+    expect(handle).toHaveAccessibleName(`1 balade dans cette zone. ${t.discover.panelExpand}`);
   });
 
   it('keeps the pull-to-refresh of the « Liste » view', async () => {
