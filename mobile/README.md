@@ -84,10 +84,13 @@ mobile/
     ├── app/               écrans (Expo Router) — uniquement des routes et des dispositions
     │   ├── _layout.tsx    fournisseurs + garde d'authentification
     │   ├── (auth)/        écrans accessibles déconnecté (sign-in)
-    │   └── (app)/         pile : (tabs)/ (Balades, Mes balades, Profil) et écrans poussés
+    │   ├── (legal)/       conditions d'utilisation et confidentialité, sans garde (ADR 0025)
+    │   └── (app)/         pile : (tabs)/ (Balades, Mes balades `mine`, Profil) et écrans poussés
     │       ├── edit-profile, users/[id], dogs/new, dogs/[id]/{index,edit}
-    │       └── walks/new, walks/[id]/{index,edit}
-    ├── api/               client typé, erreurs, cache, photos, énumérations, hooks (profile, dogs, walks)
+    │       ├── walks/new, walks/[id]/{index,edit,messages}, notifications
+    │       ├── organizations/{index,new}, organizations/[id]/{index,edit,members}
+    │       └── blocked, report, delete-account
+    ├── api/               client typé, erreurs, cache, photos, énumérations, hooks (profile, dogs, walks, organisations, blocages, signalements, compte)
     ├── notifications/     notifications push : chargement conditionnel, enregistrement de l'appareil, liens, écoute
     ├── auth/              session (magasin sécurisé, SessionProvider, useSession), signIn, providers/ (Apple, Google)
     ├── components/        composants de base (Screen, Text, Button, TextField…)
@@ -158,6 +161,20 @@ export function useCreateDog() {
 - **Réglages** : écran `notifications` (onglet « Profil »), quatre interrupteurs liés à `/me/notification-preferences` (`useUpdateNotificationPreferences`, enregistrement immédiat, retour en arrière en cas d'échec) et l'état de l'autorisation du téléphone.
 - **Répétition** : `repeatWeekly` dans `WalkForm` (création seulement, option `allowRepeat`), badge « Chaque semaine » (`repeatsWeekly`) sur `WalkCard` et la fiche, « Arrêter la répétition » (`useStopSeries`) pour l'organisateur.
 - `SwitchRow` (interrupteur avec description) est le composant à réutiliser pour tout réglage.
+
+### Organisations, blocage, signalement, compte (lot 4)
+
+- **Ordre des écrans.** Les `Stack.Screen` / `Tabs.Screen` d'une disposition se déclarent dans l'ordre de tri d'Expo Router (`index` et groupes, routes statiques par longueur de nom, routes dynamiques) ; sinon le lancement affiche en développement une erreur « ROUTE_NAMES_CHANGED … not handled by any navigator ». Un test (`navigation-order.test.ts`) le vérifie ; voir l'[ADR 0026](../docs/adr/0026-ordre-de-declaration-des-ecrans.md). L'onglet « Mes balades » est donc `mine`.
+- **Organisations** : onglet « Profil » (mes organisations, « Trouver », « Créer »), `organizations/` (recherche à 400 ms, création, fiche, modification), `organizations/[id]/members` (responsable et éducateurs ; changement de rôle réservé au responsable). Hooks dans `src/api/organizations.ts` ; toute écriture appelle `organizationsChanged()` (liste, fiche, membres). `organizingOrganizations()` donne les organisations pour lesquelles je peux organiser (approuvée, adhésion acceptée, responsable ou éducateur) : `WalkForm` montre alors « Organiser pour » (création seulement, `organizationId`).
+- **Balade professionnelle** : le nom de l'organisation ouvre sa page ; un refus `walk.members_only` à l'inscription affiche une carte avec « Voir l'organisation » (`WalkRegistrationPanel`).
+- **Organisateur supprimé** : `organizer` peut être `null` (« Compte supprimé », sans lien) dans `WalkCard` et la fiche.
+- **Blocage** : « Bloquer » / « Débloquer » sur `users/[id]` (confirmation qui explique l'effet), liste `blocked`, et `src/api/blocks.ts` qui rafraîchit aussi les balades (`walksChanged`) pour le badge « Participant bloqué » (carte et fiche, avec une phrase d'explication).
+- **Signalement** : un seul écran `report?kind=user|dog|walk&id=…&name=…` (`reportHref()` dans `src/lib/report.ts`), ouvert depuis un profil, un chien et une balade qui ne sont pas les miens.
+- **Réglages et compte** : l'onglet « Profil » range « Mes chiens », les organisations, « Réglages » (notifications, personnes bloquées, textes légaux, suppression) puis « Se déconnecter ». `delete-account` demande de taper `SUPPRIMER`, appelle `DELETE /me`, puis `endSession()` (session effacée sur l'appareil seulement : ni déconnexion ni retrait de l'appareil, le serveur s'en est chargé) et l'écran de connexion affiche une phrase (`setSignInNotice`). Un compte `Suspended` voit un bandeau dans le profil.
+- **Textes légaux** : `src/strings/legal.ts`, affichés par `LegalDocument` dans `(legal)/terms` et `(legal)/privacy` (accessibles connecté ou non, ADR 0025), avec le bandeau « Version provisoire — à faire valider avant la publication » et des passages `[…]` à compléter (éditeur, adresse, contact, droit applicable, durée de conservation des signalements).
+- **Notifications** : `membership_requested` ouvre l'écran des membres, `membership_accepted` et `organization_approved` la fiche de l'organisation ; seul `dogo://organizations/<id>` est suivi, et le type doit correspondre au genre de lien.
+- **Actualisation au retour** : `useRefetchOnFocus()` (`src/lib/hooks.ts`) relit le profil, les organisations et les membres quand l'écran reprend le focus (par exemple après une validation par l'équipe).
+- **Administration** : pas d'écran (ADR 0020), à faire avec `curl` (voir `api/README.md`, « Agir en administrateur en local »).
 
 ### Session
 
