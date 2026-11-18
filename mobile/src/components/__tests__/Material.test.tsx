@@ -40,7 +40,8 @@ describe('Material', () => {
     await renderWithTheme(<Material testID="surface" style={{ borderRadius: 22 }} />, 'dark');
     expect(surface().props.glassEffectStyle).toEqual({ style: 'regular', animate: true });
     expect(surface().props.colorScheme).toBe('dark');
-    expect(surface().props.tintColor).toBeUndefined();
+    // Untinted glass leans towards the warm background, not the green of the map.
+    expect(surface().props.tintColor).toBe(darkColors.glassTint);
     expect(style().borderRadius).toBe(22);
   });
 

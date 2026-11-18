@@ -49,7 +49,7 @@ export {
   type WalkCardProps,
 } from './WalkCard';
 export { WalkForm, walkSubmitErrors, type WalkFormProps } from './WalkForm';
-export { WalksMap, type WalksMapProps } from './WalksMap';
+export { WalkPin, WalksMap, type WalksMapProps } from './WalksMap';
 export { ParticipantCard, type ParticipantCardProps } from './ParticipantCard';
 export {
   dogUnavailableReason,

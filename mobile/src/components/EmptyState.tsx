@@ -30,7 +30,7 @@ export function EmptyState({ title, message, icon = 'paw', action }: EmptyStateP
         padding: spacing.xl,
       }}
     >
-      <Icon name={icon} size={56} color="accent" />
+      <Icon name={icon} size={56} color="primary" />
       <Text variant="heading" align="center">
         {title}
       </Text>

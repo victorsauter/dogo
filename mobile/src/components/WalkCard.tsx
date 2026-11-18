@@ -43,7 +43,7 @@ export function sizesLabel(sizes: WalkSummary['allowedSizes']): string {
 
 /**
  * A walk in a list: title, day and time, distance, places, sizes, leash rule
- * and access. Professional walks get an accent border and the organisation's
+ * and access. Professional walks get a border in the `pro` colour and the organisation's
  * name; walks with a participant I blocked get a discreet warning.
  */
 export function WalkCard({
@@ -96,7 +96,7 @@ export function WalkCard({
     walk.isProfessional ? (
       <Badge
         key="pro"
-        tone="accent"
+        tone="pro"
         label={
           walk.organization
             ? `${t.walk.professional} · ${walk.organization.name}`
@@ -127,7 +127,7 @@ export function WalkCard({
       onPress={onPress}
       accessibilityLabel={summary}
       style={[
-        walk.isProfessional && { borderColor: colors.accent, borderLeftWidth: 6 },
+        walk.isProfessional && { borderColor: colors.pro, borderLeftWidth: 6 },
         cancelled && { opacity: 0.75 },
         selected && { borderColor: colors.primary, borderWidth: 3 },
       ]}

@@ -15,16 +15,28 @@ function contrast(a: string, b: string): number {
 const pairs: [keyof ColorTokens, keyof ColorTokens, number][] = [
   ['text', 'background', 4.5],
   ['text', 'surface', 4.5],
+  ['text', 'surfaceMuted', 4.5],
+  ['text', 'primarySoft', 4.5], // title of a selected card
   ['textMuted', 'background', 4.5],
   ['textMuted', 'surface', 4.5],
-  ['primary', 'surface', 4.5],
-  ['primary', 'primarySoft', 4.5],
-  ['onPrimary', 'primary', 4.5],
+  ['textMuted', 'surfaceMuted', 4.5], // neutral badges
+  ['textMuted', 'primarySoft', 4.5], // description of a selected card
+  ['primary', 'surface', 4.5], // links, secondary buttons
+  ['primary', 'background', 4.5],
+  ['primary', 'primarySoft', 4.5], // selected chip, « 3/4 chiens »
+  ['onPrimary', 'primary', 4.5], // main buttons, active filter, « + »
+  ['onPro', 'pro', 4.5], // « Pro » badge
+  ['pro', 'surface', 3], // edge of a professional walk's card, its pin
+  ['pro', 'background', 3],
   ['onDanger', 'danger', 4.5],
   ['danger', 'surface', 4.5],
   ['danger', 'background', 4.5],
-  ['onAccent', 'accent', 4.5],
-  ['accent', 'background', 3], // icons and large text only
+  ['danger', 'dangerSoft', 4.5],
+  ['warning', 'surfaceMuted', 4.5],
+  ['warning', 'surface', 4.5],
+  ['info', 'infoSoft', 4.5],
+  ['success', 'surface', 4.5],
+  ['success', 'background', 4.5],
 ];
 
 describe.each([

@@ -12,6 +12,7 @@ const icons = {
   calendar: { ios: 'calendar', android: 'calendar_month', web: 'calendar_month' },
   person: { ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' },
   paw: { ios: 'pawprint', android: 'pets', web: 'pets' },
+  pawFilled: { ios: 'pawprint.fill', android: 'pets', web: 'pets' },
   offline: { ios: 'wifi.slash', android: 'cloud_off', web: 'cloud_off' },
   plus: { ios: 'plus', android: 'add', web: 'add' },
   minus: { ios: 'minus', android: 'remove', web: 'remove' },

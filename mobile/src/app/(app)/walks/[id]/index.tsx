@@ -27,6 +27,7 @@ import {
   Screen,
   sizesLabel,
   Text,
+  WalkPin,
   WalkRegistrationPanel,
 } from '@/components';
 import { formatDuration, formatWalkStart, walkTiming } from '@/lib/dates';
@@ -183,7 +184,7 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
 
       <View style={{ gap: spacing.sm }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-          {walk.isProfessional ? <Badge tone="accent" label={t.walk.professional} /> : null}
+          {walk.isProfessional ? <Badge tone="pro" label={t.walk.professional} /> : null}
           {walk.access === 'Approval' ? <Badge tone="info" label={t.walk.approval} /> : null}
           {full ? <Badge tone="danger" label={t.walk.full} /> : null}
           {walk.repeatsWeekly ? <Badge tone="info" icon="repeat" label={t.walk.weekly} /> : null}
@@ -256,7 +257,9 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
             pitchEnabled={false}
             toolbarEnabled={false}
           >
-            <Marker coordinate={walk.location} title={walk.locationLabel} />
+            <Marker coordinate={walk.location} title={walk.locationLabel}>
+              <WalkPin professional={walk.isProfessional} />
+            </Marker>
           </MapView>
         </View>
         <Text>{walk.locationLabel}</Text>

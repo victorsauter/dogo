@@ -166,7 +166,7 @@ export function PanelLayout({
       <ErrorState error={search.error} onRetry={() => search.refetch()} />
     ) : (
       <EmptyState
-        icon="map"
+        icon="paw"
         title={t.discover.emptyTitle}
         message={t.discover.emptyMessage}
         action={{ label: t.discover.emptyAction, onPress: createWalk }}
@@ -335,12 +335,17 @@ export function PanelLayout({
  * positions, where it sits over the map like the pills; it turns opaque on the
  * way to the high position, where it holds a long list (as iOS sheets do).
  * The fade is a layer inside the material: glass must keep its full opacity.
+ * At rest the layer already veils the glass a little (`PANEL_VEIL`), so that
+ * the panel leans towards the warm background rather than the green of the map.
  */
+/** Opacity of the background layer over the panel's glass at the low and middle positions. */
+const PANEL_VEIL = 0.5;
+
 function PanelBackground({ style, animatedIndex }: BottomSheetBackgroundProps) {
   const { colors, radii } = useTheme();
   const corners = { borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg };
   const opaqueStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(animatedIndex.value, [1, 2], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(animatedIndex.value, [1, 2], [PANEL_VEIL, 1], Extrapolation.CLAMP),
   }));
   return (
     <Material style={[style, corners]}>
