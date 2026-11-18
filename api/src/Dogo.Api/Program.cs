@@ -64,6 +64,7 @@ builder.Services.AddHostedService<NotificationDispatcher>();
 // Scheduled jobs: plain services run by a periodic loop (BackgroundJobs:Enabled, BackgroundJobs:Interval).
 builder.Services.AddScoped<WalkReminderJob>();
 builder.Services.AddScoped<WalkSeriesJob>();
+builder.Services.AddScoped<RefreshTokenPurgeJob>();
 builder.Services.AddOptions<BackgroundJobsOptions>().BindConfiguration(BackgroundJobsOptions.SectionName);
 builder.Services.AddHostedService<BackgroundJobsService>();
 

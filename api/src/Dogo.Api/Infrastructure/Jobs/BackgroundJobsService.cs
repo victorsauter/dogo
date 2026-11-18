@@ -1,4 +1,5 @@
 using Dogo.Api.Common;
+using Dogo.Api.Features.Auth;
 using Dogo.Api.Features.Walks;
 using Microsoft.Extensions.Options;
 
@@ -13,13 +14,17 @@ public sealed class BackgroundJobsOptions
 
     /// <summary>Time between two runs.</summary>
     public TimeSpan Interval { get; set; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>Time between two purges of stale refresh tokens (<see cref="RefreshTokenPurgeJob"/>), at the first run then at most this often.</summary>
+    public TimeSpan PurgeInterval { get; set; } = TimeSpan.FromHours(1);
 }
 
 /// <summary>
 /// Thin periodic loop (ADR 0019): every <see cref="BackgroundJobsOptions.Interval"/>, runs the
-/// reminder and weekly series jobs, each in its own scope. The logic lives in the jobs; an
-/// exception is logged and the loop goes on. Safe with several instances: each job
-/// coordinates through the database.
+/// reminder and weekly series jobs, and every <see cref="BackgroundJobsOptions.PurgeInterval"/>
+/// the refresh token purge, each in its own scope. The logic lives in the jobs; an exception
+/// is logged and the loop goes on. Safe with several instances: each job coordinates through
+/// the database.
 /// </summary>
 public sealed partial class BackgroundJobsService(
     IOptions<BackgroundJobsOptions> options,
@@ -39,10 +44,16 @@ public sealed partial class BackgroundJobsService(
         try
         {
             using var timer = new PeriodicTimer(settings.Interval, timeProvider);
+            var lastPurge = DateTimeOffset.MinValue;
             do
             {
                 await RunAsync<WalkSeriesJob>((job, ct) => job.RunAsync(ct), stoppingToken);
                 await RunAsync<WalkReminderJob>((job, ct) => job.RunAsync(ct), stoppingToken);
+                if (timeProvider.GetUtcNow() - lastPurge >= settings.PurgeInterval)
+                {
+                    lastPurge = timeProvider.GetUtcNow();
+                    await RunAsync<RefreshTokenPurgeJob>((job, ct) => job.RunAsync(ct), stoppingToken);
+                }
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
         }
