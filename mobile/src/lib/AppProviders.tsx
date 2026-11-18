@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { connectQueryEventsToReactNative, createQueryClient } from '@/api/queryClient';
 import { SessionProvider } from '@/auth';
+import { unregisterDevice } from '@/notifications';
 import { ThemeProvider } from '@/theme';
 
 /** Every app-wide provider, in dependency order. Used by the root layout. */
@@ -19,7 +20,9 @@ export function AppProviders({ children }: PropsWithChildren) {
     <SafeAreaProvider>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          <SessionProvider onSignedOut={clearCache}>{children}</SessionProvider>
+          <SessionProvider onBeforeSignOut={unregisterDevice} onSignedOut={clearCache}>
+            {children}
+          </SessionProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </SafeAreaProvider>
