@@ -31,6 +31,18 @@ public sealed class JwtOptions
     public TimeSpan AccessTokenLifetime { get; set; } = TimeSpan.FromMinutes(15);
 
     public TimeSpan RefreshTokenLifetime { get; set; } = TimeSpan.FromDays(30);
+
+    /// <summary>Longest accepted <see cref="RefreshTokenGracePeriod"/>: beyond it, a stolen token would stay usable too long.</summary>
+    public static readonly TimeSpan MaximumRefreshTokenGracePeriod = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// How long after its rotation a refresh token may be presented again without being taken
+    /// for a theft: a lost response or two concurrent refreshes (ADR 0035). Zero disables it.
+    /// </summary>
+    public TimeSpan RefreshTokenGracePeriod { get; set; } = TimeSpan.FromSeconds(60);
+
+    /// <summary>How long expired or revoked refresh tokens are kept before the purge deletes them.</summary>
+    public TimeSpan RefreshTokenRetention { get; set; } = TimeSpan.FromDays(30);
 }
 
 /// <summary>Audiences accepted in identity tokens of one provider (bundle id, OAuth client ids...).</summary>
@@ -93,6 +105,17 @@ internal sealed class AuthOptionsValidator(IHostEnvironment environment) : IVali
             return ValidateOptionsResult.Fail(
                 $"Auth:Jwt:SigningKey is missing or shorter than {JwtOptions.MinimumSigningKeyBytes} bytes. " +
                 "Set it with the Auth__Jwt__SigningKey environment variable.");
+        }
+
+        if (options.RefreshTokenGracePeriod < TimeSpan.Zero || options.RefreshTokenGracePeriod > JwtOptions.MaximumRefreshTokenGracePeriod)
+        {
+            return ValidateOptionsResult.Fail(
+                $"Auth:Jwt:RefreshTokenGracePeriod must be between 00:00:00 and {JwtOptions.MaximumRefreshTokenGracePeriod}.");
+        }
+
+        if (options.RefreshTokenRetention < TimeSpan.Zero)
+        {
+            return ValidateOptionsResult.Fail("Auth:Jwt:RefreshTokenRetention must not be negative.");
         }
 
         // The development key is in the repository: anyone could forge access tokens with it.

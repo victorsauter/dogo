@@ -35,13 +35,13 @@ public static class AuthEndpoints
 
         group.MapPost("/refresh", Refresh)
             .WithName("refreshSession")
-            .WithSummary("Rotate the refresh token and get a new access token.")
+            .WithSummary("Rotate the refresh token and get a new access token. A token just replaced is accepted again for a short grace period; any later reuse revokes its session.")
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
         group.MapPost("/logout", Logout)
             .WithName("logout")
-            .WithSummary("Revoke a refresh token.");
+            .WithSummary("Revoke a refresh token and the session it belongs to (every token rotated from the same sign-in).");
 
         return routes;
     }
