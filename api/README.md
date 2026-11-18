@@ -34,7 +34,7 @@ cd api
 dotnet test
 ```
 
-Les tests d'intégration démarrent un conteneur PostGIS avec Testcontainers (un seul pour toute la série ; chaque test repart d'une base vide). Seul Docker est nécessaire : les jetons Apple et Google sont validés par un faux validateur, les notifications et les signalements sont enregistrés par des faux, les sources de photos des données de démonstration sont simulées (`FakeDemoPhotoServer`), aucun test n'appelle le réseau. Les tâches planifiées sont éteintes dans les tests, qui les appellent avec une horloge contrôlée.
+Les tests d'intégration démarrent un conteneur PostGIS avec Testcontainers (un seul pour toute la série ; chaque test repart d'une base vide). Ils tournent dans l'environnement `Testing`, qui autorise comme `Development` la connexion de test et les données de démonstration ; la limitation de débit y est coupée, sauf dans `RateLimitingTests` et `HttpHardeningTests`, qui démarrent leur propre hôte. Seul Docker est nécessaire : les jetons Apple et Google sont validés par un faux validateur, les notifications et les signalements sont enregistrés par des faux, les sources de photos des données de démonstration sont simulées (`FakeDemoPhotoServer`), aucun test n'appelle le réseau. Les tâches planifiées sont éteintes dans les tests, qui les appellent avec une horloge contrôlée.
 
 ## Organisation du code
 
@@ -58,6 +58,8 @@ Ajouter une fonctionnalité : voir l'[ADR 0011](../docs/adr/0011-conventions-api
 - JSON en camelCase, énumérations en chaînes, dates en ISO 8601 UTC (`+00:00`), `birthDate` au format `AAAA-MM-JJ`.
 - Erreurs au format `application/problem+json` (RFC 9457) avec une extension `code` stable (`dog.not_found`, `validation.failed`, `account.suspended`, `auth.invalid_token`…). Les erreurs de validation listent les champs fautifs dans `errors`, par nom JSON. Liste complète : `src/Dogo.Api/Common/ErrorCodes.cs`.
 - `PATCH` modifie seulement les propriétés envoyées ; `null` laisse un champ obligatoire inchangé mais efface `birthDate` et `breed` ; une chaîne vide efface `bio`, `description` et `rules`.
+- Trop de requêtes : 429 `rate_limit.exceeded`, avec l'en-tête `Retry-After` (secondes entières). Voir « Durcissement ».
+- Corps de requête limité à 256 Ko (413 `request.too_large`), sauf le téléversement de photos (6 Mo).
 - Toute écriture d'un compte suspendu renvoie 403 `account.suspended`, et toute requête d'un compte qui n'existe plus (supprimé avec un jeton d'accès encore valide) renvoie 401 `auth.invalid_token` : un middleware global (`AccountStatusMiddleware`) relit le compte à chaque requête authentifiée.
 
 ### Photos
@@ -93,7 +95,7 @@ curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/registrations -H "Au
 
 - **Fil** `GET /walks/{id}/messages?before&limit` et `POST /walks/{id}/messages` `{ "text": "…" }` (1 à 1 000 caractères une fois les espaces de début et de fin retirés). Réservé à l'organisateur et aux propriétaires d'une inscription `Accepted` (une inscription dont le chien a été supprimé ne compte pas) : sinon 403 `message.forbidden`. Écrire sur une balade annulée : 409 `walk.not_open` ; la lecture reste permise, y compris après la balade.
 - **Pagination du fil.** Réponse `{ "items": [...], "hasMore": bool }` : les `limit` (50 par défaut, 100 au plus) messages les plus récents, ou ceux plus anciens que le message d'id `before`, rangés du plus ancien au plus récent. `hasMore` vaut vrai s'il en existe de plus anciens : rappeler avec `before=<id du premier élément>`. Un `before` inconnu ou d'une autre balade : 400 `validation.failed`. Chaque message : `id`, `text`, `createdAt`, `author` (`{ id, displayName, photoUrl }`, `null` si le compte n'existe plus), `isMine`.
-- **Appareils** `PUT /me/devices` `{ "expoPushToken": "ExponentPushToken[…]", "platform": "Ios" | "Android" }` → 200 `{ expoPushToken, platform, updatedAt }`. Un jeton appartient à un seul compte : l'enregistrer depuis un autre compte le déplace. `DELETE /me/devices/{token}` (jeton encodé dans l'URL) → 204, toujours, et ne retire que ses propres appareils.
+- **Appareils** `PUT /me/devices` `{ "expoPushToken": "ExponentPushToken[…]", "platform": "Ios" | "Android" }` → 200 `{ expoPushToken, platform, updatedAt }`. Le jeton doit avoir le format d'Expo (même règle que `Expo.isExpoPushToken` du SDK serveur) : `ExponentPushToken[…]` ou `ExpoPushToken[…]`, sans espace ni crochet à l'intérieur, ou l'ancienne forme UUID ; sinon 400 `validation.failed` sur `expoPushToken`. Un jeton appartient à un seul compte : l'enregistrer depuis un autre compte le déplace. Dix appareils au plus par compte : en enregistrer un de plus supprime celui dont l'enregistrement est le plus ancien (une réinstallation ou un nouveau téléphone donne un nouveau jeton, et l'application ne retire jamais l'ancien). `DELETE /me/devices/{token}` (jeton encodé dans l'URL) → 204, toujours, et ne retire que ses propres appareils.
 - **Préférences** `GET /me/notification-preferences` et `PUT` (les quatre champs obligatoires) : `{ "registrations", "walkChanges", "messages", "reminders" }`, tous vrais tant que l'utilisateur ne les a pas changés (aucune ligne en base avant).
 - **Séries.** `POST /walks` accepte `"repeatWeekly": true` (faux par défaut) : la balade appartient à une série (`Europe/Paris`) et `repeatsWeekly` vaut vrai dans les réponses tant que la série est active. `POST /walks/{id}/stop-series` (organisateur, depuis n'importe quelle balade de la série, idempotent) l'arrête : 403 `walk.forbidden`, 404 `walk.not_found`, 409 `walk.not_in_series`. Annuler une balade n'arrête pas la série.
 
@@ -118,7 +120,7 @@ Chaque événement est déposé dans une file en mémoire **après** la validati
 
 Une suppression de compte envoie aussi `walk_cancelled` aux inscrits de ses balades à venir. Une demande d'adhésion refusée n'est pas notifiée. Les heures sont données dans le fuseau `Europe/Paris`. Les textes sont tous dans `Features/Notifications/NotificationTexts.cs` : ajouter un type, c'est une valeur de `NotificationType` et une ligne dans ce fichier. Une modification (`PATCH`) ne notifie que si une valeur change réellement.
 
-**Envoi.** `Notifications:Provider` vaut `Log` (par défaut : la notification est seulement écrite dans le journal, sans le jeton) ou `Expo` (envoi par `https://exp.host/--/api/v2/push/send`, par lots de 100, un message par appareil ; un appareil signalé `DeviceNotRegistered` est supprimé). Pour activer l'envoi réel : `Notifications__Provider=Expo`, et `Notifications__Expo__AccessToken=<jeton>` seulement si la « sécurité renforcée des notifications » est activée dans le projet Expo. Les accusés de réception d'Expo ne sont pas consultés ; un échec HTTP (429, 5xx) est journalisé sans nouvel essai. Les tests remplacent l'envoi par un faux qui enregistre les messages : aucun test n'envoie de notification.
+**Envoi.** `Notifications:Provider` vaut `Log` (par défaut : le titre et les données sont écrits dans le journal au niveau Information, le texte seulement au niveau Debug, jamais le jeton ; refusé en Production) ou `Expo` (envoi par `https://exp.host/--/api/v2/push/send`, par lots de 100, un message par appareil ; un appareil signalé `DeviceNotRegistered` est supprimé). Pour activer l'envoi réel : `Notifications__Provider=Expo`, et `Notifications__Expo__AccessToken=<jeton>` seulement si la « sécurité renforcée des notifications » est activée dans le projet Expo. Les accusés de réception d'Expo ne sont pas consultés ; un échec HTTP (429, 5xx) ou une réponse illisible (page d'erreur d'un proxy) est journalisé sans nouvel essai. Les jetons cités par Expo dans ses réponses sont masqués dans le journal (`ExponentPushToken[***]`). Les tests remplacent l'envoi par un faux qui enregistre les messages : aucun test n'envoie de notification.
 
 #### Tâches planifiées
 
@@ -172,7 +174,7 @@ curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/messages -H "Authori
 
 #### Administration
 
-Les administrateurs sont les comptes dont l'e-mail (vérifié par Apple ou Google) figure dans `Admin:Emails` (ADR 0020). Tout `/admin/*` répond 403 `admin.forbidden` aux autres. Pas d'écran : ces routes s'appellent avec curl.
+Les administrateurs sont les comptes actifs dont l'e-mail (vérifié par Apple ou Google) figure dans `Admin:Emails` (ADR 0020). Un compte suspendu n'est plus administrateur ; un compte de la connexion de test ne l'est qu'en Development et Testing (ADR 0031). Le champ `isAdmin` de `GET /me` ne regarde encore que l'e-mail (voir « Durcissement »). Tout `/admin/*` répond 403 `admin.forbidden` aux autres. Pas d'écran : ces routes s'appellent avec curl.
 
 - `GET /admin/organizations?status&limit` (`Pending` par défaut, plus anciennes d'abord) → `[{ id, name, description, city, status, createdBy, memberCount, createdAt }]`.
 - `POST /admin/organizations/{id}/approve` (notifie le responsable) et `/reject` (aussi pour retirer une organisation validée), idempotents ; 409 `organization.closed`.
@@ -213,7 +215,7 @@ curl -s -X DELETE http://localhost:5080/api/v1/me -H "Authorization: Bearer $BOB
 
 Pour essayer l'application avec une communauté réaliste, l'API sait créer un jeu de données fictif autour de Seppois-le-Haut (Haut-Rhin) : 50 propriétaires et 95 chiens, 10 éducateurs canins, 4 organisations validées et 1 en attente, 45 balades dans un rayon de 12 km (25 à venir sur trois semaines, 20 passées sur six semaines, dont 5 séries hebdomadaires, une balade complète et une annulée), leurs inscriptions, une vingtaine de fils de discussion, 3 blocages et 4 signalements. Voir l'[ADR 0027](../docs/adr/0027-donnees-de-demonstration.md).
 
-**Activation.** `DemoData:Enabled` vaut `true` dans `appsettings.Development.json`, `false` partout ailleurs. Désactivées, les routes répondent 404 comme la connexion de test. L'API refuse de démarrer si `DemoData:Enabled` est vrai en Production, ou si la connexion de test (`Auth:AllowDevLogin`) est coupée : les comptes de démonstration se connectent par elle.
+**Activation.** `DemoData:Enabled` vaut `true` dans `appsettings.Development.json`, `false` partout ailleurs. Désactivées, les routes répondent 404 comme la connexion de test. L'API refuse de démarrer si `DemoData:Enabled` est vrai hors de Development et Testing (liste blanche, ADR 0031), ou si la connexion de test (`Auth:AllowDevLogin`) est coupée : les comptes de démonstration se connectent par elle.
 
 | Route (anonyme) | Rôle |
 | --- | --- |
@@ -243,6 +245,37 @@ Comptes intéressants : `demo-marie-schmitt` (organise la balade complète, une 
 
 Les requêtes ne transportent aucune donnée d'utilisateur : un agent utilisateur générique (`DemoData:Photos:UserAgent`), la graine d'avatar est le `subject` fictif. Téléchargement parallèle (4 au plus, avatars espacés de 150 ms), 10 s par image, 60 s au total ; une réponse 429 est retentée une fois. Une erreur réseau, un délai dépassé ou une image refusée n'empêche jamais la génération : la photo est sautée et comptée dans `photosFailed`. Wikimedia limite les clients anonymes sans contact dans l'agent utilisateur ; quelques photos peuvent donc manquer si l'on régénère très souvent. Mesuré en local : environ 0,5 s sans photos, 5 à 7 s avec photos.
 
+## Durcissement (ADR 0031)
+
+**Environnements.** La connexion de test (`Auth:AllowDevLogin`) et les données de démonstration (`DemoData:Enabled`) ne sont admises qu'en `Development` et `Testing` (environnement des tests automatisés) : dans tout autre environnement (`Staging`, `Production`, une faute de frappe…), l'API refuse de démarrer si l'une est active. Ne jamais déployer un serveur en `Development` ou `Testing`.
+
+**Contrôles au démarrage.** Hors Development, l'API refuse de démarrer si :
+- `Auth:Jwt:SigningKey` est la clé de développement versionnée dans `appsettings.Development.json` ;
+- `ConnectionStrings:Dogo` est vide ;
+- le fuseau `Europe/Paris` est introuvable (image sans `tzdata` : installer le paquet) ; les séries et les textes des notifications en dépendent.
+
+En Production, elle refuse aussi `Notifications:Provider=Log` (aucune notification ne partirait) et des audiences Apple et Google toutes deux vides (toute connexion serait refusée).
+
+**Limitation de débit.** Compteurs en mémoire, par instance, fenêtres fixes, sans file d'attente :
+
+| Limite | Portée | Clé | Défaut |
+| --- | --- | --- | --- |
+| `RateLimiting:Auth` | `/api/v1/auth/*` (toutes méthodes) | adresse IP du client (IPv6 : par /64) | 60 par minute |
+| `RateLimiting:Writes` | toute écriture (POST, PUT, PATCH, DELETE) hors `/auth` | utilisateur connecté, sinon adresse IP | 60 par minute |
+| `RateLimiting:SensitiveWrites` | en plus : inscriptions, messages, demandes d'adhésion, signalements, photos, enregistrement d'appareil | utilisateur connecté, sinon adresse IP | 30 par 10 minutes |
+
+Au-delà : 429 `application/problem+json` avec `code` = `rate_limit.exceeded` et l'en-tête `Retry-After` (secondes). Les écritures sensibles sont reconnues par le nom de leur point d'entrée (`RateLimiting.SensitiveEndpoints`, un test vérifie que chaque nom existe) : une nouvelle écriture qui notifie quelqu'un ou stocke un fichier doit y être ajoutée. `RateLimiting:Enabled=false` coupe tout (c'est le cas dans la suite de tests).
+
+**Proxy inverse.** Par défaut, l'API ignore `X-Forwarded-For` et `X-Forwarded-Proto` : sans proxy, un client pourrait y écrire l'adresse de son choix. Derrière un proxy, poser `Proxy__Enabled=true` et l'adresse du proxy (`Proxy__KnownProxies__0=10.0.0.2`) ou son réseau (`Proxy__KnownNetworks__0=10.0.0.0/24`) ; seuls ces émetteurs (et la boucle locale) sont crus, et seule l'entrée la plus à droite est lue (`Proxy:ForwardLimit`, 1 par défaut, à augmenter seulement pour une chaîne de proxys de confiance). Ne pas utiliser la variable `ASPNETCORE_FORWARDEDHEADERS_ENABLED` : elle fait confiance à n'importe quel émetteur.
+
+**En-têtes et taille.** `X-Content-Type-Options: nosniff` sur toutes les réponses ; `Strict-Transport-Security` (un an, sans sous-domaines) sur les réponses HTTPS hors Development. Corps de requête limité à 256 Ko (413 `request.too_large`), sauf les photos qui gardent leur limite de 6 Mo.
+
+**`AllowedHosts`.** Vaut `*` dans `appsettings.json`. En production, le fixer au nom public de l'API, par exemple `AllowedHosts=api.dogo.app` (plusieurs noms séparés par `;`) : une requête avec un autre en-tête `Host` reçoit 400.
+
+**Journaux.** Le fournisseur `Log` n'écrit le texte des notifications (extrait des messages du fil) qu'au niveau Debug ; l'envoi par Expo masque les jetons d'appareil et tronque les réponses journalisées à 500 caractères.
+
+**Limite connue.** Le champ `isAdmin` renvoyé par `GET /me` et les sessions vient de `MeResponse` (`Features/Users/`), qui ne regarde que l'e-mail : un compte suspendu ou un compte de test hors Development y verrait encore `true`, sans pouvoir rien faire (les routes `/admin` et la visibilité des organisations vérifient le compte complet).
+
 ## Migrations
 
 ```bash
@@ -271,20 +304,28 @@ dotnet ef migrations script --idempotent --project src/Dogo.Api --output migrate
 | Clé | Variable d'environnement | Défaut | Rôle |
 | --- | --- | --- | --- |
 | `ConnectionStrings:Dogo` | `ConnectionStrings__Dogo` | — (Development : base Docker) | Base PostgreSQL + PostGIS |
-| `Auth:Jwt:SigningKey` | `Auth__Jwt__SigningKey` | — (Development : valeur de dev) | Clé HMAC des jetons d'accès, 32 octets au moins ; démarrage refusé sinon |
+| `Auth:Jwt:SigningKey` | `Auth__Jwt__SigningKey` | — (Development : valeur de dev) | Clé HMAC des jetons d'accès, 32 octets au moins ; démarrage refusé sinon, ou si c'est la clé de développement hors Development |
 | `Auth:Jwt:Issuer`, `Auth:Jwt:Audience` | `Auth__Jwt__Issuer`, `Auth__Jwt__Audience` | `dogo-api`, `dogo-app` | Émetteur et audience des jetons d'accès |
-| `Auth:AllowDevLogin` | `Auth__AllowDevLogin` | `false` (Development : `true`) | Active `POST /auth/dev` ; démarrage refusé si vrai en Production |
+| `Auth:AllowDevLogin` | `Auth__AllowDevLogin` | `false` (Development : `true`) | Active `POST /auth/dev` ; démarrage refusé si vrai hors de Development et Testing |
 | `Auth:Apple:Audiences` | `Auth__Apple__Audiences__0`, … | vide | Identifiants acceptés comme audience des jetons Apple (bundle id) |
-| `Auth:Google:Audiences` | `Auth__Google__Audiences__0`, … | vide | Identifiants client OAuth acceptés pour Google |
+| `Auth:Google:Audiences` | `Auth__Google__Audiences__0`, … | vide | Identifiants client OAuth acceptés pour Google ; en Production, démarrage refusé si Apple et Google sont tous deux vides |
 | `Admin:Emails` | `Admin__Emails__0`, … | vide (Development : `admin@dogo.local`) | E-mails des administrateurs (`isAdmin`, routes `/admin`), ADR 0020 |
 | `Admin:ReportEmail` | `Admin__ReportEmail` | vide | Adresse à prévenir de chaque signalement ; pas encore utilisée (signalements journalisés seulement) |
 | `Storage:Local:Path` | `Storage__Local__Path` | `./data/photos` | Dossier des photos |
-| `Notifications:Provider` | `Notifications__Provider` | `Log` | `Log` (journal seulement) ou `Expo` (envoi réel) |
+| `Notifications:Provider` | `Notifications__Provider` | `Log` | `Log` (journal seulement) ou `Expo` (envoi réel) ; `Log` refusé en Production |
 | `Notifications:Expo:AccessToken` | `Notifications__Expo__AccessToken` | vide | Jeton d'accès Expo, seulement si la sécurité renforcée des notifications est activée |
-| `DemoData:Enabled` | `DemoData__Enabled` | `false` (Development : `true`) | Active `/dev/demo-data` ; démarrage refusé si vrai en Production ou sans `Auth:AllowDevLogin` (ADR 0027) |
+| `DemoData:Enabled` | `DemoData__Enabled` | `false` (Development : `true`) | Active `/dev/demo-data` ; démarrage refusé si vrai hors de Development et Testing ou sans `Auth:AllowDevLogin` (ADR 0027, 0031) |
 | `DemoData:Photos:UserAgent` | `DemoData__Photos__UserAgent` | `dogo-demo-data/1.0 (development seed data)` | Agent utilisateur des téléchargements de photos de démonstration |
 | `DemoData:Photos:Timeout`, `TotalTimeout` | `DemoData__Photos__Timeout`, … | `00:00:10`, `00:01:00` | Délai par image et pour l'ensemble des photos |
 | `DemoData:Photos:MaxParallelDownloads` | `DemoData__Photos__MaxParallelDownloads` | `4` | Téléchargements simultanés |
+| `RateLimiting:Enabled` | `RateLimiting__Enabled` | `true` | Limitation de débit (voir « Durcissement ») |
+| `RateLimiting:Auth:PermitLimit`, `Window` | `RateLimiting__Auth__PermitLimit`, … | `60`, `00:01:00` | Requêtes `/auth` par adresse IP et par fenêtre |
+| `RateLimiting:Writes:PermitLimit`, `Window` | `RateLimiting__Writes__PermitLimit`, … | `60`, `00:01:00` | Écritures par utilisateur et par fenêtre |
+| `RateLimiting:SensitiveWrites:PermitLimit`, `Window` | `RateLimiting__SensitiveWrites__PermitLimit`, … | `30`, `00:10:00` | Écritures sensibles par utilisateur et par fenêtre |
+| `Proxy:Enabled` | `Proxy__Enabled` | `false` | Lit `X-Forwarded-For` et `X-Forwarded-Proto` des proxys de confiance |
+| `Proxy:KnownProxies`, `Proxy:KnownNetworks` | `Proxy__KnownProxies__0`, `Proxy__KnownNetworks__0`, … | vide (boucle locale seulement) | Adresses IP et réseaux CIDR des proxys de confiance ; démarrage refusé si une valeur est invalide |
+| `Proxy:ForwardLimit` | `Proxy__ForwardLimit` | `1` | Nombre de proxys entre le client et l'API |
+| `AllowedHosts` | `AllowedHosts` | `*` | Noms d'hôte acceptés (séparés par `;`) ; en production, le nom public de l'API |
 | `BackgroundJobs:Enabled` | `BackgroundJobs__Enabled` | `true` | Fait tourner les rappels et les séries dans cette instance |
 | `BackgroundJobs:Interval` | `BackgroundJobs__Interval` | `00:01:00` | Intervalle entre deux passages des tâches |
 
