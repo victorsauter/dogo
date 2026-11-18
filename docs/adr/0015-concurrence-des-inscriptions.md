@@ -1,7 +1,8 @@
 # ADR 0015 — Capacité des balades : verrou sur la ligne de la balade et index unique partiel
 
-- **Statut :** Proposé
+- **Statut :** Accepté
 - **Date :** 18/11/2026
+- **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
 
 ## Contexte
 

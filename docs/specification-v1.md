@@ -68,6 +68,7 @@ Les choix faits ici sans validation explicite sont listés à la fin, section «
 - Annuler une balade la passe à `Cancelled` et prévient les inscrits.
 - La recherche renvoie les balades `Scheduled` à venir, dans un rayon autour d'un point, filtrables par période et par gabarit admis. Elle indique pour chacune la distance, le nombre de places prises et si elle est professionnelle.
 - Le point de rendez-vous exact est visible par tous.
+- Retirer un gabarit admis qu'un chien accepté possède est refusé : code `walk.size_in_use`.
 
 ### 4.3 Inscriptions
 
@@ -84,7 +85,8 @@ Une inscription concerne un chien. On peut inscrire plusieurs de ses chiens en u
 | Balade professionnelle : l'utilisateur est membre accepté de l'organisation | `walk.members_only` |
 
 - Accès `Open` : l'inscription est `Accepted` tout de suite. Accès `Approval` : elle est `Pending` jusqu'à la décision de l'organisateur.
-- L'acceptation revérifie la capacité.
+- L'acceptation revérifie la capacité et le gabarit.
+- Sur une balade `Approval` déjà complète, une nouvelle demande est refusée avec `walk.full`.
 - L'organisateur peut inscrire ses propres chiens ; ils sont acceptés d'office et comptent dans la capacité.
 - Le propriétaire annule son inscription avant le début ; la place est libérée.
 - L'organisateur peut refuser ou retirer un participant ; l'inscription passe à `Declined`.
@@ -167,7 +169,7 @@ Tous sous `/api/v1`.
 | `GET /walks?lat&lng&radiusKm&from&to&size` | Rechercher les balades proches |
 | `GET /walks/{id}` | Fiche, avec les participants |
 | `PATCH /walks/{id}`, `POST /walks/{id}/cancel` | Modifier, annuler |
-| `GET /me/walks?role&when` | Mes balades, comme organisateur ou participant, à venir ou passées |
+| `GET /me/walks?role&when` | Mes balades : `role` vaut `Organizer` ou `Participant`, `when` vaut `Upcoming` ou `Past` |
 | `POST /walks/{id}/registrations` | Inscrire un ou plusieurs chiens |
 | `DELETE /walks/{id}/registrations/{registrationId}` | Annuler une inscription |
 | `POST /walks/{id}/registrations/{registrationId}/accept` et `/decline` | Décision de l'organisateur |
