@@ -41,15 +41,18 @@ jest.mock('expo-file-system', () => {
 });
 
 // Maps are native: in tests a map is a View that forwards its events (fire
-// `regionChangeComplete` or `press` on it), and each marker a View labelled by its title.
+// `regionChangeComplete` or `press` on it) and its `mapPadding`, and each marker a View labelled by its title
+// (or its accessibility label), forwarding `press` and `calloutPress`.
 jest.mock('react-native-maps', () => {
+  // Shared by every map: tests read `jest.requireMock('react-native-maps').__animateToRegion`.
+  const animateToRegion = jest.fn();
   const React = jest.requireActual<typeof import('react')>('react');
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   const MapView = React.forwardRef(function MapView(
     props: Record<string, unknown> & { children?: React.ReactNode },
     ref: React.Ref<unknown>,
   ) {
-    React.useImperativeHandle(ref, () => ({ animateToRegion: jest.fn() }));
+    React.useImperativeHandle(ref, () => ({ animateToRegion }));
     return React.createElement(
       View,
       {
@@ -58,18 +61,29 @@ jest.mock('react-native-maps', () => {
         ...({
           onRegionChangeComplete: props.onRegionChangeComplete,
           onPress: props.onPress,
+          mapPadding: props.mapPadding,
         } as object),
       },
       props.children,
     );
   });
-  const Marker = (props: { title?: string; onCalloutPress?: () => void; onDragEnd?: unknown }) =>
+  const Marker = (props: {
+    title?: string;
+    accessibilityLabel?: string;
+    onPress?: () => void;
+    onCalloutPress?: () => void;
+    onDragEnd?: unknown;
+  }) =>
     React.createElement(View, {
       testID: 'map-marker',
-      accessibilityLabel: props.title,
-      ...({ onCalloutPress: props.onCalloutPress, onDragEnd: props.onDragEnd } as object),
+      accessibilityLabel: props.accessibilityLabel ?? props.title,
+      ...({
+        onPress: props.onPress,
+        onCalloutPress: props.onCalloutPress,
+        onDragEnd: props.onDragEnd,
+      } as object),
     });
-  return { __esModule: true, default: MapView, Marker };
+  return { __esModule: true, default: MapView, Marker, __animateToRegion: animateToRegion };
 });
 
 // Location: granted, in Altkirch (near the default centre, Seppois-le-Haut), unless a test overrides these mocks.
@@ -138,4 +152,74 @@ jest.mock('expo-notifications', () => {
     }),
   };
   return mock;
+});
+
+// Gesture handler: its own mocks (GestureHandlerRootView becomes a View).
+require('react-native-gesture-handler/jestSetup');
+
+// The sliding panel (@gorhom/bottom-sheet) runs on Reanimated. In tests it is a
+// View whose `snapToIndex(i)` reports `onChange(i)` at once, its current
+// position exposed as `accessibilityValue.now` on the `bottom-sheet` testID;
+// `BottomSheetFlatList` is a plain FlatList.
+jest.mock('@gorhom/bottom-sheet', () => {
+  const React = jest.requireActual<typeof import('react')>('react');
+  const { FlatList, View } = jest.requireActual<typeof import('react-native')>('react-native');
+  const BottomSheet = React.forwardRef(function BottomSheet(
+    props: { index?: number; onChange?: (index: number) => void; children?: React.ReactNode },
+    ref: React.Ref<unknown>,
+  ) {
+    const [current, setCurrent] = React.useState(props.index ?? 0);
+    const snapToIndex = (next: number) => {
+      setCurrent(next);
+      props.onChange?.(next);
+    };
+    React.useImperativeHandle(ref, () => ({
+      snapToIndex,
+      expand: () => snapToIndex(2),
+      collapse: () => snapToIndex(0),
+      close: () => snapToIndex(-1),
+    }));
+    return React.createElement(
+      View,
+      { testID: 'bottom-sheet', accessibilityValue: { now: current } },
+      props.children,
+    );
+  });
+  const BottomSheetFlatList = React.forwardRef(function BottomSheetFlatList(
+    props: Record<string, unknown>,
+    ref: React.Ref<unknown>,
+  ) {
+    React.useImperativeHandle(ref, () => ({ scrollToIndex: jest.fn(), scrollToOffset: jest.fn() }));
+    return React.createElement(FlatList as never, props);
+  });
+  return { __esModule: true, default: BottomSheet, BottomSheetFlatList, BottomSheetView: View };
+});
+
+// The system menu of iOS (@expo/ui) is native: tests use the app's own menu
+// (`AnchoredMenu`), as on Android.
+jest.mock('@/components/nativeMenu', () => ({ NativeMenuView: null }));
+
+// Haptics do nothing in tests; tests may check they were asked for.
+jest.mock('expo-haptics', () => ({
+  ImpactFeedbackStyle: { Light: 'light' },
+  selectionAsync: jest.fn(async () => undefined),
+  impactAsync: jest.fn(async () => undefined),
+}));
+
+// The blur of the floating materials is native: a plain View in tests.
+jest.mock('expo-blur', () => {
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  return { BlurView: View };
+});
+
+// Liquid Glass is native: a plain View in tests (its props can be read), and
+// unavailable (the blur is used) unless a test makes both checks return true.
+jest.mock('expo-glass-effect', () => {
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    GlassView: View,
+    GlassContainer: View,
+    isLiquidGlassAvailable: jest.fn(() => false),
+    isGlassEffectAPIAvailable: jest.fn(() => false),
+  };
 });

@@ -30,6 +30,7 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0026](0026-ordre-de-declaration-des-ecrans.md) | Écrans déclarés dans l'ordre de tri d'Expo Router | Accepté |
 | [0027](0027-donnees-de-demonstration.md) | Données de démonstration : fonctionnalité de développement, générée par l'API, photos téléchargées à la génération | Accepté |
 | [0028](0028-balades-carte-et-panneau-coulissant.md) | Onglet Balades : deux vues au choix, panneau coulissant par défaut | Accepté |
+| [0029](0029-menus-ancres-et-finition-native.md) | Filtres en pastilles-menus ancrées, menu natif d'iOS par `@expo/ui`, matériaux et retour haptique | Accepté |
 
 ## Statuts
 

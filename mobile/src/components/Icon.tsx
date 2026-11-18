@@ -21,6 +21,14 @@ const icons = {
   repeat: { ios: 'repeat', android: 'repeat', web: 'repeat' },
   info: { ios: 'info.circle', android: 'info', web: 'info' },
   chevron: { ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' },
+  chevronUp: { ios: 'chevron.up', android: 'expand_less', web: 'expand_less' },
+  chevronDown: { ios: 'chevron.down', android: 'expand_more', web: 'expand_more' },
+  list: { ios: 'list.bullet', android: 'list', web: 'list' },
+  close: { ios: 'xmark', android: 'close', web: 'close' },
+  check: { ios: 'checkmark', android: 'check', web: 'check' },
+  refresh: { ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' },
+  sliders: { ios: 'slider.horizontal.3', android: 'tune', web: 'tune' },
+  locate: { ios: 'location', android: 'my_location', web: 'my_location' },
 } as const;
 
 export type IconName = keyof typeof icons;

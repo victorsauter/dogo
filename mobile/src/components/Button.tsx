@@ -1,7 +1,8 @@
-import { ActivityIndicator, Pressable, StyleSheet, type PressableProps } from 'react-native';
+import { ActivityIndicator, StyleSheet, type PressableProps } from 'react-native';
 
 import { useTheme } from '@/theme';
 
+import { PressableScale } from './PressableScale';
 import { Text } from './Text';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger';
@@ -31,7 +32,7 @@ export function Button({
   }[variant];
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: inactive, busy: loading }}
@@ -56,7 +57,7 @@ export function Button({
           {label}
         </Text>
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 

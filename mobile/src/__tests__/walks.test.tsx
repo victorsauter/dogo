@@ -40,7 +40,7 @@ const searchCalls = (calls: { method: string; path: string }[]) =>
   calls.filter((c) => c.method === 'GET' && c.path.startsWith('/api/v1/walks?'));
 const query = (path: string) => Object.fromEntries(new URL(`http://x${path}`).searchParams);
 
-describe('« Balades » tab', () => {
+describe('« Balades » tab (default view: map and panel)', () => {
   it('searches around the user and lists the walks on the map and in the list', async () => {
     const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([walkResult()]) });
     await signIn();
@@ -74,8 +74,11 @@ describe('« Balades » tab', () => {
       radiusKm: '100',
     });
 
-    await fireEvent.press(screen.getByRole('radio', { name: 'Grand' }));
-    await fireEvent.press(screen.getByRole('radio', { name: t.discover.periodAll }));
+    await fireEvent.press(screen.getByTestId('filter-size'));
+    await fireEvent.press(screen.getByRole('menuitem', { name: 'Grand' }));
+    await waitFor(() => expect(screen.queryByTestId('menu')).toBeNull());
+    await fireEvent.press(screen.getByTestId('filter-period'));
+    await fireEvent.press(screen.getByRole('menuitem', { name: t.discover.periodAll }));
     await waitFor(() => {
       const last = query(searchCalls(calls).at(-1)!.path);
       expect(last.size).toBe('Large');
@@ -88,7 +91,8 @@ describe('« Balades » tab', () => {
     await signIn();
     await renderRouter(APP_DIR, { initialUrl: '/' });
 
-    expect(await screen.findByText(t.discover.emptyTitle)).toBeTruthy();
+    // The panel's handle says it too (« Aucune balade dans cette zone »): the message is unique.
+    expect(await screen.findByText(t.discover.emptyMessage)).toBeTruthy();
     // The header button and the empty state's action both create a walk.
     await fireEvent.press(screen.getAllByRole('button', { name: t.discover.emptyAction }).at(-1)!);
     expect(await screen.findByLabelText(t.walk.title)).toBeTruthy();

@@ -21,6 +21,7 @@ import {
   Screen,
   Text,
 } from '@/components';
+import { LayoutSetting } from '@/discover/LayoutSetting';
 import { useRefetchOnFocus } from '@/lib/hooks';
 import { format, t } from '@/strings';
 import { useTheme } from '@/theme';
@@ -157,6 +158,8 @@ export default function ProfileScreen() {
       <EntryList entries={organizationEntries} />
 
       <Text variant="heading">{t.settings.title}</Text>
+      <Text variant="subheading">{t.discoverLayout.title}</Text>
+      <LayoutSetting />
       <EntryList entries={settingsEntries} />
 
       <Button

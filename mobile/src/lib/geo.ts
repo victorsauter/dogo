@@ -27,6 +27,13 @@ export function regionAround(point: GeoPoint, delta: number = NEIGHBOURHOOD_DELT
   return { ...point, latitudeDelta: delta, longitudeDelta: delta };
 }
 
+/** A region that shows a circle of `radiusKm` around `point` (its height is the diameter). */
+export function regionForRadius(point: GeoPoint, radiusKm: number): MapRegion {
+  const latitudeDelta = (2 * radiusKm) / KM_PER_DEGREE;
+  const longitudeDelta = latitudeDelta / Math.max(0.2, Math.cos((point.latitude * Math.PI) / 180));
+  return { ...point, latitudeDelta, longitudeDelta };
+}
+
 /**
  * Radius (km) of the circle that covers the visible area: half its diagonal,
  * capped to the API maximum and rounded up to 100 m so tiny pans reuse the cache.

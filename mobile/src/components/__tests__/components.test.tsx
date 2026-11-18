@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { useState } from 'react';
 
 import { ApiError } from '@/api/errors';
@@ -6,6 +6,7 @@ import { t } from '@/strings';
 import { renderWithTheme } from '@/test/render';
 
 import { StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
   Avatar,
@@ -14,6 +15,8 @@ import {
   createFieldRegistry,
   ErrorState,
   initials,
+  MenuPill,
+  placeMenu,
   TextField,
 } from '..';
 
@@ -52,6 +55,89 @@ describe('TextField', () => {
     await fireEvent.changeText(screen.getByLabelText('Nom du chien'), 'Filou');
     expect(onChangeText).toHaveBeenCalledWith('Filou');
     expect(screen.getByText(t.common.required)).toBeTruthy();
+  });
+});
+
+describe('MenuPill', () => {
+  const metrics = {
+    frame: { x: 0, y: 0, width: 400, height: 800 },
+    insets: { top: 60, left: 0, right: 0, bottom: 30 },
+  };
+  const renderPill = (onChange: (value: 'a' | 'b') => void) =>
+    renderWithTheme(
+      <SafeAreaProvider initialMetrics={metrics}>
+        <MenuPill label="Choix" text="Un" options={options} value="a" onChange={onChange} />
+      </SafeAreaProvider>,
+    );
+  const options = [
+    { value: 'a', label: 'Un' },
+    { value: 'b', label: 'Deux' },
+  ] as const;
+
+  it('is a button named by its label and value, opening a menu with the choice checked', async () => {
+    const onChange = jest.fn();
+    await renderPill(onChange);
+    const pill = screen.getByRole('button', { name: 'Choix, Un' });
+    expect(pill).toBeCollapsed();
+
+    await fireEvent.press(pill);
+    expect(pill).toBeExpanded();
+    expect(screen.getByRole('menuitem', { name: 'Un' })).toBeSelected();
+    expect(screen.getByRole('menuitem', { name: 'Deux' })).not.toBeSelected();
+
+    await fireEvent.press(screen.getByRole('menuitem', { name: 'Deux' }));
+    expect(onChange).toHaveBeenCalledWith('b');
+    await waitFor(() => expect(screen.queryByRole('menuitem', { name: 'Un' })).toBeNull());
+  });
+
+  it('does not report the choice already made', async () => {
+    const onChange = jest.fn();
+    await renderPill(onChange);
+    await fireEvent.press(screen.getByRole('button', { name: 'Choix, Un' }));
+    await fireEvent.press(screen.getByRole('menuitem', { name: 'Un' }));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('placeMenu', () => {
+  const window = { width: 400, height: 800 };
+  const insets = { top: 60, bottom: 30 };
+  const place = (anchor: { x: number; y: number; width: number; height: number }) =>
+    placeMenu({ anchor, window, insets, margin: 16, gap: 4, height: 150 });
+
+  it('opens under the pill, aligned with it, growing from its centre', () => {
+    expect(place({ x: 16, y: 100, width: 80, height: 36 })).toEqual({
+      top: 140,
+      left: 16,
+      width: 224,
+      opensUp: false,
+      originX: 40,
+    });
+  });
+
+  it('moves back inside the screen when the pill is near the right edge', () => {
+    const { left, width, originX } = place({ x: 300, y: 100, width: 80, height: 36 });
+    expect(left + width).toBe(400 - 16);
+    expect(originX).toBe(300 + 40 - left);
+  });
+
+  it('opens above the pill when there is no room below', () => {
+    const { top, opensUp } = place({ x: 16, y: 700, width: 80, height: 36 });
+    expect(opensUp).toBe(true);
+    expect(top).toBe(700 - 4 - 150);
+  });
+
+  it('never gets wider than the screen allows', () => {
+    const narrow = placeMenu({
+      anchor: { x: 16, y: 100, width: 80, height: 36 },
+      window: { width: 220, height: 800 },
+      insets,
+      margin: 16,
+      gap: 4,
+      height: 150,
+    });
+    expect(narrow.width).toBe(220 - 32);
+    expect(narrow.left).toBe(16);
   });
 });
 
