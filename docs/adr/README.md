@@ -12,6 +12,9 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0006](0006-connexion-apple-google.md) | Connexion par Apple ou Google uniquement | Accepté |
 | [0007](0007-client-api-openapi.md) | Client mobile généré depuis la description OpenAPI | Accepté |
 | [0008](0008-notifications-sans-temps-reel.md) | Notifications push, sans temps réel | Accepté |
+| [0009](0009-jetons-de-session.md) | Jetons de session : jeton d'accès JWT court et jeton de rafraîchissement rotatif | Accepté |
+| [0010](0010-stockage-des-photos.md) | Photos stockées sur le disque du serveur, derrière une interface | Accepté |
+| [0011](0011-conventions-api.md) | Conventions de code de l'API : fonctionnalités, erreurs, OpenAPI et tests | Accepté |
 | [0012](0012-navigation-expo-router.md) | Navigation par fichiers avec Expo Router | Accepté |
 | [0013](0013-client-api-et-donnees.md) | Client d'API typé et cache des données avec TanStack Query | Accepté |
 | [0014](0014-session-mobile.md) | Session mobile : stockage sécurisé et renouvellement unique du jeton | Accepté |
