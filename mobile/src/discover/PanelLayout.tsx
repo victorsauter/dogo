@@ -38,7 +38,7 @@ const HANDLE_ICON = { 0: 'chevronUp', 1: 'chevronUp', 2: 'chevronDown' } as cons
 const PEEK_HEIGHT = 72;
 
 /**
- * Layout B, « Panneau coulissant »: the map fills the tab, the walks of the
+ * « Panneau » view (the default): the map fills the tab, the walks of the
  * visible area live in a bottom panel with three positions. Filters stay above
  * the map (the high position stops under them). The panel's handle is a real
  * button that moves it (low → middle → high → low), so dragging is optional.

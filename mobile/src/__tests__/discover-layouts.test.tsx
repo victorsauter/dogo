@@ -2,7 +2,7 @@ import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-rout
 import * as SecureStore from 'expo-secure-store';
 
 import { sessionStore } from '@/auth/sessionStore';
-import { DISCOVER_LAYOUT_STORAGE_KEY } from '@/discover/layoutPreference';
+import { DISCOVER_LAYOUT_STORAGE_KEY, resetDiscoverLayout } from '@/discover/layoutPreference';
 import { config } from '@/lib/config';
 import { t } from '@/strings';
 import { authResponse, walkResult } from '@/test/fixtures';
@@ -17,11 +17,6 @@ const query = (path: string) => Object.fromEntries(new URL(`http://x${path}`).se
 const lastSearch = (calls: { method: string; path: string }[]) =>
   query(searchCalls(calls).at(-1)!.path);
 
-const storedLayout = () =>
-  (jest.requireMock('expo-secure-store') as { __store: Map<string, string> }).__store.get(
-    DISCOVER_LAYOUT_STORAGE_KEY,
-  );
-
 const lake = walkResult();
 const forest = walkResult({
   id: 'a1a1a1a1-0000-4000-8000-000000000002',
@@ -29,14 +24,14 @@ const forest = walkResult({
   location: { latitude: 47.54, longitude: 7.19 },
 });
 
-async function open(layout?: 'current' | 'list' | 'panel') {
+async function open(layout?: string) {
   if (layout) await SecureStore.setItemAsync(DISCOVER_LAYOUT_STORAGE_KEY, layout);
   await sessionStore.set(authResponse());
   await renderRouter(APP_DIR, { initialUrl: '/' });
 }
 
 beforeEach(() => {
-  config.devLogin = true;
+  resetDiscoverLayout();
 });
 
 afterEach(async () => {
@@ -45,42 +40,40 @@ afterEach(async () => {
   jest.restoreAllMocks();
 });
 
-describe('layout selector (prototype)', () => {
-  it('is hidden without EXPO_PUBLIC_DEV_LOGIN, and the tab keeps the current layout', async () => {
-    config.devLogin = false;
-    await SecureStore.setItemAsync(DISCOVER_LAYOUT_STORAGE_KEY, 'panel');
+describe('which view the tab shows', () => {
+  it('opens on the panel by default', async () => {
     mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open();
-
-    expect(await screen.findByText(lake.title)).toBeTruthy();
-    expect(screen.queryByLabelText(t.discoverLayout.label)).toBeNull();
-    expect(screen.queryByTestId('bottom-sheet')).toBeNull();
-    expect(screen.queryByRole('button', { name: t.discover.showMapA11y })).toBeNull();
-    expect(screen.getByLabelText(t.discover.mapLabel)).toBeTruthy();
-  });
-
-  it('offers the three layouts and remembers the choice', async () => {
-    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
-    await open();
-
-    const selector = await screen.findByLabelText(t.discoverLayout.label);
-    expect(within(selector).getByRole('radio', { name: t.discoverLayout.current })).toBeSelected();
-    await fireEvent.press(within(selector).getByRole('radio', { name: t.discoverLayout.list }));
-
-    expect(await screen.findByRole('button', { name: t.discover.showMapA11y })).toBeTruthy();
-    await waitFor(() => expect(storedLayout()).toBe('list'));
-  });
-
-  it('opens on the remembered layout', async () => {
-    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
-    await open('panel');
 
     expect(await screen.findByTestId('bottom-sheet')).toBeTruthy();
-    expect(screen.getByRole('radio', { name: t.discoverLayout.panel })).toBeSelected();
+    expect(screen.queryByRole('button', { name: t.discover.showMapA11y })).toBeNull();
+  });
+
+  it('opens on the list when it is the remembered choice', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('list');
+
+    expect(await screen.findByRole('button', { name: t.discover.showMapA11y })).toBeTruthy();
+    expect(screen.queryByTestId('bottom-sheet')).toBeNull();
+  });
+
+  it('falls back to the panel for the retired « current » value', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('current');
+
+    expect(await screen.findByTestId('bottom-sheet')).toBeTruthy();
+  });
+
+  it('does not depend on EXPO_PUBLIC_DEV_LOGIN', async () => {
+    config.devLogin = false;
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('list');
+
+    expect(await screen.findByRole('button', { name: t.discover.showMapA11y })).toBeTruthy();
   });
 });
 
-describe('layout A — list first, map on demand', () => {
+describe('« Liste » view — list first, map on demand', () => {
   it('searches around the user within the chosen radius, soonest walks first', async () => {
     const later = walkResult({
       ...forest,
@@ -147,7 +140,7 @@ describe('layout A — list first, map on demand', () => {
   });
 });
 
-describe('layout B — sliding panel', () => {
+describe('« Panneau » view — map and sliding panel', () => {
   const handle = () => screen.getByTestId('panel-handle');
   const sheetPosition = () => screen.getByTestId('bottom-sheet').props.accessibilityValue.now;
 

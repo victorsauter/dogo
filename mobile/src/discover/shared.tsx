@@ -23,7 +23,7 @@ import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
 
 /**
- * Pieces shared by the layouts of the « Balades » tab: filters, header, the
+ * Pieces shared by the two views of the « Balades » tab: filters, header, the
  * search that follows a map, refresh, navigation and the floating button.
  */
 
@@ -60,7 +60,7 @@ export function useDiscoverNavigation() {
 export interface DiscoverHeaderProps {
   filters: WalkFilters;
   onFiltersChange: (update: (current: WalkFilters) => WalkFilters) => void;
-  /** The radius choice of the list-first layout. */
+  /** The radius choice of the « Liste » view. */
   radius?: { value: SearchRadiusKm; onChange: (km: SearchRadiusKm) => void };
   /** Sentence under the filters (position unknown). */
   notice?: string | null;

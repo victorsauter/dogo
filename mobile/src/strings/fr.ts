@@ -127,13 +127,6 @@ export const fr = {
     panelA11yHint: 'Change la hauteur du panneau des balades.',
     panelLoading: 'Recherche des balades…',
   },
-  /** Prototype only: choice of the « Balades » layout (EXPO_PUBLIC_DEV_LOGIN). */
-  discoverLayout: {
-    label: 'Prototype · disposition',
-    current: 'Actuelle',
-    list: 'Liste',
-    panel: 'Panneau',
-  },
   myWalks: {
     title: 'Mes balades',
     role: 'Rôle',

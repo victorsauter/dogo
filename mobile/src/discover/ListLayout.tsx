@@ -37,7 +37,7 @@ import {
 } from './shared';
 
 /**
- * Layout A, « Liste, carte à la demande »: the walks within a radius of the
+ * « Liste » view (list first, map on demand): the walks within a radius of the
  * user (or of the default centre), soonest first, over the whole screen. A
  * floating « Carte » button opens a full-screen map with the same filters,
  * where the search follows the visible area and a tapped pin shows its walk.
@@ -151,7 +151,7 @@ export function ListLayout({ location }: { location: UserLocation }) {
 }
 
 /**
- * The full-screen map of layout A: same filters as the list, search on the
+ * The full-screen map of the « Liste » view: same filters as the list, search on the
  * visible area, its last area reported to the parent (`onAreaChange`).
  */
 function FullScreenMap({
