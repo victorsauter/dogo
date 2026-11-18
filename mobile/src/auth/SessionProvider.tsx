@@ -12,7 +12,20 @@ import { revokeRefreshToken } from '@/api/authFetch';
 import type { AuthResponse, SessionUser } from '@/api/types';
 import { config } from '@/lib/config';
 
-import { sessionStore, type SessionStatus, type SessionStore } from './sessionStore';
+import { setSignInNotice } from '@/lib/signInNotice';
+import { t } from '@/strings';
+
+import {
+  sessionStore,
+  type SessionEndReason,
+  type SessionStatus,
+  type SessionStore,
+} from './sessionStore';
+
+const endOfSessionNotice: Record<SessionEndReason, string> = {
+  expired: t.auth.sessionExpired,
+  suspended: t.auth.accountSuspended,
+};
 
 export interface SessionContextValue {
   status: SessionStatus;
@@ -22,7 +35,11 @@ export interface SessionContextValue {
   setSession(response: AuthResponse): Promise<void>;
   /** Updates the user kept in the session after a profile change (tokens untouched). */
   updateUser(user: SessionUser): Promise<void>;
-  /** Forgets the session on the device, then revokes the refresh token on the API. */
+  /**
+   * Removes the push device, then revokes the refresh token on the API (in the
+   * background) and forgets the session: signed out in memory even if the
+   * device storage fails.
+   */
   signOut(): Promise<void>;
   /**
    * Forgets the session on this device only, with no call to the API: for a
@@ -79,9 +96,13 @@ export function SessionProvider({
 
   const previousStatus = useRef(snapshot.status);
   useEffect(() => {
-    if (previousStatus.current === 'signedIn' && snapshot.status === 'signedOut') onSignedOut?.();
+    if (previousStatus.current === 'signedIn' && snapshot.status === 'signedOut') {
+      // An end of session the person did not ask for is explained on the sign-in screen.
+      if (snapshot.endReason) setSignInNotice(endOfSessionNotice[snapshot.endReason]);
+      onSignedOut?.();
+    }
     previousStatus.current = snapshot.status;
-  }, [snapshot.status, onSignedOut]);
+  }, [snapshot.status, snapshot.endReason, onSignedOut]);
 
   const value = useMemo<SessionContextValue>(
     () => ({
@@ -97,8 +118,10 @@ export function SessionProvider({
         const session = store.getSession();
         if (session && onBeforeSignOut)
           await bestEffort(onBeforeSignOut, BEFORE_SIGN_OUT_TIMEOUT_MS);
+        // Revoked whatever happens to the local erase: even if the keychain
+        // keeps the entry, the server no longer accepts its refresh token.
+        if (session) void revoke(session.refreshToken).catch(() => {});
         await store.clear();
-        if (session) void revoke(session.refreshToken);
       },
       async endSession() {
         await store.clear();

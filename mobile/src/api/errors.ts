@@ -19,17 +19,24 @@ export class ApiError extends Error {
   /** Validation errors by field (`validation.failed`). */
   readonly fieldErrors: Record<string, string[]>;
   readonly problem?: ProblemDetails;
+  /** `network` failure because the request took longer than its time limit. */
+  readonly timedOut: boolean;
 
   constructor(init: {
     kind: ApiErrorKind;
     status?: number;
     problem?: ProblemDetails;
     cause?: unknown;
+    timedOut?: boolean;
   }) {
-    const message = messageFor(init.kind, init.status, init.problem?.code);
+    const timedOut = init.kind === 'network' && init.timedOut === true;
+    const message = timedOut
+      ? t.errors.timeout
+      : messageFor(init.kind, init.status, init.problem?.code);
     super(message, { cause: init.cause });
     this.name = 'ApiError';
     this.kind = init.kind;
+    this.timedOut = timedOut;
     this.status = init.status;
     this.problem = init.problem;
     this.code = init.problem?.code;
@@ -52,6 +59,8 @@ function messageFor(kind: ApiErrorKind, status?: number, code?: string): string 
   if (isKnownCode(code)) return t.errors[code];
   if (status === 404) return t.errors.notFound;
   if (status === 403) return t.errors.forbidden;
+  // Rate limiting (problem+json with `Retry-After`), or a proxy doing the same.
+  if (status === 429) return t.errors.tooManyRequests;
   if (status !== undefined && status >= 500) return t.errors.server;
   return t.errors.generic;
 }
@@ -81,13 +90,24 @@ export async function apiErrorFromResponse(response: Response): Promise<ApiError
  * be reached: `expo/fetch` (« fetch failed: … »), React Native's and
  * whatwg-fetch (« Network request failed »), timeouts and aborts.
  */
-const NETWORK_FAILURE = /fetch failed|network request failed|network error|timed? ?out|offline/i;
+const NETWORK_FAILURE =
+  /fetch failed|network request failed|network error|timed? ?out|offline|aborted/i;
 
-/** True when a thrown value means the request did not reach the server. */
-export function isNetworkFailure(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  if (error.name === 'AbortError' || error.name === 'TimeoutError') return true;
-  return NETWORK_FAILURE.test(error.message);
+const ABORT_NAMES = new Set(['AbortError', 'TimeoutError']);
+
+/**
+ * True when a thrown value means the request did not reach the server. Abort
+ * and timeout errors are recognized by name, not only by message: `expo/fetch`
+ * wraps them in a `FetchError` whose `cause` is the abort reason, and a
+ * `DOMException` is not always an `Error` instance (Hermes). Requests that
+ * exceed their time limit are already turned into an `ApiError` by `authFetch`.
+ */
+export function isNetworkFailure(error: unknown, depth = 0): boolean {
+  if (error === null || typeof error !== 'object' || depth > 3) return false;
+  const { name, message, cause } = error as { name?: unknown; message?: unknown; cause?: unknown };
+  if (typeof name === 'string' && ABORT_NAMES.has(name)) return true;
+  if (error instanceof Error && NETWORK_FAILURE.test(String(message))) return true;
+  return cause !== undefined && isNetworkFailure(cause, depth + 1);
 }
 
 /**
