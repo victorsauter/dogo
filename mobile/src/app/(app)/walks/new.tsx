@@ -11,7 +11,10 @@ import { useUserLocation } from '@/lib/location';
 import { offerNotifications } from '@/notifications';
 import { t } from '@/strings';
 
-/** Create a walk; the meeting point starts at the user's position (or the default centre). */
+/**
+ * Create a walk; the map starts at the user's position (or the default centre,
+ * with a warning), and the pin must be placed by the person before submitting.
+ */
 export default function NewWalkScreen() {
   const router = useRouter();
   const createWalk = useCreateWalk();
@@ -29,6 +32,7 @@ export default function NewWalkScreen() {
       <WalkForm
         initial={initial}
         userLocation={location.coords}
+        locationStatus={location.status}
         allowRepeat
         organizations={organizations}
         submitLabel={t.walk.create}

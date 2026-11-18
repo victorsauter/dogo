@@ -41,6 +41,7 @@ export default function EditWalkScreen() {
       <WalkForm
         key={walk.data.id}
         initial={walkFormFrom(walk.data)}
+        pinPlaced
         submitLabel={t.common.save}
         onSubmit={async (values) => {
           await updateWalk.mutateAsync(toUpdateWalkRequest(values));

@@ -253,6 +253,10 @@ export const fr = {
     startsAtPast: 'La balade doit commencer dans le futur.',
     meetingPointHint: 'Touche la carte ou fais glisser le repère pour placer le rendez-vous.',
     meetingPointMap: 'Carte du point de rendez-vous',
+    meetingPointRequired:
+      'Place le repère sur le point de rendez-vous : touche la carte ou fais glisser le repère.',
+    meetingPointNoLocation:
+      'Position non disponible : la carte affiche une zone par défaut, ce n’est pas ton rendez-vous. Place le repère à la main avant de créer la balade.',
     locationLabel: 'Repère du rendez-vous',
     locationLabelHint: 'Par exemple : devant l’entrée du parc, côté fontaine.',
     maxDogs: 'Nombre maximum de chiens',
