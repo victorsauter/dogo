@@ -1898,7 +1898,7 @@
         "tags": [
           "Registrations"
         ],
-        "summary": "Accept a pending registration (organizer only). Capacity is checked again.",
+        "summary": "Accept a pending registration (organizer only). Size, capacity, membership and the organisation's status are checked again.",
         "operationId": "acceptRegistration",
         "parameters": [
           {
@@ -3253,7 +3253,7 @@
         "tags": [
           "Memberships"
         ],
-        "summary": "Leave an organisation or withdraw a request (own membership), or remove a member (owner or educator; only the owner removes an educator). The sole owner cannot leave.",
+        "summary": "Leave an organisation or withdraw a request (own membership), or remove a member (owner or educator; only the owner removes an educator). The sole owner cannot leave. The upcoming registrations of that user to the organisation's walks are cancelled.",
         "operationId": "deleteMembership",
         "parameters": [
           {

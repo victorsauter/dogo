@@ -1,4 +1,5 @@
 using Dogo.Api.Features.Notifications;
+using Dogo.Api.Features.Organizations;
 using Dogo.Api.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -76,6 +77,18 @@ public sealed partial class WalkSeriesJob(
             return false;
         }
 
+        // Spec §4.6: only an approved organisation carries walks, created by its owner or educators.
+        // A series whose organisation was closed or rejected, or whose organizer left it or is no
+        // longer an educator, stops here; the walks already created stay as they are.
+        if (latest.OrganizationId is { } organizationId && !await OrganizerMayCarryAsync(organizationId, latest.OrganizerId, cancellationToken))
+        {
+            series.Active = false;
+            await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            LogStopped(seriesId, organizationId);
+            return false;
+        }
+
         var zone = TimeZoneInfo.FindSystemTimeZoneById(series.TimeZone);
 
         // A professional walk stays professional: the organisation is copied too.
@@ -109,6 +122,19 @@ public sealed partial class WalkSeriesJob(
         notifications.Enqueue(new NotificationRequest(NotificationType.SeriesWalkCreated, NotificationSubject.ForWalk(next), null, participants));
         return true;
     }
+
+    /// <summary>The organisation is approved and the organizer is still its owner or an accepted educator.</summary>
+    private Task<bool> OrganizerMayCarryAsync(Guid organizationId, Guid? organizerId, CancellationToken cancellationToken) =>
+        db.Memberships.AnyAsync(
+            m => m.OrganizationId == organizationId
+                && m.UserId == organizerId
+                && m.Status == MembershipStatus.Accepted
+                && (m.Role == MembershipRole.Owner || m.Role == MembershipRole.Educator)
+                && m.Organization.Status == OrganizationStatus.Approved,
+            cancellationToken);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Stopped series {SeriesId}: organisation {OrganizationId} no longer approved, or its organizer no longer owner or educator")]
+    private partial void LogStopped(Guid seriesId, Guid organizationId);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Created walk {WalkId} of series {SeriesId}, starting at {StartsAt}")]
     private partial void LogCreated(Guid walkId, Guid seriesId, DateTimeOffset startsAt);

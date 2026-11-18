@@ -30,6 +30,13 @@ internal static class RegistrationRules
             return NotOpen();
         }
 
+        // Spec §4.6: only an approved organisation carries walks. A walk of an organisation that was
+        // closed or rejected afterwards is frozen: it stays as it is but takes no new registration.
+        if (walk.OrganizationId is { } frozenCandidate && !await IsOrganizationApprovedAsync(db, frozenCandidate, cancellationToken))
+        {
+            return NotOpen();
+        }
+
         // Someone else's dog is reported like a missing one (spec: 404).
         var dogs = await db.Dogs.AsNoTracking()
             .Where(d => attempt.DogIds.Contains(d.Id) && d.OwnerId == attempt.UserId)
@@ -64,11 +71,9 @@ internal static class RegistrationRules
         // (any role). The organizer, an owner or educator, registers their own dogs freely.
         if (walk.OrganizationId is { } organizationId
             && walk.OrganizerId != attempt.UserId
-            && !await db.Memberships.AnyAsync(
-                m => m.OrganizationId == organizationId && m.UserId == attempt.UserId && m.Status == MembershipStatus.Accepted,
-                cancellationToken))
+            && !await IsAcceptedMemberAsync(db, organizationId, attempt.UserId, cancellationToken))
         {
-            return Problems.Forbidden(ErrorCodes.WalkMembersOnly, "This walk is reserved to the members of its organisation.");
+            return MembersOnly();
         }
 
         // Only accepted dogs take a place. A pending request does not, but it is refused when
@@ -80,6 +85,34 @@ internal static class RegistrationRules
 
         return null;
     }
+
+    /// <summary>
+    /// Whether the organisation is <c>Approved</c>. Its row is share-locked until the transaction
+    /// ends, so that a concurrent closure or rejection waits for this registration, or is seen by it.
+    /// </summary>
+    public static async Task<bool> IsOrganizationApprovedAsync(DogoDbContext db, Guid organizationId, CancellationToken cancellationToken)
+    {
+        var statuses = await db.Database
+            .SqlQuery<string>($"SELECT status AS \"Value\" FROM organizations WHERE id = {organizationId} FOR SHARE")
+            .ToListAsync(cancellationToken);
+        return statuses is [nameof(OrganizationStatus.Approved)];
+    }
+
+    /// <summary>
+    /// Whether the user is an accepted member of the organisation (any role). The membership row is
+    /// share-locked until the transaction ends: a member leaving at the same time waits for this
+    /// registration and then cancels it, or has already left and is not seen.
+    /// </summary>
+    public static async Task<bool> IsAcceptedMemberAsync(DogoDbContext db, Guid organizationId, Guid userId, CancellationToken cancellationToken)
+    {
+        var memberships = await db.Database
+            .SqlQuery<Guid>($"SELECT id AS \"Value\" FROM memberships WHERE organization_id = {organizationId} AND user_id = {userId} AND status = 'Accepted' FOR SHARE")
+            .ToListAsync(cancellationToken);
+        return memberships.Count > 0;
+    }
+
+    public static ProblemHttpResult MembersOnly() =>
+        Problems.Forbidden(ErrorCodes.WalkMembersOnly, "This walk is reserved to the members of its organisation.");
 
     public static ProblemHttpResult NotOpen() =>
         Problems.Conflict(ErrorCodes.WalkNotOpen, "The walk is cancelled or has already started.");

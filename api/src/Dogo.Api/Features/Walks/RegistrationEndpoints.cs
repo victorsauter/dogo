@@ -31,7 +31,7 @@ public static class RegistrationEndpoints
 
         group.MapPost("/{registrationId:guid}/accept", AcceptRegistration)
             .WithName("acceptRegistration")
-            .WithSummary("Accept a pending registration (organizer only). Capacity is checked again.")
+            .WithSummary("Accept a pending registration (organizer only). Size, capacity, membership and the organisation's status are checked again.")
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
@@ -163,6 +163,13 @@ public static class RegistrationEndpoints
             return NotActive();
         }
 
+        // The rules of the request are replayed, except the block and the duplicate (spec §4.3):
+        // the organisation may have been closed or rejected since (spec §4.6).
+        if (walk.OrganizationId is { } organizationId && !await RegistrationRules.IsOrganizationApprovedAsync(db, organizationId, cancellationToken))
+        {
+            return RegistrationRules.NotOpen();
+        }
+
         // The allowed sizes may have changed since the request.
         var dog = await db.Dogs.AsNoTracking().SingleOrDefaultAsync(d => d.Id == registration.DogId, cancellationToken);
         if (dog is null || !walk.AllowedSizes.Contains(dog.Size))
@@ -173,6 +180,14 @@ public static class RegistrationEndpoints
         if (await db.CountAcceptedAsync(walk.Id, cancellationToken) >= walk.MaxDogs)
         {
             return RegistrationRules.Full();
+        }
+
+        // The author may have left the organisation, or been removed from it, since the request.
+        if (walk.OrganizationId is { } memberOrganizationId
+            && registration.UserId != walk.OrganizerId
+            && !await RegistrationRules.IsAcceptedMemberAsync(db, memberOrganizationId, registration.UserId, cancellationToken))
+        {
+            return RegistrationRules.MembersOnly();
         }
 
         registration.Status = RegistrationStatus.Accepted;

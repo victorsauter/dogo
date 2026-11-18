@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Dogo.Api.Common;
 using Dogo.Api.Features.Notifications;
+using Dogo.Api.Features.Walks;
 using Dogo.Api.Infrastructure.Auth;
 using Dogo.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -50,7 +51,7 @@ public static class MembershipEndpoints
 
         group.MapDelete("/{membershipId:guid}", DeleteMembership)
             .WithName("deleteMembership")
-            .WithSummary("Leave an organisation or withdraw a request (own membership), or remove a member (owner or educator; only the owner removes an educator). The sole owner cannot leave.")
+            .WithSummary("Leave an organisation or withdraw a request (own membership), or remove a member (owner or educator; only the owner removes an educator). The sole owner cannot leave. The upcoming registrations of that user to the organisation's walks are cancelled.")
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
@@ -252,6 +253,7 @@ public static class MembershipEndpoints
         ClaimsPrincipal principal,
         DogoDbContext db,
         IOptions<AdminOptions> admin,
+        TimeProvider timeProvider,
         CancellationToken cancellationToken)
     {
         var userId = principal.GetUserId();
@@ -293,8 +295,25 @@ public static class MembershipEndpoints
             membership = other;
         }
 
+        // The membership row is deleted first: a registration of this user running at the same time
+        // holds it share-locked, so the deletion waits for it and the update below then sees it.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         db.Memberships.Remove(membership);
         await db.SaveChangesAsync(cancellationToken);
+
+        // Upcoming registrations to the walks reserved to the members of this organisation are
+        // cancelled, which frees their places. The walks this user organises are left alone: an
+        // organizer registers their own dogs freely (spec §4.3, §4.6).
+        var now = timeProvider.GetUtcNow();
+        var leaverId = membership.UserId;
+        await db.Registrations
+            .Where(r => r.UserId == leaverId
+                && (r.Status == RegistrationStatus.Pending || r.Status == RegistrationStatus.Accepted)
+                && r.Walk.OrganizationId == id
+                && r.Walk.OrganizerId != leaverId
+                && r.Walk.StartsAt > now)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RegistrationStatus.Cancelled), cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return TypedResults.NoContent();
     }
 
