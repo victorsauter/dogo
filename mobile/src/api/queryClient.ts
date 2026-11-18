@@ -1,0 +1,47 @@
+import { focusManager, onlineManager, QueryClient } from '@tanstack/react-query';
+import * as Network from 'expo-network';
+import { AppState, Platform } from 'react-native';
+
+import { ApiError } from './errors';
+
+const MAX_RETRIES = 2;
+
+/** Retries network and 5xx failures, never 4xx (the answer will not change). */
+export function shouldRetry(failureCount: number, error: unknown): boolean {
+  if (error instanceof ApiError && error.isClientError) return false;
+  return failureCount < MAX_RETRIES;
+}
+
+export function createQueryClient(): QueryClient {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 30_000,
+        retry: shouldRetry,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  });
+}
+
+/**
+ * Wires TanStack Query to React Native: refetch when the app comes back to the
+ * foreground and when the network comes back. Call once; returns a cleanup.
+ */
+export function connectQueryEventsToReactNative(): () => void {
+  if (Platform.OS === 'web') return () => {};
+
+  onlineManager.setEventListener((setOnline) => {
+    const subscription = Network.addNetworkStateListener((state) => {
+      setOnline(state.isConnected !== false);
+    });
+    return () => subscription.remove();
+  });
+
+  const appState = AppState.addEventListener('change', (status) => {
+    focusManager.setFocused(status === 'active');
+  });
+  return () => appState.remove();
+}

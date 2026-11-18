@@ -1,0 +1,74 @@
+import type { ConfigContext, ExpoConfig } from 'expo/config';
+
+/**
+ * Permission texts shown by iOS and Android when the app asks for access.
+ * Later features (map, photos, notifications) reuse these exact strings when
+ * they add the matching Expo module config plugin.
+ */
+const permissions = {
+  locationWhenInUse:
+    'dogo utilise ta position pour te montrer les balades proches de toi et placer un point de rendez-vous.',
+  photoLibrary:
+    'dogo accède à tes photos pour que tu choisisses ta photo de profil et celles de tes chiens.',
+  camera: 'dogo utilise l’appareil photo pour prendre ta photo de profil et celles de tes chiens.',
+} as const;
+
+const brandColor = '#F4EFE6';
+
+export default ({ config }: ConfigContext): ExpoConfig => ({
+  ...config,
+  name: 'dogo',
+  slug: 'dogo',
+  scheme: 'dogo',
+  platforms: ['ios', 'android'],
+  version: '0.1.0',
+  orientation: 'portrait',
+  icon: './assets/icon.png',
+  userInterfaceStyle: 'automatic',
+  ios: {
+    // Provisional identifier, to confirm before any store submission (spec §7).
+    bundleIdentifier: 'com.victorsauter.dogo',
+    supportsTablet: false,
+    infoPlist: {
+      NSLocationWhenInUseUsageDescription: permissions.locationWhenInUse,
+      NSPhotoLibraryUsageDescription: permissions.photoLibrary,
+      NSCameraUsageDescription: permissions.camera,
+    },
+  },
+  android: {
+    package: 'com.victorsauter.dogo',
+    adaptiveIcon: {
+      backgroundColor: brandColor,
+      foregroundImage: './assets/android-icon-foreground.png',
+      backgroundImage: './assets/android-icon-background.png',
+      monochromeImage: './assets/android-icon-monochrome.png',
+    },
+    permissions: [
+      'android.permission.ACCESS_COARSE_LOCATION',
+      'android.permission.ACCESS_FINE_LOCATION',
+      'android.permission.CAMERA',
+      'android.permission.POST_NOTIFICATIONS',
+    ],
+    predictiveBackGestureEnabled: false,
+  },
+  web: {
+    favicon: './assets/favicon.png',
+  },
+  plugins: [
+    'expo-router',
+    'expo-secure-store',
+    [
+      'expo-splash-screen',
+      {
+        image: './assets/splash-icon.png',
+        imageWidth: 160,
+        resizeMode: 'contain',
+        backgroundColor: brandColor,
+        dark: { backgroundColor: '#1C1A17' },
+      },
+    ],
+  ],
+  experiments: {
+    typedRoutes: true,
+  },
+});
