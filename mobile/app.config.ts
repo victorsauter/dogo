@@ -86,6 +86,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     '@react-native-community/datetimepicker',
+    // Apple Maps on iOS needs no key; Android uses Google Maps (Expo Go's key in
+    // development, a key of our own for a store build, see mobile/README.md).
+    ['expo-location', { locationWhenInUsePermission: permissions.locationWhenInUse }],
     ...googleSignInPlugin(),
     [
       'expo-splash-screen',
