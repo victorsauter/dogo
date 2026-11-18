@@ -68,10 +68,7 @@ export default function NotificationSettingsScreen() {
 
   function toggle(name: PreferenceName, value: boolean) {
     setError(null);
-    update.mutate(
-      { ...values, [name]: value },
-      { onError: () => setError(t.notifications.saveFailed) },
-    );
+    update.mutate({ [name]: value }, { onError: () => setError(t.notifications.saveFailed) });
   }
 
   return (

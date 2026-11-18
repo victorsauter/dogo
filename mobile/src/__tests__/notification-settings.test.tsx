@@ -99,6 +99,39 @@ describe('notification settings', () => {
     expect(screen.getByText(t.notifications.saveFailed)).toBeTruthy();
   });
 
+  it('sends two quick toggles one after the other, the second carrying both changes', async () => {
+    const releases: ((response: Response) => void)[] = [];
+    const { calls } = mockApi({
+      'GET /api/v1/me/notification-preferences': () => ok(prefs),
+      'PUT /api/v1/me/notification-preferences': () =>
+        new Promise<Response>((resolve) => releases.push(resolve)),
+    });
+    await open();
+    await screen.findByText(t.notifications.remindersHint);
+    const puts = () => calls.filter((c) => c.method === 'PUT');
+
+    await fireEvent(toggleOf(t.notifications.messages), 'valueChange', false);
+    await waitFor(() => expect(puts()).toHaveLength(1));
+    await fireEvent(toggleOf(t.notifications.reminders), 'valueChange', false);
+
+    // The second save waits for the first: they cannot reach the server out of order.
+    await waitFor(() => expect(toggleOf(t.notifications.reminders).props.value).toBe(false));
+    expect(puts()).toHaveLength(1);
+    expect(toggleOf(t.notifications.reminders).props.value).toBe(false);
+
+    // The first answer must not put the screen back to before the second toggle.
+    await act(async () => releases[0]!(jsonResponse({ ...prefs, messages: false })));
+    expect(toggleOf(t.notifications.reminders).props.value).toBe(false);
+    await waitFor(() => expect(puts()).toHaveLength(2));
+    expect(puts()[1]!.json).toEqual({ ...prefs, messages: false, reminders: false });
+
+    await act(async () =>
+      releases[1]!(jsonResponse({ ...prefs, messages: false, reminders: false })),
+    );
+    expect(toggleOf(t.notifications.messages).props.value).toBe(false);
+    expect(toggleOf(t.notifications.reminders).props.value).toBe(false);
+  });
+
   it('keeps its own value when the server answers differently', async () => {
     mockApi({
       'GET /api/v1/me/notification-preferences': () => ok(prefs),
