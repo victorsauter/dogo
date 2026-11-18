@@ -90,7 +90,19 @@ function Thread({ walk }: { walk: WalkDetail }) {
   const openAuthor = (userId: string) =>
     router.push({ pathname: '/users/[id]', params: { id: userId } });
 
-  function onScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
+  // The scroll view's `scrollToEnd` uses the real content height; the list's
+  // own estimates the rows not measured yet (a long message) and stopped short.
+  function scrollToNewest() {
+    const scrollView = listRef.current?.getNativeScrollRef();
+    if (scrollView) scrollView.scrollToEnd({ animated: false });
+    else listRef.current?.scrollToEnd({ animated: false });
+  }
+
+  // Only the person's own scrolling decides whether the list sticks to the
+  // newest message: scroll events also fire while the first pages lay out (and
+  // when the list keeps its position), which used to unstick it before the
+  // newest message was shown.
+  function onUserScrollEnd(event: NativeSyntheticEvent<NativeScrollEvent>) {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     stickToBottom.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) < 80;
   }
@@ -108,16 +120,21 @@ function Thread({ walk }: { walk: WalkDetail }) {
     body = (
       <FlatList
         ref={listRef}
+        testID="thread-list"
         data={rows}
         keyExtractor={(row) => row.key}
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
-        onScroll={onScroll}
-        scrollEventThrottle={100}
+        onScrollEndDrag={onUserScrollEnd}
+        onMomentumScrollEnd={onUserScrollEnd}
         onContentSizeChange={() => {
-          if (stickToBottom.current) listRef.current?.scrollToEnd({ animated: false });
+          if (stickToBottom.current) scrollToNewest();
+        }}
+        // The keyboard opening shrinks the list: keep the newest message in view.
+        onLayout={() => {
+          if (stickToBottom.current) scrollToNewest();
         }}
         refreshControl={
           <RefreshControl
