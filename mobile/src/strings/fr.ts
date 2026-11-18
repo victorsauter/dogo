@@ -418,7 +418,7 @@ export const fr = {
     removeMessage: 'Cette personne ne fera plus partie de l’organisation.',
     promote: 'Nommer éducateur',
     promoteA11y: 'Nommer {name} éducateur',
-    demote: 'Redevenir membre',
+    demote: 'Retirer le rôle d’éducateur',
     demoteA11y: 'Rendre {name} simple membre',
     membersForbidden: 'Seuls le responsable et les éducateurs voient la liste des membres.',
   },
