@@ -603,8 +603,7 @@ export const fr = {
   /** Messages for the stable `code` extension of API problem responses (spec §1, §4). */
   errors: {
     'photo.too_large': 'Cette photo est trop lourde (5 Mo au maximum).',
-    'photo.unsupported_type':
-      'Ce format n’est pas accepté. Utilise une photo JPEG, PNG, WebP ou HEIC.',
+    'photo.unsupported_type': 'Ce format n’est pas accepté. Utilise une photo JPEG, PNG ou WebP.',
     'photo.missing': 'Aucune photo n’a été envoyée.',
     'photo.not_found': 'Cette photo n’existe plus.',
     'request.too_large': 'Le fichier envoyé est trop volumineux.',
