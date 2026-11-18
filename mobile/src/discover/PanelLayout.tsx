@@ -295,7 +295,7 @@ export function PanelLayout({ location }: { location: UserLocation }) {
           />
         </BottomSheet>
         {/* Drawn after the panel so it stays on top while the panel moves; above the panel at its low and middle positions; at the high one it covers the map. */}
-        {position < 2 ? (
+        {position !== 2 ? (
           <LocateButton
             location={location}
             map={map}
