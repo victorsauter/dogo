@@ -20,6 +20,10 @@ describe('shouldRetry', () => {
     expect(shouldRetry(0, new ApiError({ kind: 'http', status: 409 }))).toBe(false);
   });
 
+  it('never retries app-side failures', () => {
+    expect(shouldRetry(0, new ApiError({ kind: 'client' }))).toBe(false);
+  });
+
   it('retries network and server failures twice', () => {
     const network = new ApiError({ kind: 'network' });
     const server = new ApiError({ kind: 'http', status: 503 });

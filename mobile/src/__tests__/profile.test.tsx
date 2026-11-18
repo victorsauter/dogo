@@ -146,7 +146,11 @@ describe('edit profile', () => {
     await waitFor(() => expect(sessionStore.getSession()?.user.photoUrl).toBe('/photos/new.jpg'));
     const upload = calls.find((c) => c.method === 'PUT');
     expect(upload?.path).toBe('/api/v1/me/photo');
-    expect(upload?.contentType).not.toContain('json');
+    expect(upload?.contentType).toMatch(/^multipart\/form-data; boundary=/);
+    const file = upload?.form?.get('file') as File;
+    expect(file).toBeInstanceOf(Blob);
+    expect(file.name).toBe('photo.jpg');
+    expect(file.type).toBe('image/jpeg');
     expect(screen).toHavePathname('/profile');
   });
 

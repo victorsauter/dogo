@@ -1,5 +1,10 @@
 import { jsonResponse, problemResponse } from './fixtures';
 
+/** Multipart body read back by the test runtime (Node's `FormData`). */
+export interface MultipartBody {
+  get(name: string): unknown;
+}
+
 export interface MockRequest {
   method: string;
   /** Path and query, without the origin (`/api/v1/dogs/abc`). */
@@ -7,6 +12,8 @@ export interface MockRequest {
   /** Parsed JSON body; `undefined` for no body or multipart. */
   json?: unknown;
   contentType: string | null;
+  /** Parsed multipart body (photo uploads); `undefined` otherwise. */
+  form?: MultipartBody;
   request: Request;
 }
 
@@ -31,10 +38,15 @@ export function mockApi(routes: Record<string, MockHandler>) {
         json = undefined;
       }
     }
+    let form: MockRequest['form'];
+    if (contentType?.startsWith('multipart/form-data')) {
+      form = (await request.clone().formData()) as unknown as MultipartBody;
+    }
     const call: MockRequest = {
       method: request.method,
       path: url.pathname + url.search,
       json,
+      form,
       contentType,
       request,
     };

@@ -190,6 +190,7 @@ describe('dog form', () => {
       'POST /api/v1/dogs',
       'PUT /api/v1/dogs/new-dog-id/photo',
     ]);
+    expect((calls[1]!.form?.get('file') as File).name).toBe('photo.jpg');
     expect(calls[0]!.json).toEqual({
       name: 'Nala',
       size: 'Small',
@@ -247,6 +248,48 @@ describe('dog form', () => {
       birthDate: '2022-03-15',
       description: 'Adore les balades en forêt.',
     });
+  });
+
+  it('shows a paw, not the initial of « Chien », while the new dog has no name (defect D3)', async () => {
+    mockApi({});
+    await signIn();
+    await renderRouter(APP_DIR, { initialUrl: '/dogs/new' });
+    expect(await screen.findByLabelText(t.a11y.photo)).toBeTruthy();
+    expect(screen.queryByText('C')).toBeNull();
+    await fireEvent.changeText(screen.getByLabelText(t.dog.name), 'Nala');
+    expect(screen.getByText('N')).toBeTruthy();
+  });
+
+  it('leaves no dead end when the dog is saved but its photo is not', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    jest.mocked(pickPhoto).mockResolvedValue({
+      uri: 'file:///tmp/new.jpg',
+      name: 'photo.jpg',
+      type: 'image/jpeg',
+    });
+    let uploads = 0;
+    mockApi({
+      [`GET ${dogPath}`]: () => ok(testDog),
+      [`PATCH ${dogPath}`]: () => ok(testDog),
+      [`PUT ${dogPath}/photo`]: () => {
+        uploads += 1;
+        return uploads === 1 ? problemResponse(413, 'photo.too_large') : ok(testDog);
+      },
+    });
+    await signIn();
+    await renderRouter(APP_DIR, { initialUrl: `/dogs/${testDog.id}/edit` });
+    await screen.findByDisplayValue('Biscotte');
+    await fireEvent.press(screen.getByRole('button', { name: t.photo.fromLibrary }));
+    await fireEvent.press(screen.getByRole('button', { name: t.common.save }));
+
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+    const [title, message, buttons] = alert.mock.calls[0]!;
+    expect(title).toBe(t.dog.updatedPhotoFailed);
+    expect(message).toBe(t.errors['photo.too_large']);
+    expect(buttons?.map((b) => b.text)).toEqual([t.dog.photoLater, t.dog.photoRetry]);
+    await act(async () => buttons![1]!.onPress!());
+    await waitFor(() => expect(uploads).toBe(2));
+    alert.mockRestore();
   });
 
   it('refuses to edit a dog that is not mine', async () => {

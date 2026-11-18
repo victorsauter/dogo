@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { StyleSheet, TextInput, type TextInputProps } from 'react-native';
 
 import { useTheme } from '@/theme';
 
+import { FieldAnchor } from './FormScroll';
 import { Text } from './Text';
 
 export interface TextFieldProps extends Omit<TextInputProps, 'style'> {
@@ -11,12 +12,15 @@ export interface TextFieldProps extends Omit<TextInputProps, 'style'> {
   error?: string;
   /** Help text shown under the field when there is no error. */
   hint?: string;
+  /** Name in the form's errors, to scroll to it when it is the first in error. */
+  name?: string;
 }
 
 export function TextField({
   label,
   error,
   hint,
+  name,
   multiline,
   onFocus,
   onBlur,
@@ -27,7 +31,7 @@ export function TextField({
   const borderColor = error ? colors.danger : focused ? colors.primary : colors.border;
 
   return (
-    <View style={{ gap: spacing.xs }}>
+    <FieldAnchor name={name} style={{ gap: spacing.xs }}>
       <Text variant="label">{label}</Text>
       <TextInput
         accessibilityLabel={label}
@@ -67,7 +71,7 @@ export function TextField({
           {hint}
         </Text>
       ) : null}
-    </View>
+    </FieldAnchor>
   );
 }
 

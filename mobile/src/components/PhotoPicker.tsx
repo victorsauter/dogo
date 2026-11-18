@@ -7,6 +7,7 @@ import { t } from '@/strings';
 import { useTheme } from '@/theme';
 
 import { Avatar } from './Avatar';
+import type { IconName } from './Icon';
 import { Button } from './Button';
 import { Text } from './Text';
 
@@ -21,10 +22,20 @@ export interface PhotoPickerProps {
   /** Error from the upload (French), shown under the buttons. */
   error?: string;
   disabled?: boolean;
+  /** Shown in the avatar while `name` is empty. */
+  placeholderIcon?: IconName;
 }
 
 /** Avatar with « Photothèque » and « Appareil photo » buttons. Uploading is left to the form. */
-export function PhotoPicker({ name, photoUrl, picked, onPick, error, disabled }: PhotoPickerProps) {
+export function PhotoPicker({
+  name,
+  photoUrl,
+  picked,
+  onPick,
+  error,
+  disabled,
+  placeholderIcon,
+}: PhotoPickerProps) {
   const { spacing } = useTheme();
   const [pickError, setPickError] = useState<string | null>(null);
 
@@ -41,7 +52,12 @@ export function PhotoPicker({ name, photoUrl, picked, onPick, error, disabled }:
   const message = pickError ?? error;
   return (
     <View style={{ alignItems: 'center', gap: spacing.md }}>
-      <Avatar name={name} photoUrl={picked?.uri ?? photoUrl} size={112} />
+      <Avatar
+        name={name}
+        photoUrl={picked?.uri ?? photoUrl}
+        size={112}
+        placeholderIcon={placeholderIcon}
+      />
       <View style={{ gap: spacing.sm, alignSelf: 'stretch' }}>
         <Button
           label={t.photo.fromLibrary}

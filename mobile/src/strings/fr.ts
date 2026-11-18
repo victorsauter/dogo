@@ -118,6 +118,10 @@ export const fr = {
     deleteConfirmTitle: 'Supprimer {name} ?',
     deleteConfirmMessage: 'Ses inscriptions à venir seront annulées. Cette action est définitive.',
     deleteFailed: 'Le chien n’a pas pu être supprimé.',
+    updatedPhotoFailed:
+      'Les modifications sont enregistrées, mais la photo n’a pas pu être envoyée.',
+    photoRetry: 'Renvoyer la photo',
+    photoLater: 'Plus tard',
     createdPhotoFailed:
       'Le chien est enregistré, mais la photo n’a pas pu être envoyée. Ajoute-la depuis sa fiche.',
   },
@@ -133,6 +137,7 @@ export const fr = {
   },
   a11y: {
     avatarOf: 'Photo de {name}',
+    photo: 'Photo',
     loading: 'Chargement en cours',
   },
   enums: {
@@ -193,6 +198,8 @@ export const fr = {
     forbidden: 'Tu n’as pas accès à cette action.',
     server: 'Le service rencontre un problème. Réessaie dans un instant.',
     network: 'Impossible de joindre le serveur. Vérifie ta connexion internet.',
+    unexpected:
+      'Un problème est survenu dans l’application. Réessaie ; s’il persiste, redémarre-la.',
     generic: 'Une erreur est survenue. Réessaie.',
   },
 } as const;
@@ -200,5 +207,5 @@ export const fr = {
 export type Strings = typeof fr;
 export type ApiErrorCode = Exclude<
   keyof Strings['errors'],
-  'notFound' | 'forbidden' | 'server' | 'network' | 'generic'
+  'notFound' | 'forbidden' | 'server' | 'network' | 'unexpected' | 'generic'
 >;

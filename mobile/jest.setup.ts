@@ -22,3 +22,20 @@ jest.mock('expo-network', () => ({
   addNetworkStateListener: jest.fn(() => ({ remove: jest.fn() })),
   getNetworkStateAsync: jest.fn(async () => ({ isConnected: true, isInternetReachable: true })),
 }));
+
+// expo-file-system's `File` is native. In tests it is a real `Blob` (Node's),
+// so multipart bodies built with it are encoded and can be read back.
+jest.mock('expo-file-system', () => {
+  const JPEG_MAGIC = [0xff, 0xd8, 0xff, 0xe0];
+  class File extends Blob {
+    readonly uri: string;
+    readonly name: string;
+    constructor(uri: string) {
+      const name = uri.split('/').pop() ?? 'file';
+      super([new Uint8Array(JPEG_MAGIC)], { type: /\.jpe?g$/i.test(name) ? 'image/jpeg' : '' });
+      this.uri = uri;
+      this.name = name;
+    }
+  }
+  return { File, Paths: {} };
+});

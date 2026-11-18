@@ -1,8 +1,17 @@
-import type { PropsWithChildren } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View, type ViewStyle } from 'react-native';
+import { useRef, type PropsWithChildren } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  View,
+  type ScrollViewInstance,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme';
+
+import { FormScrollProvider } from './FormScroll';
 
 export interface ScreenProps {
   /** Wraps the content in a ScrollView (default). Use `false` for lists and centered states. */
@@ -14,7 +23,11 @@ export interface ScreenProps {
   contentStyle?: ViewStyle;
 }
 
-/** Base of every screen: background, safe area, keyboard avoidance and optional scroll. */
+/**
+ * Base of every screen: background, safe area, keyboard avoidance and optional
+ * scroll. A scrolling screen lets its forms scroll to the first field in error
+ * (`useScrollToFirstError`).
+ */
 export function Screen({
   children,
   scroll = true,
@@ -23,6 +36,7 @@ export function Screen({
   contentStyle,
 }: PropsWithChildren<ScreenProps>) {
   const { colors, spacing } = useTheme();
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const content: ViewStyle = {
     padding: padded ? spacing.lg : 0,
     gap: spacing.lg,
@@ -36,12 +50,15 @@ export function Screen({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         {scroll ? (
-          <ScrollView
-            contentContainerStyle={[{ flexGrow: 1 }, content]}
-            keyboardShouldPersistTaps="handled"
-          >
-            {children}
-          </ScrollView>
+          <FormScrollProvider scrollRef={scrollRef}>
+            <ScrollView
+              ref={scrollRef}
+              contentContainerStyle={[{ flexGrow: 1 }, content]}
+              keyboardShouldPersistTaps="handled"
+            >
+              {children}
+            </ScrollView>
+          </FormScrollProvider>
         ) : (
           <View style={[{ flex: 1 }, content]}>{children}</View>
         )}

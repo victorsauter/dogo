@@ -13,6 +13,13 @@ export { DogCard, dogSummary } from './DogCard';
 export { DogForm, type DogFormProps } from './DogForm';
 export { EmptyState, type EmptyStateProps, type StateAction } from './EmptyState';
 export { ErrorState, type ErrorStateProps } from './ErrorState';
+export {
+  createFieldRegistry,
+  FieldAnchor,
+  FormScrollProvider,
+  useScrollToFirstError,
+  type FieldAnchorProps,
+} from './FormScroll';
 export { Icon, type IconName, type IconProps } from './Icon';
 export { ListItem, type ListItemProps } from './ListItem';
 export { LoadingState } from './LoadingState';

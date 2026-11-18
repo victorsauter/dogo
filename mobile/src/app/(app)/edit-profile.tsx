@@ -5,7 +5,7 @@ import { errorMessage } from '@/api/errors';
 import type { PickedPhoto } from '@/api/photoUpload';
 import { useUpdateProfile, useUploadMyPhoto } from '@/api/profile';
 import { useSession } from '@/auth';
-import { Button, PhotoPicker, Screen, Text, TextField } from '@/components';
+import { Button, PhotoPicker, Screen, Text, TextField, useScrollToFirstError } from '@/components';
 import {
   limits,
   profileFields,
@@ -19,7 +19,18 @@ import { t } from '@/strings';
 /** Edit my profile; `?welcome=1` adds the first-run sentence (new member). */
 export default function EditProfileScreen() {
   const { welcome } = useLocalSearchParams<{ welcome?: string }>();
+  return (
+    <Screen>
+      <Stack.Screen options={{ title: t.profile.editTitle }} />
+      <EditProfileForm welcome={Boolean(welcome)} />
+    </Screen>
+  );
+}
+
+/** Rendered inside `Screen`, so a failed save can scroll to the first field in error. */
+function EditProfileForm({ welcome }: { welcome: boolean }) {
   const { user } = useSession();
+  const scrollToFirstError = useScrollToFirstError();
   const router = useRouter();
   const update = useUpdateProfile();
   const uploadPhoto = useUploadMyPhoto();
@@ -39,13 +50,18 @@ export default function EditProfileScreen() {
     setErrors(found);
     setFormError(null);
     setPhotoError(undefined);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) {
+      void scrollToFirstError(found);
+      return;
+    }
 
     try {
       await update.mutateAsync({ displayName: values.displayName.trim(), bio: values.bio.trim() });
     } catch (error) {
-      setErrors(serverFieldErrors(error, profileFields));
+      const serverErrors = serverFieldErrors(error, profileFields);
+      setErrors(serverErrors);
       setFormError(errorMessage(error));
+      void scrollToFirstError(serverErrors);
       return;
     }
     if (photo) {
@@ -62,8 +78,7 @@ export default function EditProfileScreen() {
 
   const name = values.displayName || user?.displayName || '';
   return (
-    <Screen>
-      <Stack.Screen options={{ title: t.profile.editTitle }} />
+    <>
       {welcome ? <Text color="textMuted">{t.profile.welcome}</Text> : null}
       <PhotoPicker
         name={name}
@@ -77,6 +92,7 @@ export default function EditProfileScreen() {
         disabled={saving}
       />
       <TextField
+        name="displayName"
         label={t.profile.displayName}
         value={values.displayName}
         onChangeText={(text) => {
@@ -88,6 +104,7 @@ export default function EditProfileScreen() {
         autoCapitalize="words"
       />
       <TextField
+        name="bio"
         label={t.profile.bio}
         value={values.bio}
         onChangeText={(text) => {
@@ -108,6 +125,6 @@ export default function EditProfileScreen() {
       {welcome ? (
         <Button label={t.profile.later} variant="secondary" onPress={() => router.back()} />
       ) : null}
-    </Screen>
+    </>
   );
 }
