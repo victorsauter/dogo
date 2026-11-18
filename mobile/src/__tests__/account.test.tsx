@@ -220,6 +220,8 @@ describe('delete my account', () => {
     );
     await fireEvent.press(screen.getByRole('button', { name: t.deleteAccount.submit }));
     expect(await screen.findByText(t.errors['account.suspended'])).toBeTruthy();
+    // The lead sentence says what did not happen; the reason follows.
+    expect(screen.getByText(t.deleteAccount.failed)).toBeTruthy();
     expect(sessionStore.getSnapshot().status).toBe('signedIn');
     expect(screen).toHavePathname('/delete-account');
   });

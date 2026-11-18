@@ -19,6 +19,7 @@ import {
   placeMenu,
   TextField,
 } from '..';
+import { errorIcon } from '../ErrorState';
 
 describe('Button', () => {
   it('calls onPress', async () => {
@@ -237,5 +238,15 @@ describe('ErrorState', () => {
     expect(screen.getByText(t.errors.network)).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: t.common.retry }));
     expect(onRetry).toHaveBeenCalled();
+  });
+});
+
+describe('ErrorState icon', () => {
+  it('shows « hors ligne » only when the server could not be reached', () => {
+    expect(errorIcon(new ApiError({ kind: 'network' }))).toBe('offline');
+    expect(errorIcon(new ApiError({ kind: 'http', status: 404 }))).toBe('warning');
+    expect(errorIcon(new ApiError({ kind: 'http', status: 500 }))).toBe('warning');
+    expect(errorIcon(new ApiError({ kind: 'client' }))).toBe('warning');
+    expect(errorIcon(undefined)).toBe('warning');
   });
 });
