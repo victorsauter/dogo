@@ -114,7 +114,10 @@ export function useMyWalks(role: MyWalksRole, when: MyWalksPeriod) {
 
 /**
  * Keeps every view of walks consistent after a change: the detail (set from
- * the response when there is one), the search results and « Mes balades ».
+ * the response when there is one), the search results, « Mes balades » and the
+ * organisation pages (their upcoming walks, with their places left). Also what
+ * to call when something a walk displays changes: a participant's name or
+ * photo, a dog, the name of the organisation.
  * The refetches start but are not awaited: the write has succeeded, and a
  * mutation that waited for them would keep its button spinning (and invite a
  * second tap, so a second walk) for as long as a slow network takes.
@@ -123,6 +126,7 @@ export function walksChanged(queryClient: QueryClient, detail?: WalkDetail): voi
   if (detail) queryClient.setQueryData(walkKeys.detail(detail.id), detail);
   void queryClient.invalidateQueries({ queryKey: walkKeys.all });
   void queryClient.invalidateQueries({ queryKey: ['me', 'walks'] });
+  void queryClient.invalidateQueries({ queryKey: ['organizations'] });
 }
 
 // ---- Organizer: create, edit, cancel

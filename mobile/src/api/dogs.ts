@@ -4,7 +4,6 @@ import { api, unwrap } from './client';
 import { photoForm, type PickedPhoto } from './photoUpload';
 import { invalidateDogs, queryKeys } from './profile';
 import type { CreateDogRequest, UpdateDogRequest } from './types';
-import { walksChanged } from './walks';
 
 export function useMyDogs() {
   return useQuery({
@@ -38,7 +37,7 @@ export function useUpdateDog(id: string) {
   });
 }
 
-/** Deleting a dog cancels its upcoming registrations (spec §4.1): walks refresh too. */
+/** Deleting a dog cancels its upcoming registrations (spec §4.1): `invalidateDogs` refreshes the walks too. */
 export function useDeleteDog() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -49,7 +48,6 @@ export function useDeleteDog() {
     onSuccess: (id) => {
       queryClient.removeQueries({ queryKey: queryKeys.dog(id) });
       invalidateDogs(queryClient);
-      walksChanged(queryClient);
     },
   });
 }
