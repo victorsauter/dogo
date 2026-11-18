@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 
 import { useBlockedUsers, useUnblockUser } from '@/api/blocks';
 import { errorMessage } from '@/api/errors';
@@ -20,7 +20,7 @@ import { useTheme } from '@/theme';
 /** « Personnes bloquées »: the people I blocked, each with « Débloquer ». */
 export default function BlockedUsersScreen() {
   const router = useRouter();
-  const { spacing } = useTheme();
+  const { minTouchSize, spacing } = useTheme();
   const blocked = useBlockedUsers();
   const unblock = useUnblockUser();
   const [error, setError] = useState<string | null>(null);
@@ -64,16 +64,15 @@ export default function BlockedUsersScreen() {
           <Card>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
               <Avatar name={item.user.displayName} photoUrl={item.user.photoUrl} />
-              <Text
-                variant="subheading"
-                style={{ flex: 1 }}
+              <Pressable
                 accessibilityRole="button"
                 onPress={() =>
                   router.push({ pathname: '/users/[id]', params: { id: item.user.id } })
                 }
+                style={{ flex: 1, minHeight: minTouchSize, justifyContent: 'center' }}
               >
-                {item.user.displayName}
-              </Text>
+                <Text variant="subheading">{item.user.displayName}</Text>
+              </Pressable>
             </View>
             <Button
               label={t.block.unblock}

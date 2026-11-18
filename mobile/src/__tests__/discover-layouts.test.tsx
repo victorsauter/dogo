@@ -13,7 +13,7 @@ import {
 import { config } from '@/lib/config';
 import { t } from '@/strings';
 import { authResponse, testUser, walkResult } from '@/test/fixtures';
-import { mockApi, ok } from '@/test/mockApi';
+import { mockApi, ok, problemResponse } from '@/test/mockApi';
 
 const APP_DIR = './src/app';
 const devLogin = config.devLogin;
@@ -629,5 +629,53 @@ describe('« Panneau » view, « Ma position » button and the panel', () => {
     expect(
       screen.getByTestId('locate-anchor', { includeHiddenElements: true }).props.pointerEvents,
     ).toBe('box-none');
+  });
+});
+
+describe('a search that is full, or that failed', () => {
+  /** 100 walks, the API's maximum for one search. */
+  const fullPage = Array.from({ length: 100 }, (_, i) =>
+    walkResult({
+      id: `a1a1a1a1-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
+      title: `Balade ${i + 1}`,
+    }),
+  );
+
+  it('says the list is partial, not that the area holds exactly 100 walks (panel)', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok(fullPage) });
+    await open('panel');
+
+    expect(await screen.findByText('100 balades affichées : zoome pour affiner')).toBeTruthy();
+    expect(screen.queryByText('100 balades dans cette zone')).toBeNull();
+  });
+
+  it('says the list is partial (list view)', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok(fullPage) });
+    await open('list');
+
+    expect(
+      await screen.findByText(
+        '100 balades affichées : choisis une distance plus courte pour affiner',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText('100 balades')).toBeNull();
+  });
+
+  it('still counts a search below the maximum as the whole area', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok(fullPage.slice(0, 99)) });
+    await open('panel');
+    expect(await screen.findByText('99 balades dans cette zone')).toBeTruthy();
+  });
+
+  it('does not announce « Aucune balade » when the search failed (panel header)', async () => {
+    mockApi({ 'GET /api/v1/walks': () => problemResponse(400, 'validation.failed') });
+    await open('panel');
+
+    expect(await screen.findByText(t.discover.panelError)).toBeTruthy();
+    expect(screen.getByTestId('panel-handle')).toHaveAccessibleName(
+      `${t.discover.panelError}. ${t.discover.panelExpand}`,
+    );
+    // The empty-area title is only for an area that really is empty.
+    expect(screen.queryByText(t.discover.emptyTitle)).toBeNull();
   });
 });

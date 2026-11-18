@@ -2,6 +2,7 @@ import { View } from 'react-native';
 
 import { useTheme, type ColorTokens } from '@/theme';
 
+import { Button } from './Button';
 import { Text } from './Text';
 
 export type BannerTone = 'danger' | 'warning' | 'info';
@@ -10,10 +11,12 @@ export interface BannerProps {
   message: string;
   title?: string;
   tone?: BannerTone;
+  /** A button under the message (« Ouvrir les réglages »). */
+  action?: { label: string; onPress: () => void };
 }
 
 /** A sentence (or two) that frames a whole screen: « Cette balade est annulée », « Compte suspendu »… */
-export function Banner({ message, title, tone = 'danger' }: BannerProps) {
+export function Banner({ message, title, tone = 'danger', action }: BannerProps) {
   const { colors, radii, spacing } = useTheme();
   const palette: Record<BannerTone, { background: keyof ColorTokens; text: keyof ColorTokens }> = {
     danger: { background: 'dangerSoft', text: 'danger' },
@@ -39,6 +42,7 @@ export function Banner({ message, title, tone = 'danger' }: BannerProps) {
       <Text color={text} style={{ fontWeight: title ? '400' : '600' }}>
         {message}
       </Text>
+      {action ? <Button variant="secondary" label={action.label} onPress={action.onPress} /> : null}
     </View>
   );
 }

@@ -14,6 +14,7 @@ type NotificationsMock = typeof import('expo-notifications') & {
   __reset(): void;
   __tap(data: unknown): void;
   __receive(data: unknown): void;
+  __renewToken(token: string): void;
   __state: { permission: { granted: boolean; status: string; canAskAgain: boolean } };
 };
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- the mock of jest.setup.ts
@@ -181,6 +182,40 @@ describe('device registration', () => {
     expect(put.path).toBe('/api/v1/me/devices');
     expect(put.json).toEqual({ expoPushToken: TOKEN, platform: 'Ios' });
     expect(notifications.getExpoPushTokenAsync).toHaveBeenCalledWith({ projectId: 'project-id' });
+  });
+
+  it('registers the new token when the system rolls it, and removes the old one', async () => {
+    grant();
+    const NEW_TOKEN = 'ExponentPushToken[renewed-token]';
+    const { calls } = mockApi({
+      'PUT /api/v1/me/devices': () => ok({ expoPushToken: TOKEN, platform: 'Ios', updatedAt: 'x' }),
+      [`DELETE /api/v1/me/devices/${encodedToken}`]: () => new Response(null, { status: 204 }),
+      'GET /api/v1/me/dogs': () => ok([]),
+    });
+    await sessionStore.set(authResponse());
+    await renderRouter(APP_DIR, { initialUrl: '/profile' });
+    await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(1));
+
+    await act(async () => notifications.__renewToken(NEW_TOKEN));
+
+    await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(2));
+    expect(calls.filter((c) => c.method === 'PUT')[1]!.json).toEqual({
+      expoPushToken: NEW_TOKEN,
+      platform: 'Ios',
+    });
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === 'DELETE' && c.path.endsWith(encodedToken))).toBe(true),
+    );
+  });
+
+  it('ignores a renewed token while nobody is signed in', async () => {
+    grant();
+    const { calls } = mockApi({});
+    await renderRouter(APP_DIR, { initialUrl: '/' });
+    await screen.findByText(t.app.tagline);
+
+    await act(async () => notifications.__renewToken('ExponentPushToken[renewed-token]'));
+    expect(calls.some((c) => c.path.includes('/me/devices'))).toBe(false);
   });
 
   it('does not ask for permission nor register when it is not granted', async () => {
@@ -413,6 +448,48 @@ describe('receiving and tapping notifications', () => {
       notifications.__tap({});
     });
     expect(screen).toHavePathname('/profile');
+  });
+
+  /** A negative check: the walk the tap pointed to never opens, however long we wait. */
+  async function expectToStayOnTheHomeScreen() {
+    await expect(
+      waitFor(() => expect(screen).toHavePathname(`/walks/${walkId}`), { timeout: 400 }),
+    ).rejects.toBeDefined();
+    expect(screen).toHavePathname('/');
+  }
+
+  it('forgets a tap made while signed out: it may belong to another account', async () => {
+    mockApi(routes);
+    await renderRouter(APP_DIR, { initialUrl: '/' });
+    await screen.findByText(t.app.tagline);
+
+    // Account A's notification is tapped while nobody is signed in…
+    await act(async () =>
+      notifications.__tap({ type: 'walk_updated', walkId, url: `dogo://walks/${walkId}` }),
+    );
+    // …then account B signs in: A's walk must not open.
+    await act(() => sessionStore.set(authResponse()));
+    expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
+    await expectToStayOnTheHomeScreen();
+  });
+
+  it('forgets a tap that waited for the session when it turns out nobody is signed in', async () => {
+    mockApi(routes);
+    (notifications as unknown as { __state: { last: unknown } }).__state.last = {
+      notification: {
+        request: {
+          content: {
+            data: { type: 'walk_updated', walkId, url: `dogo://walks/${walkId}` },
+          },
+        },
+      },
+    };
+    await renderRouter(APP_DIR, { initialUrl: '/' });
+    await screen.findByText(t.app.tagline);
+
+    await act(() => sessionStore.set(authResponse({ user: { displayName: 'Autre compte' } })));
+    expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
+    await expectToStayOnTheHomeScreen();
   });
 
   it('shows foreground notifications and refreshes the walks', async () => {

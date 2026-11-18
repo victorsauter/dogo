@@ -25,51 +25,90 @@ function fetchMessages(walkId: string, before?: string): Promise<MessagePage> {
   );
 }
 
-/** Messages in order, oldest first, each id once (a later copy replaces an earlier one). */
+/**
+ * Messages in order, oldest first (by creation time, a tie keeping the order
+ * given), each id once: a later copy replaces an earlier one.
+ */
 export function mergeMessages(...lists: Message[][]): Message[] {
   const byId = new Map<string, Message>();
   for (const list of lists) for (const message of list) byId.set(message.id, message);
-  return [...byId.values()];
+  return [...byId.values()].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+}
+
+/** Pages read to close a hole when more than a page of messages arrived between two polls. */
+const MAX_GAP_PAGES = 20;
+
+/**
+ * Reads the latest page and folds it into what the cache already holds, so no
+ * message received is ever dropped: the cached thread is cumulative (the older
+ * pages loaded by hand, the messages sent from here). When more than one page
+ * of new messages came in since the last read, the newest page no longer
+ * touches the cached ones: the messages in between are read back, newest first,
+ * until they meet. The cache is read again once the network answered, so a
+ * page loaded or a message sent meanwhile is merged too, not overwritten.
+ */
+async function fetchThread(queryClient: QueryClient, walkId: string): Promise<MessagePage> {
+  const key = messageKeys.thread(walkId);
+  let page = await fetchMessages(walkId);
+  let fresh = page.items;
+  const known = new Set((queryClient.getQueryData<MessagePage>(key)?.items ?? []).map((m) => m.id));
+  let guard = 0;
+  while (
+    known.size > 0 &&
+    page.hasMore &&
+    page.items.length > 0 &&
+    !page.items.some((message) => known.has(message.id)) &&
+    guard < MAX_GAP_PAGES
+  ) {
+    guard += 1;
+    page = await fetchMessages(walkId, page.items[0]!.id);
+    fresh = [...page.items, ...fresh];
+  }
+  const cached = queryClient.getQueryData<MessagePage>(key);
+  if (!cached || cached.items.length === 0)
+    return { items: mergeMessages(fresh), hasMore: page.hasMore };
+  // The older end is the cache's: its `hasMore` says whether messages precede the first one.
+  return { items: mergeMessages(cached.items, fresh), hasMore: cached.hasMore };
 }
 
 /**
  * The thread of a walk: the latest page (refetched on focus, on pull to refresh
- * and by polling while `active`), plus older pages loaded on demand with
- * `before=<id of the oldest message shown>`.
+ * and by polling while `active`) merged into the messages already received,
+ * plus older pages loaded on demand with `before=<id of the oldest message shown>`.
+ * `latest.data` is the whole cumulative thread.
  */
 export function useWalkMessages(walkId: string, active: boolean) {
-  const [older, setOlder] = useState<{ items: Message[]; hasMore: boolean } | null>(null);
+  const queryClient = useQueryClient();
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [olderError, setOlderError] = useState<string | null>(null);
 
   const latest = useQuery({
     queryKey: messageKeys.thread(walkId),
-    queryFn: () => fetchMessages(walkId),
+    queryFn: () => fetchThread(queryClient, walkId),
     refetchInterval: active ? MESSAGES_POLL_MS : false,
   });
 
-  const items = mergeMessages(older?.items ?? [], latest.data?.items ?? []);
-  const hasMore = older ? older.hasMore : (latest.data?.hasMore ?? false);
+  const items = latest.data?.items ?? [];
+  const hasMore = latest.data?.hasMore ?? false;
+  const cursor = items[0]?.id;
 
   const loadOlder = useCallback(async () => {
-    const first = items[0];
-    if (!first || loadingOlder) return;
+    if (!cursor || loadingOlder) return;
     setLoadingOlder(true);
     setOlderError(null);
     try {
-      const page = await fetchMessages(walkId, first.id);
-      setOlder((current) => ({
-        items: mergeMessages(page.items, current?.items ?? []),
-        hasMore: page.hasMore,
-      }));
+      const page = await fetchMessages(walkId, cursor);
+      queryClient.setQueryData<MessagePage>(messageKeys.thread(walkId), (current) =>
+        current
+          ? { items: mergeMessages(page.items, current.items), hasMore: page.hasMore }
+          : current,
+      );
     } catch (error) {
       setOlderError(errorMessage(error));
     } finally {
       setLoadingOlder(false);
     }
-    // `items[0]` identifies the cursor; the list itself changes on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walkId, items[0]?.id, loadingOlder]);
+  }, [queryClient, walkId, cursor, loadingOlder]);
 
   return { latest, items, hasMore, loadOlder, loadingOlder, olderError };
 }
@@ -82,11 +121,21 @@ export interface PendingMessage {
   error?: string;
 }
 
-function addToThread(queryClient: QueryClient, walkId: string, message: Message) {
-  queryClient.setQueryData<MessagePage>(messageKeys.thread(walkId), (page) => ({
+/**
+ * Puts the message the API returned into the thread. Requests in flight are
+ * cancelled first: one that left before the answer would otherwise come back
+ * without the message and replace it.
+ */
+async function addToThread(queryClient: QueryClient, walkId: string, message: Message) {
+  const key = messageKeys.thread(walkId);
+  await queryClient.cancelQueries({ queryKey: key });
+  const known = queryClient.getQueryData<MessagePage>(key) !== undefined;
+  queryClient.setQueryData<MessagePage>(key, (page) => ({
     hasMore: page?.hasMore ?? false,
     items: mergeMessages(page?.items ?? [], [message]),
   }));
+  // Nothing was loaded yet (the thread was still opening): read the rest.
+  if (!known) void queryClient.invalidateQueries({ queryKey: key });
 }
 
 /**
@@ -114,7 +163,7 @@ export function useSendMessage(walkId: string) {
             body: { text },
           }),
         );
-        addToThread(queryClient, walkId, message);
+        await addToThread(queryClient, walkId, message);
         setPending((list) => list.filter((item) => item.localId !== localId));
       } catch (error) {
         setPending((list) =>

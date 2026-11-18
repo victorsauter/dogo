@@ -31,6 +31,7 @@ import {
 } from '@/components';
 import { regionAround, type MapRegion } from '@/lib/geo';
 import { useDebouncedValue, useDelayedFlag, useRefetchOnFocusIfStale } from '@/lib/hooks';
+import { openAppSettings } from '@/lib/linking';
 import type { UserLocation } from '@/lib/location';
 import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
@@ -162,6 +163,8 @@ export function FilterBar({
 export interface DiscoverHeaderProps extends FilterBarProps {
   /** Sentence under the filters (position unknown). */
   notice?: string | null;
+  /** Button after the sentence: « Ouvrir les réglages » when the location was refused. */
+  noticeAction?: { label: string; onPress: () => void };
   style?: ViewStyle;
 }
 
@@ -171,6 +174,7 @@ export function DiscoverHeader({
   onFiltersChange,
   radius,
   notice,
+  noticeAction,
   style,
 }: DiscoverHeaderProps) {
   const { spacing } = useTheme();
@@ -188,6 +192,9 @@ export function DiscoverHeader({
         <Text variant="caption" color="textMuted">
           {notice}
         </Text>
+      ) : null}
+      {notice && noticeAction ? (
+        <Button variant="secondary" label={noticeAction.label} onPress={noticeAction.onPress} />
       ) : null}
     </View>
   );
@@ -236,10 +243,12 @@ export function MapTopControls({
   filters,
   onFiltersChange,
   notice,
+  noticeAction,
   onCreate,
   onHeightChange,
 }: FilterBarProps & {
   notice?: string | null;
+  noticeAction?: { label: string; onPress: () => void };
   onCreate?: () => void;
   onHeightChange: (height: number) => void;
 }) {
@@ -289,7 +298,7 @@ export function MapTopControls({
       </View>
       {notice ? (
         <View pointerEvents="box-none" style={{ paddingHorizontal: spacing.lg }}>
-          <MapNotice message={notice} align="start" />
+          <MapNotice message={notice} action={noticeAction} align="start" />
         </View>
       ) : null}
     </View>
@@ -307,6 +316,19 @@ const visuallyHidden: TextStyle = {
 
 export function locationUnknown(location: UserLocation): boolean {
   return location.status === 'denied' || location.status === 'unavailable';
+}
+
+/**
+ * What the person can do about the location notice: when the permission was
+ * refused, only the system settings can change it. (No button when the position
+ * is merely unavailable: services off or a timeout, nothing to allow.)
+ */
+export function locationNoticeAction(
+  location: UserLocation,
+): { label: string; onPress: () => void } | undefined {
+  return location.status === 'denied'
+    ? { label: t.common.openSettings, onPress: () => void openAppSettings() }
+    : undefined;
 }
 
 /** Walks by start date, soonest first. */

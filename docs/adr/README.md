@@ -35,6 +35,7 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0031](0031-durcissement-de-l-api.md) | Durcissement de l'API : environnements en liste blanche, limitation de débit, en-têtes transférés | Proposé |
 | [0032](0032-nettoyage-des-photos.md) | Nettoyage des photos : décodage et réencodage côté serveur (SkiaSharp), HEIC refusé, cache privé ; précise l'ADR 0010 | Proposé |
 | [0033](0033-fin-de-session-et-delais-reseau.md) | Mobile : fin de session expliquée, persistance sûre de la session, délais réseau et configuration de distribution (précise 0014 et 0022) | Accepté |
+| [0034](0034-robustesse-des-ecrans.md) | Robustesse des écrans : cache cumulatif du fil, écritures sans attente, navigation conditionnée au focus | Accepté |
 
 ## Statuts
 

@@ -33,7 +33,7 @@ export default function DeleteAccountScreen() {
         setSignInNotice(t.auth.accountDeleted);
         await endSession();
       },
-      onError: (e) => setError(errorMessage(e) || t.deleteAccount.failed),
+      onError: (e) => setError(errorMessage(e)),
     });
   }
 
@@ -59,9 +59,12 @@ export default function DeleteAccountScreen() {
         maxLength={20}
       />
       {error ? (
-        <Text color="danger" accessibilityLiveRegion="polite">
-          {error}
-        </Text>
+        <View accessibilityLiveRegion="polite" style={{ gap: spacing.xs }}>
+          <Text color="danger" style={{ fontWeight: '700' }}>
+            {t.deleteAccount.failed}
+          </Text>
+          <Text color="danger">{error}</Text>
+        </View>
       ) : null}
       <Button
         label={t.deleteAccount.submit}

@@ -1,5 +1,5 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useNavigation, useRouter, type Href } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 /** `value`, updated only once it has stopped changing for `delayMs` (map panning). */
 export function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -83,5 +83,28 @@ export function useRefetchOnFocusIfStale({
       const { refetch: run, dataUpdatedAt: updatedAt, enabled: on, busy: running } = latest.current;
       if (on && !running && Date.now() - updatedAt >= FOCUS_REFRESH_MIN_AGE_MS) void run();
     }, []),
+  );
+}
+
+/**
+ * A router that only leaves the screen it was created in while that screen
+ * still has the focus. For what happens after an `await` (a save, a creation,
+ * a deletion): the person may have gone back in the meantime, and `back()`
+ * would then pop a second screen, `replace()` would swap the one underneath.
+ * The change is saved either way; only the navigation is skipped.
+ */
+export function useFocusedRouter() {
+  const router = useRouter();
+  const navigation = useNavigation();
+  return useMemo(
+    () => ({
+      back: () => {
+        if (navigation.isFocused()) router.back();
+      },
+      replace: (href: Href) => {
+        if (navigation.isFocused()) router.replace(href);
+      },
+    }),
+    [router, navigation],
   );
 }

@@ -7,6 +7,7 @@ import { errorMessage } from '@/api/errors';
 import { useSession } from '@/auth';
 import { Avatar, Button, Card, ErrorState, LoadingState, Screen, Text } from '@/components';
 import { formatAge } from '@/lib/age';
+import { useFocusedRouter } from '@/lib/hooks';
 import { reportHref } from '@/lib/report';
 import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
@@ -28,6 +29,7 @@ export default function DogDetailScreen() {
   const { user } = useSession();
   const { spacing } = useTheme();
   const router = useRouter();
+  const focusedRouter = useFocusedRouter();
   const dog = useDog(id);
   const deleteDog = useDeleteDog();
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export default function DogDetailScreen() {
         style: 'destructive',
         onPress: () => {
           deleteDog.mutate(data.id, {
-            onSuccess: () => router.back(),
+            onSuccess: () => focusedRouter.back(),
             onError: (error) => setDeleteError(errorMessage(error)),
           });
         },

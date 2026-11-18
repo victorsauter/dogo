@@ -17,11 +17,11 @@ export const fr = {
     loading: 'Chargement…',
     cancel: 'Annuler',
     save: 'Enregistrer',
-    close: 'Fermer',
     required: 'Ce champ est obligatoire.',
     delete: 'Supprimer',
     edit: 'Modifier',
     back: 'Retour',
+    openSettings: 'Ouvrir les réglages',
     fieldInvalid: 'Valeur invalide : vérifie ce champ.',
     tooLong: 'Maximum {max} caractères.',
     /** Pill opening a menu of choices: what is chosen, then the current choice. */
@@ -111,6 +111,11 @@ export const fr = {
     emptyAction: 'Créer une balade',
     resultCount: '{count} balade|{count} balades',
     zoneCount: '{count} balade dans cette zone|{count} balades dans cette zone',
+    /** The search stopped at its maximum: the list is partial. */
+    zoneCountPartial: '{count} balades affichées : zoome pour affiner',
+    resultCountPartial: '{count} balades affichées : choisis une distance plus courte pour affiner',
+    /** Header of the panel when the search failed and nothing is shown. */
+    panelError: 'Impossible de charger les balades',
     radius: 'Distance',
     radiusOption: '{km} km',
     listLocationDenied:
@@ -187,6 +192,7 @@ export const fr = {
     meetingPoint: 'Point de rendez-vous',
     openInMaps: 'Ouvrir dans Plans',
     openInMapsAndroid: 'Ouvrir dans Maps',
+    openInMapsFailed: 'Impossible d’ouvrir une application de cartes sur cet appareil.',
     organizer: 'Organisée par',
     organizerA11y: 'Voir le profil de {name}',
     organizerDeleted: 'Compte supprimé',
@@ -255,6 +261,10 @@ export const fr = {
     startsAtPast: 'La balade doit commencer dans le futur.',
     meetingPointHint: 'Touche la carte ou fais glisser le repère pour placer le rendez-vous.',
     meetingPointMap: 'Carte du point de rendez-vous',
+    meetingPointRequired:
+      'Place le repère sur le point de rendez-vous : touche la carte ou fais glisser le repère.',
+    meetingPointNoLocation:
+      'Position non disponible : la carte affiche une zone par défaut, ce n’est pas ton rendez-vous. Place le repère à la main avant de créer la balade.',
     locationLabel: 'Repère du rendez-vous',
     locationLabelHint: 'Par exemple : devant l’entrée du parc, côté fontaine.',
     maxDogs: 'Nombre maximum de chiens',
@@ -276,7 +286,6 @@ export const fr = {
     stopSeriesMessage:
       'Cette balade reste prévue, mais aucune nouvelle balade ne sera créée chaque semaine.',
     stopSeriesConfirm: 'Arrêter la répétition',
-    seriesStopped: 'La répétition est arrêtée.',
   },
   thread: {
     title: 'Discussion',
@@ -287,7 +296,6 @@ export const fr = {
     emptyTitle: 'Aucun message pour l’instant',
     emptyMessage: 'Lance la discussion : dis bonjour ou précise un détail pour la balade.',
     loadOlder: 'Charger les messages précédents',
-    loadingOlder: 'Chargement…',
     deletedAccount: 'Compte supprimé',
     authorA11y: 'Voir le profil de {name}',
     placeholder: 'Écrire un message…',
@@ -328,7 +336,6 @@ export const fr = {
     channelName: 'Balades et messages',
   },
   profile: {
-    title: 'Profil',
     greeting: 'Bonjour {name} !',
     later: 'Plus tard',
     noBio: 'Pas encore de présentation.',
@@ -342,16 +349,12 @@ export const fr = {
     publicTitle: 'Profil',
     dogsOf: 'Les chiens de {name}',
     noDogsPublic: 'Aucun chien pour l’instant.',
-    saved: 'Profil enregistré.',
     photoSaveFailed:
       'Ton profil est enregistré, mais la photo n’a pas pu être envoyée. Choisis-la de nouveau.',
   },
   photo: {
-    change: 'Changer la photo',
-    add: 'Ajouter une photo',
     fromLibrary: 'Choisir dans la photothèque',
     takePhoto: 'Prendre une photo',
-    remove: 'Annuler la photo choisie',
     cameraDenied:
       'L’accès à l’appareil photo est refusé. Autorise-le dans les réglages du téléphone.',
     pickFailed: 'Impossible de récupérer cette photo. Essaie-en une autre.',
@@ -359,6 +362,9 @@ export const fr = {
   dog: {
     myDogsEmptyTitle: 'Ajoute ton premier chien',
     myDogsEmptyMessage: 'Présente ton chien pour pouvoir l’inscrire à des balades.',
+    /** Shown on the new-dog screen right after the welcome profile edit. */
+    welcome:
+      'Dernière étape : présente ton chien. Sans lui, tu ne pourras pas t’inscrire à une balade.',
     add: 'Ajouter un chien',
     addTitle: 'Nouveau chien',
     editTitle: 'Modifier le chien',
@@ -381,7 +387,6 @@ export const fr = {
     noDescription: 'Pas de description.',
     noBirthDate: 'Âge inconnu',
     birthDateFuture: 'La date de naissance ne peut pas être dans le futur.',
-    birthDateInvalid: 'Date de naissance invalide.',
     ageYears: '{count} an|{count} ans',
     ageMonths: '{count} mois',
     ageNewborn: 'Moins d’un mois',
@@ -389,7 +394,6 @@ export const fr = {
     summary: '{size} · {sociability}',
     deleteConfirmTitle: 'Supprimer {name} ?',
     deleteConfirmMessage: 'Ses inscriptions à venir seront annulées. Cette action est définitive.',
-    deleteFailed: 'Le chien n’a pas pu être supprimé.',
     updatedPhotoFailed:
       'Les modifications sont enregistrées, mais la photo n’a pas pu être envoyée.',
     photoRetry: 'Renvoyer la photo',
@@ -407,7 +411,13 @@ export const fr = {
   },
   states: {
     errorTitle: 'Oups, un problème est survenu',
-    emptyDefaultTitle: 'Rien à afficher',
+    /** Last-resort screen (render error caught by the root error boundary). */
+    crashTitle: 'Oups, dogo a rencontré un problème',
+    crashMessage:
+      "Quelque chose s'est mal passé. Tu peux réessayer ; si le problème revient, ferme puis rouvre l'application.",
+    notFoundTitle: 'Page introuvable',
+    notFoundMessage: "Ce lien ne mène à aucune page de l'application.",
+    notFoundHome: "Retour à l'accueil",
   },
   permissions: {
     // iOS and Android permission texts live in app.config.ts; this one is shown
@@ -441,7 +451,6 @@ export const fr = {
     createExplanation:
       'L’équipe dogo valide chaque organisation avant qu’elle devienne visible des autres membres. Tant qu’elle n’est pas validée, tu es la seule personne à la voir et elle ne peut pas proposer de balades. Tu es prévenu dès qu’elle l’est.',
     createSubmit: 'Envoyer la demande',
-    saved: 'Organisation enregistrée.',
     statusBanner: {
       Pending:
         'En attente de validation : l’équipe dogo examine ta demande. Pour l’instant, seuls ses membres la voient et elle ne peut pas encore proposer de balades.',

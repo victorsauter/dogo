@@ -521,6 +521,13 @@ describe('members screen', () => {
   });
 });
 
+/** The person touches the map: the meeting point is a deliberate choice. */
+async function placePin() {
+  await fireEvent(screen.getByTestId('meeting-point-map'), 'press', {
+    nativeEvent: { coordinate: { latitude: 47.5287, longitude: 7.1912 } },
+  });
+}
+
 describe('professional walks', () => {
   const approvedOwner = {
     organization: organizationSummary(),
@@ -552,6 +559,7 @@ describe('professional walks', () => {
 
     await fireEvent.changeText(screen.getByLabelText(t.walk.title), 'Cours collectif');
     await fireEvent.changeText(screen.getByLabelText(t.walk.locationLabel), 'Pâquier');
+    await placePin();
     await fireEvent.press(screen.getByRole('radio', { name: 'Club canin du lac' }));
     await fireEvent.press(screen.getByRole('button', { name: t.walk.create }));
 
@@ -564,6 +572,7 @@ describe('professional walks', () => {
     await screen.findByRole('radio', { name: t.walk.organizeForMe });
     await fireEvent.changeText(screen.getByLabelText(t.walk.title), 'Balade perso');
     await fireEvent.changeText(screen.getByLabelText(t.walk.locationLabel), 'Parc');
+    await placePin();
     await fireEvent.press(screen.getByRole('button', { name: t.walk.create }));
     await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true));
     expect(calls.find((c) => c.method === 'POST')!.json).not.toHaveProperty('organizationId');
@@ -602,6 +611,7 @@ describe('professional walks', () => {
     await screen.findByRole('radio', { name: 'Club canin du lac' });
     await fireEvent.changeText(screen.getByLabelText(t.walk.title), 'Cours');
     await fireEvent.changeText(screen.getByLabelText(t.walk.locationLabel), 'Parc');
+    await placePin();
     await fireEvent.press(screen.getByRole('radio', { name: 'Club canin du lac' }));
     await fireEvent.press(screen.getByRole('button', { name: t.walk.create }));
     expect(await screen.findAllByText(t.errors['walk.organization_forbidden'])).toHaveLength(2);

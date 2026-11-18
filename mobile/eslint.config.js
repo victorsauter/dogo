@@ -8,7 +8,7 @@ module.exports = defineConfig([
   expoConfig,
   prettierConfig,
   {
-    files: ['scripts/**/*.mjs', 'jest.config.js', 'eslint.config.js'],
+    files: ['scripts/**/*.mjs', 'jest.config.js', 'jest.global-setup.js', 'eslint.config.js'],
     languageOptions: {
       globals: {
         process: 'readonly',

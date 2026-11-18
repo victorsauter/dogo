@@ -9,6 +9,7 @@ import {
 import { api, unwrap } from './client';
 import type { MembershipRole } from './enums';
 import type { CreateOrganizationRequest, MyOrganization, UpdateOrganizationRequest } from './types';
+import { walksChanged } from './walks';
 
 export const organizationKeys = {
   all: ['organizations'] as const,
@@ -67,12 +68,15 @@ export function organizingOrganizations(mine: MyOrganization[] | undefined) {
   );
 }
 
-/** Refreshes every view of organisations: search, detail, members, my list. */
-export function organizationsChanged(queryClient: QueryClient) {
-  return Promise.all([
-    queryClient.invalidateQueries({ queryKey: organizationKeys.all }),
-    queryClient.invalidateQueries({ queryKey: organizationKeys.mine }),
-  ]);
+/**
+ * Refreshes every view of organisations: search, detail, members, my list, and
+ * the walks that show an organisation's name or that its members may join.
+ * Not awaited, like `walksChanged`.
+ */
+export function organizationsChanged(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+  void queryClient.invalidateQueries({ queryKey: organizationKeys.mine });
+  walksChanged(queryClient);
 }
 
 // ---- Writing

@@ -44,6 +44,15 @@ export interface WalkSearchParams {
 
 /** Results shown at once on the map and the list (the API maximum). */
 export const SEARCH_LIMIT = 100;
+
+/**
+ * True when a search came back full: the API stops at `SEARCH_LIMIT`, so there
+ * may be more walks in the area than the list shows. The screens then say the
+ * list is partial instead of announcing « 100 balades » as the total.
+ */
+export function isSearchCapped(resultCount: number): boolean {
+  return resultCount >= SEARCH_LIMIT;
+}
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
@@ -114,14 +123,19 @@ export function useMyWalks(role: MyWalksRole, when: MyWalksPeriod) {
 
 /**
  * Keeps every view of walks consistent after a change: the detail (set from
- * the response when there is one), the search results and « Mes balades ».
+ * the response when there is one), the search results, « Mes balades » and the
+ * organisation pages (their upcoming walks, with their places left). Also what
+ * to call when something a walk displays changes: a participant's name or
+ * photo, a dog, the name of the organisation.
+ * The refetches start but are not awaited: the write has succeeded, and a
+ * mutation that waited for them would keep its button spinning (and invite a
+ * second tap, so a second walk) for as long as a slow network takes.
  */
-export async function walksChanged(queryClient: QueryClient, detail?: WalkDetail) {
+export function walksChanged(queryClient: QueryClient, detail?: WalkDetail): void {
   if (detail) queryClient.setQueryData(walkKeys.detail(detail.id), detail);
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: walkKeys.all }),
-    queryClient.invalidateQueries({ queryKey: ['me', 'walks'] }),
-  ]);
+  void queryClient.invalidateQueries({ queryKey: walkKeys.all });
+  void queryClient.invalidateQueries({ queryKey: ['me', 'walks'] });
+  void queryClient.invalidateQueries({ queryKey: ['organizations'] });
 }
 
 // ---- Organizer: create, edit, cancel

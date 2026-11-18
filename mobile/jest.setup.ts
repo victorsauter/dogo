@@ -1,3 +1,21 @@
+import { timeoutManager } from '@tanstack/react-query';
+
+// TanStack Query keeps a 5-minute timer per unobserved query (`gcTime`). Left
+// running after a test, it kept Node alive and made Jest report « A worker
+// process has failed to exit gracefully ». Long timers no longer hold the
+// process open; short ones (anti-rebond, stale time) behave as usual.
+const UNREF_FROM_MS = 60_000;
+timeoutManager.setTimeoutProvider({
+  setTimeout: (callback, delay) => {
+    const timer = setTimeout(callback, delay);
+    if (delay >= UNREF_FROM_MS) (timer as { unref?: () => void }).unref?.();
+    return timer as unknown as number;
+  },
+  clearTimeout: (timer) => clearTimeout(timer as unknown as ReturnType<typeof setTimeout>),
+  setInterval: (callback, delay) => setInterval(callback, delay) as unknown as number,
+  clearInterval: (timer) => clearInterval(timer as unknown as ReturnType<typeof setInterval>),
+});
+
 // In-memory replacement for expo-secure-store, shared by every test.
 jest.mock('expo-secure-store', () => {
   const store = new Map<string, string>();
@@ -90,6 +108,7 @@ jest.mock('react-native-maps', () => {
 jest.mock('expo-location', () => ({
   Accuracy: { Balanced: 3 },
   requestForegroundPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
+  getForegroundPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
   getLastKnownPositionAsync: jest.fn(async () => ({
     coords: { latitude: 47.6234, longitude: 7.2376 },
   })),
@@ -110,6 +129,7 @@ jest.mock('expo-notifications', () => {
     token: 'ExponentPushToken[test-token]',
     received: new Set<Listener>(),
     responses: new Set<Listener>(),
+    pushTokens: new Set<Listener>(),
     last: null as unknown,
   };
   const subscribe = (set: Set<Listener>) => (listener: Listener) => {
@@ -123,6 +143,7 @@ jest.mock('expo-notifications', () => {
       state.token = 'ExponentPushToken[test-token]';
       state.received.clear();
       state.responses.clear();
+      state.pushTokens.clear();
       state.last = null;
     },
     /** Delivers a notification tap (`data` is the payload) to the listeners. */
@@ -135,6 +156,13 @@ jest.mock('expo-notifications', () => {
       const notification = { request: { content: { data } } };
       state.received.forEach((listener) => (listener as unknown as Emit)(notification));
     },
+    /** The system rolls the push token: `token` is the new Expo token, the listeners hear of the device token. */
+    __renewToken(token: string) {
+      state.token = token;
+      state.pushTokens.forEach((listener) =>
+        (listener as unknown as Emit)({ type: 'ios', data: `device-${token}` }),
+      );
+    },
     AndroidImportance: { DEFAULT: 3 },
     setNotificationHandler: jest.fn(),
     setNotificationChannelAsync: jest.fn(async () => null),
@@ -146,6 +174,7 @@ jest.mock('expo-notifications', () => {
     getExpoPushTokenAsync: jest.fn(async () => ({ type: 'expo', data: state.token })),
     addNotificationReceivedListener: jest.fn(subscribe(state.received)),
     addNotificationResponseReceivedListener: jest.fn(subscribe(state.responses)),
+    addPushTokenListener: jest.fn(subscribe(state.pushTokens)),
     getLastNotificationResponse: jest.fn(() => state.last),
     clearLastNotificationResponse: jest.fn(() => {
       state.last = null;
