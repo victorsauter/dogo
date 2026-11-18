@@ -15,7 +15,7 @@ docker compose up -d --wait        # PostgreSQL + PostGIS sur localhost:54329 (p
 dotnet run --project src/Dogo.Api  # API sur http://localhost:5080, environnement Development
 ```
 
-En Development, les migrations s'appliquent au démarrage, la connexion de test `POST /api/v1/auth/dev` est active, l'adresse `admin@dogo.local` est administratrice (voir « Agir en administrateur en local ») et la description OpenAPI est servie sur `http://localhost:5080/openapi/v1.json`.
+En Development, les migrations s'appliquent au démarrage, la connexion de test `POST /api/v1/auth/dev` est active, l'adresse `admin@dogo.local` est administratrice (voir « Agir en administrateur en local »), les données de démonstration sont disponibles (voir « Données de démonstration ») et la description OpenAPI est servie sur `http://localhost:5080/openapi/v1.json`.
 
 Arrêter la base sans perdre les données : `docker compose -p dogo down` (le volume `dogo_dogo-db` est conservé ; `down -v` le supprime).
 
@@ -34,7 +34,7 @@ cd api
 dotnet test
 ```
 
-Les tests d'intégration démarrent un conteneur PostGIS avec Testcontainers (un seul pour toute la série ; chaque test repart d'une base vide). Seul Docker est nécessaire : les jetons Apple et Google sont validés par un faux validateur, les notifications et les signalements sont enregistrés par des faux, aucun test n'appelle le réseau. Les tâches planifiées sont éteintes dans les tests, qui les appellent avec une horloge contrôlée.
+Les tests d'intégration démarrent un conteneur PostGIS avec Testcontainers (un seul pour toute la série ; chaque test repart d'une base vide). Seul Docker est nécessaire : les jetons Apple et Google sont validés par un faux validateur, les notifications et les signalements sont enregistrés par des faux, les sources de photos des données de démonstration sont simulées (`FakeDemoPhotoServer`), aucun test n'appelle le réseau. Les tâches planifiées sont éteintes dans les tests, qui les appellent avec une horloge contrôlée.
 
 ## Organisation du code
 
@@ -82,9 +82,9 @@ Essai rapide (après la connexion de test de deux comptes) :
 
 ```bash
 curl -s -X POST http://localhost:5080/api/v1/walks -H "Authorization: Bearer $ALICE" -H 'Content-Type: application/json' \
-  -d '{"title":"Tour du lac","startsAt":"2030-05-01T09:00:00Z","location":{"latitude":48.853,"longitude":2.35},
-       "locationLabel":"Parvis","maxDogs":5,"allowedSizes":["Small","Medium"],"leashRule":"LeashRequired","access":"Open"}'
-curl -s "http://localhost:5080/api/v1/walks?lat=48.85&lng=2.35&radiusKm=5" -H "Authorization: Bearer $BOB"
+  -d '{"title":"Tour du lac","startsAt":"2030-05-01T09:00:00Z","location":{"latitude":47.5324,"longitude":7.1858},
+       "locationLabel":"Parking de la mairie","maxDogs":5,"allowedSizes":["Small","Medium"],"leashRule":"LeashRequired","access":"Open"}'
+curl -s "http://localhost:5080/api/v1/walks?lat=47.5339&lng=7.1844&radiusKm=5" -H "Authorization: Bearer $BOB"
 curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/registrations -H "Authorization: Bearer $BOB" \
   -H 'Content-Type: application/json' -d '{"dogIds":["<dogId>"]}'
 ```
@@ -133,8 +133,8 @@ Essai rapide (balade hebdomadaire et fil) :
 curl -s -X PUT http://localhost:5080/api/v1/me/devices -H "Authorization: Bearer $ALICE" \
   -H 'Content-Type: application/json' -d '{"expoPushToken":"ExponentPushToken[essai-alice]","platform":"Ios"}'
 curl -s -X POST http://localhost:5080/api/v1/walks -H "Authorization: Bearer $ALICE" -H 'Content-Type: application/json' \
-  -d '{"title":"Tour du lac","startsAt":"2030-05-04T08:00:00Z","location":{"latitude":48.853,"longitude":2.35},
-       "locationLabel":"Parvis","maxDogs":5,"allowedSizes":["Small","Medium"],"leashRule":"LeashRequired","access":"Open","repeatWeekly":true}'
+  -d '{"title":"Tour du lac","startsAt":"2030-05-04T08:00:00Z","location":{"latitude":47.5324,"longitude":7.1858},
+       "locationLabel":"Parking de la mairie","maxDogs":5,"allowedSizes":["Small","Medium"],"leashRule":"LeashRequired","access":"Open","repeatWeekly":true}'
 # après l'inscription d'un chien de Bob :
 curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/messages -H "Authorization: Bearer $BOB" \
   -H 'Content-Type: application/json' -d '{"text":"On se retrouve au portail ?"}'
@@ -209,6 +209,40 @@ curl -s -X POST http://localhost:5080/api/v1/blocks -H "Authorization: Bearer $O
 curl -s -X DELETE http://localhost:5080/api/v1/me -H "Authorization: Bearer $BOB"
 ```
 
+## Données de démonstration (développement)
+
+Pour essayer l'application avec une communauté réaliste, l'API sait créer un jeu de données fictif autour de Seppois-le-Haut (Haut-Rhin) : 50 propriétaires et 95 chiens, 10 éducateurs canins, 4 organisations validées et 1 en attente, 45 balades dans un rayon de 12 km (25 à venir sur trois semaines, 20 passées sur six semaines, dont 5 séries hebdomadaires, une balade complète et une annulée), leurs inscriptions, une vingtaine de fils de discussion, 3 blocages et 4 signalements. Voir l'[ADR 0027](../docs/adr/0027-donnees-de-demonstration.md).
+
+**Activation.** `DemoData:Enabled` vaut `true` dans `appsettings.Development.json`, `false` partout ailleurs. Désactivées, les routes répondent 404 comme la connexion de test. L'API refuse de démarrer si `DemoData:Enabled` est vrai en Production, ou si la connexion de test (`Auth:AllowDevLogin`) est coupée : les comptes de démonstration se connectent par elle.
+
+| Route (anonyme) | Rôle |
+| --- | --- |
+| `POST /api/v1/dev/demo-data` `{ "photos": true }` | Supprime les données de démonstration existantes puis recrée le jeu complet, en une transaction ; répond `{ counts, photosRequested, photosStored, photosFailed }`. `photos` vaut `true` par défaut (corps facultatif). |
+| `GET /api/v1/dev/demo-data` | `{ exists, counts, accounts }` : chaque compte a `subject`, `displayName`, `photoUrl`, `kind` (`Owner` ou `Educator`), `dogNames` et `organizationName` (l'organisation qu'un éducateur dirige ou anime, sinon `null`). |
+| `DELETE /api/v1/dev/demo-data` | Supprime les comptes de démonstration et tout ce qui leur appartient, fichiers de photos compris → 204. |
+
+```bash
+curl -s -X POST http://localhost:5080/api/v1/dev/demo-data -H 'Content-Type: application/json' -d '{"photos":true}'
+curl -s http://localhost:5080/api/v1/dev/demo-data | jq '.accounts[] | {subject, displayName, kind}'
+# se connecter comme un compte de démonstration : la connexion de test avec son subject
+curl -s -X POST http://localhost:5080/api/v1/auth/dev -H 'Content-Type: application/json' \
+  -d '{"subject":"demo-marie-schmitt","displayName":"Marie Schmitt"}' | jq -r .accessToken
+curl -s -X DELETE http://localhost:5080/api/v1/dev/demo-data
+```
+
+Comptes intéressants : `demo-marie-schmitt` (organise la balade complète, une série et plusieurs fils), `demo-thomas-haas` (a bloqué deux personnes : l'avertissement « Participant bloqué » apparaît sur plusieurs balades), `demo-sandrine-gutzwiller` (responsable du Club canin du Sundgau : membres et demandes), `demo-lucie-reinhard` (organisation en attente de validation). Pour les signalements, se connecter en administrateur (`admin@dogo.local`) et lire `GET /admin/reports`.
+
+**Ce qui est touché.** Un compte de démonstration est un compte `Dev` dont le `providerSubject` commence par `demo-` (préfixe réservé). Générer ou supprimer ne modifie jamais un autre compte, ni ses chiens, balades, organisations ou messages : une balade de démonstration où un autre compte s'est inscrit ou a écrit est conservée comme celle d'un compte supprimé (annulée si elle est à venir, sans organisateur), de même qu'une organisation de démonstration qui a un autre membre. Seuls disparaissent, comme à toute suppression de compte, les blocages d'un compte de démonstration posés par un autre compte. Les dates sont relatives au moment de la génération : régénérer remet les balades « à venir » dans le futur. Le contenu est déterministe (mêmes noms, mêmes balades, mêmes fils à chaque génération). Le générateur (`Features/DemoData/`) sépare les tables (`DemoPeople`, `DemoBreeds`, `DemoPlaces`, `DemoCommunity`, `DemoWalks`, `DemoConversations`) de la logique (`DemoDataBuilder`) ; il écrit directement par le `DbContext` (balades passées, messages antidatés), en respectant toutes les règles de la spécification (un test les vérifie).
+
+**Photos.** La moitié des personnes reçoit un avatar illustré et la moitié des chiens une photo de sa race (un chien par race, pour qu'aucune photo ne soit partagée), téléchargés au moment de la génération et rangés par `IPhotoStorage` après les mêmes contrôles qu'une photo envoyée (5 Mo au plus, format réel JPEG, PNG, WebP ou HEIC). Rien n'est versionné.
+
+| Pour | Source | Licence |
+| --- | --- | --- |
+| Personnes | [DiceBear](https://www.dicebear.com/), style « Notionists » (`https://api.dicebear.com/9.x/notionists/png?seed=demo-…`) : avatars dessinés, aucune photo de personne réelle | Style sous CC0 1.0 (remix de « Notionists » de Zoish) ; l'API HTTP est gratuite, sans clé, pour un usage non commercial et raisonnable (10 avatars PNG par seconde au plus) |
+| Chiens | Photo principale de l'article Wikipédia anglais de la race (API MediaWiki `prop=pageimages`), gardée seulement si le fichier est sur Wikimedia Commons sous licence libre (vérifiée par l'API de Commons : CC0, domaine public, CC BY, CC BY-SA, « copyrighted free use ») | Licence propre à chaque fichier, consultable sur sa page Commons. Les licences CC BY et CC BY-SA demandent de créditer l'auteur en cas de diffusion : ces photos restent dans la base de développement et ne doivent pas être publiées telles quelles |
+
+Les requêtes ne transportent aucune donnée d'utilisateur : un agent utilisateur générique (`DemoData:Photos:UserAgent`), la graine d'avatar est le `subject` fictif. Téléchargement parallèle (4 au plus, avatars espacés de 150 ms), 10 s par image, 60 s au total ; une réponse 429 est retentée une fois. Une erreur réseau, un délai dépassé ou une image refusée n'empêche jamais la génération : la photo est sautée et comptée dans `photosFailed`. Wikimedia limite les clients anonymes sans contact dans l'agent utilisateur ; quelques photos peuvent donc manquer si l'on régénère très souvent. Mesuré en local : environ 0,5 s sans photos, 5 à 7 s avec photos.
+
 ## Migrations
 
 ```bash
@@ -247,6 +281,10 @@ dotnet ef migrations script --idempotent --project src/Dogo.Api --output migrate
 | `Storage:Local:Path` | `Storage__Local__Path` | `./data/photos` | Dossier des photos |
 | `Notifications:Provider` | `Notifications__Provider` | `Log` | `Log` (journal seulement) ou `Expo` (envoi réel) |
 | `Notifications:Expo:AccessToken` | `Notifications__Expo__AccessToken` | vide | Jeton d'accès Expo, seulement si la sécurité renforcée des notifications est activée |
+| `DemoData:Enabled` | `DemoData__Enabled` | `false` (Development : `true`) | Active `/dev/demo-data` ; démarrage refusé si vrai en Production ou sans `Auth:AllowDevLogin` (ADR 0027) |
+| `DemoData:Photos:UserAgent` | `DemoData__Photos__UserAgent` | `dogo-demo-data/1.0 (development seed data)` | Agent utilisateur des téléchargements de photos de démonstration |
+| `DemoData:Photos:Timeout`, `TotalTimeout` | `DemoData__Photos__Timeout`, … | `00:00:10`, `00:01:00` | Délai par image et pour l'ensemble des photos |
+| `DemoData:Photos:MaxParallelDownloads` | `DemoData__Photos__MaxParallelDownloads` | `4` | Téléchargements simultanés |
 | `BackgroundJobs:Enabled` | `BackgroundJobs__Enabled` | `true` | Fait tourner les rappels et les séries dans cette instance |
 | `BackgroundJobs:Interval` | `BackgroundJobs__Interval` | `00:01:00` | Intervalle entre deux passages des tâches |
 

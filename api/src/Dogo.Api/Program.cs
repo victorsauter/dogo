@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Dogo.Api.Common;
 using Dogo.Api.Features.Admin;
 using Dogo.Api.Features.Auth;
+using Dogo.Api.Features.DemoData;
 using Dogo.Api.Features.Blocks;
 using Dogo.Api.Features.Dogs;
 using Dogo.Api.Features.Health;
@@ -42,6 +43,9 @@ builder.Services.AddDogoPush();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<AccountDeletion>();
 
+// Demo data, development only (DemoData:Enabled, refused in Production, ADR 0027).
+builder.Services.AddDogoDemoData();
+
 // Reports tell the administration through an interface; V1 only logs (spec §4.7, §7).
 builder.Services.AddSingleton<IReportNotifier, LoggingReportNotifier>();
 
@@ -73,6 +77,7 @@ if (app.Environment.IsDevelopment())
 var api = app.MapGroup("/api/v1");
 api.MapHealthEndpoints();
 api.MapAuthEndpoints();
+api.MapDemoDataEndpoints();
 
 // Everything else requires a valid access token (fallback authorization policy).
 var authenticated = api.MapGroup("").ProducesProblem(StatusCodes.Status401Unauthorized);

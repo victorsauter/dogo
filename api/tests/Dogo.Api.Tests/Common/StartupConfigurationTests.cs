@@ -2,7 +2,7 @@ using Dogo.Api.Tests.Infrastructure;
 
 namespace Dogo.Api.Tests.Common;
 
-/// <summary>The application refuses to start with an unsafe authentication configuration.</summary>
+/// <summary>The application refuses to start with an unsafe authentication or demo data configuration.</summary>
 public sealed class StartupConfigurationTests(ApiFixture fixture)
 {
     [Fact]
@@ -23,6 +23,28 @@ public sealed class StartupConfigurationTests(ApiFixture fixture)
         var response = await factory.CreateClient().GetAsync("/api/v1/health", TestContext.Current.CancellationToken);
 
         Assert.True(response.IsSuccessStatusCode);
+    }
+
+    [Fact]
+    public async Task Demo_data_enabled_in_production_prevents_startup()
+    {
+        await using var factory = new DogoApiFactory(
+            fixture.ConnectionString, new Dictionary<string, string?> { ["Auth:AllowDevLogin"] = "false", ["DemoData:Enabled"] = "true" }, "Production");
+
+        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+
+        Assert.Contains("DemoData:Enabled must not be enabled in Production", exception.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Demo_data_without_the_dev_sign_in_prevents_startup()
+    {
+        await using var factory = new DogoApiFactory(
+            fixture.ConnectionString, new Dictionary<string, string?> { ["Auth:AllowDevLogin"] = "false", ["DemoData:Enabled"] = "true" });
+
+        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+
+        Assert.Contains("DemoData:Enabled requires Auth:AllowDevLogin", exception.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]

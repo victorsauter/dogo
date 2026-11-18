@@ -315,6 +315,114 @@
         }
       }
     },
+    "/api/v1/dev/demo-data": {
+      "post": {
+        "tags": [
+          "DemoData"
+        ],
+        "summary": "Replace the demo data with a fresh data set (development only; 404 unless DemoData:Enabled). Photo downloads never make it fail.",
+        "operationId": "generateDemoData",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GenerateDemoDataRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoDataGenerationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "DemoData"
+        ],
+        "summary": "Whether demo data exists, its counts and the demo accounts to sign in as (development only).",
+        "operationId": "getDemoData",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoDataStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "DemoData"
+        ],
+        "summary": "Remove the demo accounts and everything that belongs to them, photo files included (development only).",
+        "operationId": "deleteDemoData",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -4456,6 +4564,167 @@
           }
         }
       },
+      "DemoAccountKind": {
+        "enum": [
+          "Owner",
+          "Educator"
+        ],
+        "type": "string"
+      },
+      "DemoAccountResponse": {
+        "required": [
+          "subject",
+          "displayName",
+          "photoUrl",
+          "kind",
+          "dogNames",
+          "organizationName"
+        ],
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DemoAccountKind"
+          },
+          "dogNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "organizationName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "DemoDataCounts": {
+        "required": [
+          "owners",
+          "educators",
+          "dogs",
+          "organizations",
+          "walks",
+          "upcomingWalks",
+          "pastWalks",
+          "registrations",
+          "messages",
+          "blocks",
+          "reports",
+          "photos"
+        ],
+        "type": "object",
+        "properties": {
+          "owners": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "educators": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dogs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "organizations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "walks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "upcomingWalks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pastWalks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "registrations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "messages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "blocks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reports": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "photos": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DemoDataGenerationResponse": {
+        "required": [
+          "counts",
+          "photosRequested",
+          "photosStored",
+          "photosFailed"
+        ],
+        "type": "object",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/DemoDataCounts"
+          },
+          "photosRequested": {
+            "type": "boolean"
+          },
+          "photosStored": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "photosFailed": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DemoDataStatusResponse": {
+        "required": [
+          "exists",
+          "counts",
+          "accounts"
+        ],
+        "type": "object",
+        "properties": {
+          "exists": {
+            "type": "boolean"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/DemoDataCounts"
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DemoAccountResponse"
+            }
+          }
+        }
+      },
       "DevSignInRequest": {
         "required": [
           "subject",
@@ -4585,6 +4854,14 @@
           "Large"
         ],
         "type": "string"
+      },
+      "GenerateDemoDataRequest": {
+        "type": "object",
+        "properties": {
+          "photos": {
+            "type": "boolean"
+          }
+        }
       },
       "GeoPoint": {
         "required": [
@@ -6185,6 +6462,9 @@
     },
     {
       "name": "Auth"
+    },
+    {
+      "name": "DemoData"
     },
     {
       "name": "Users"

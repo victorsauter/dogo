@@ -1,3 +1,4 @@
+using Dogo.Api.Features.DemoData;
 using Dogo.Api.Features.Reports;
 using Dogo.Api.Infrastructure.Auth;
 using Dogo.Api.Infrastructure.Push;
@@ -7,13 +8,15 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 namespace Dogo.Api.Tests.Infrastructure;
 
 /// <summary>
 /// In-memory API host for tests: "Testing" environment, fake identity token validator,
 /// photos in a temporary directory, push notifications recorded (never sent) and scheduled
-/// jobs disabled (tests call them directly with a controlled clock), reports recorded instead of logged. <paramref name="overrides"/> replaces configuration values.
+/// jobs disabled (tests call them directly with a controlled clock), reports recorded instead of logged,
+/// demo data enabled with its photo sources faked. <paramref name="overrides"/> replaces configuration values.
 /// </summary>
 public sealed class DogoApiFactory(
     string connectionString,
@@ -29,6 +32,8 @@ public sealed class DogoApiFactory(
 
     public RecordingReportNotifier ReportNotifier { get; } = new();
 
+    public FakeDemoPhotoServer DemoPhotos { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(environment);
@@ -42,6 +47,9 @@ public sealed class DogoApiFactory(
             ["Admin:Emails:0"] = AdminEmail,
             ["BackgroundJobs:Enabled"] = "false",
             ["Notifications:Provider"] = "Log",
+            // Like the configuration files: demo data on, except in Production where startup refuses it.
+            ["DemoData:Enabled"] = environment == Environments.Production ? "false" : "true",
+            ["DemoData:Photos:AvatarInterval"] = "00:00:00",
         };
         foreach (var (key, value) in overrides ?? new Dictionary<string, string?>())
         {
@@ -57,6 +65,7 @@ public sealed class DogoApiFactory(
             services.AddSingleton<IPushSender>(PushSender);
             services.RemoveAll<IReportNotifier>();
             services.AddSingleton<IReportNotifier>(ReportNotifier);
+            services.AddHttpClient(DemoPhotoFetcher.HttpClientName).ConfigurePrimaryHttpMessageHandler(DemoPhotos.CreateHandler);
         });
     }
 

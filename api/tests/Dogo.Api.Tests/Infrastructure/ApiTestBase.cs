@@ -33,6 +33,7 @@ public abstract class ApiTestBase(ApiFixture fixture) : IAsyncLifetime
         await fixture.ResetAsync();
         Factory.PushSender.Clear();
         Factory.ReportNotifier.Clear();
+        Factory.DemoPhotos.Reset();
     }
 
     /// <summary>Push notifications that would have been sent, in order.</summary>
