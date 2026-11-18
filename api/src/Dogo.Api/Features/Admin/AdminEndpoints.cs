@@ -57,13 +57,13 @@ public static class AdminEndpoints
 
         group.MapPost("/users/{id:guid}/suspend", SuspendUser)
             .WithName("adminSuspendUser")
-            .WithSummary("Suspend an account: its writes are refused and its sessions revoked. Idempotent.")
+            .WithSummary("Suspend an account: writes refused (except deleting the account), sessions revoked, weekly series stopped, upcoming walks cancelled with their registrants notified, push devices removed. Idempotent.")
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapPost("/users/{id:guid}/unsuspend", UnsuspendUser)
             .WithName("adminUnsuspendUser")
-            .WithSummary("Lift an account's suspension. Idempotent.")
+            .WithSummary("Lift an account's suspension. Restores nothing: series stay stopped, walks cancelled, devices and sessions gone. Idempotent.")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return routes;
@@ -162,44 +162,22 @@ public static class AdminEndpoints
     }
 
     private static async Task<Results<Ok<AdminUserResponse>, ProblemHttpResult>> SuspendUser(
-        Guid id, ClaimsPrincipal principal, DogoDbContext db, TimeProvider timeProvider, CancellationToken cancellationToken)
+        Guid id, ClaimsPrincipal principal, AccountSuspension suspension, CancellationToken cancellationToken)
     {
         if (id == principal.GetUserId())
         {
             return Problems.Conflict(ErrorCodes.AdminSelfSuspension, "An administrator cannot suspend their own account.");
         }
 
-        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == id, cancellationToken);
-        if (user is null)
-        {
-            return UserNotFound();
-        }
-
-        // Writes are refused at once (the status is read on every request); revoking the refresh
-        // tokens ends the sessions when the current access token expires.
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        user.Status = UserStatus.Suspended;
-        await db.SaveChangesAsync(cancellationToken);
-        var now = timeProvider.GetUtcNow();
-        await db.RefreshTokens
-            .Where(t => t.UserId == id && t.RevokedAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now), cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return TypedResults.Ok(new AdminUserResponse(user.Id, user.DisplayName, user.Status));
+        var user = await suspension.SuspendAsync(id, cancellationToken);
+        return user is null ? UserNotFound() : TypedResults.Ok(new AdminUserResponse(user.Id, user.DisplayName, user.Status));
     }
 
     private static async Task<Results<Ok<AdminUserResponse>, ProblemHttpResult>> UnsuspendUser(
-        Guid id, DogoDbContext db, CancellationToken cancellationToken)
+        Guid id, AccountSuspension suspension, CancellationToken cancellationToken)
     {
-        var user = await db.Users.SingleOrDefaultAsync(u => u.Id == id, cancellationToken);
-        if (user is null)
-        {
-            return UserNotFound();
-        }
-
-        user.Status = UserStatus.Active;
-        await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Ok(new AdminUserResponse(user.Id, user.DisplayName, user.Status));
+        var user = await suspension.UnsuspendAsync(id, cancellationToken);
+        return user is null ? UserNotFound() : TypedResults.Ok(new AdminUserResponse(user.Id, user.DisplayName, user.Status));
     }
 
     /// <summary>An organisation an administrator can still decide on: 404, or 409 <c>organization.closed</c>.</summary>

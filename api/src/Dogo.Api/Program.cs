@@ -49,6 +49,7 @@ builder.Services.AddDogoPush();
 // Feature services.
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<AccountDeletion>();
+builder.Services.AddScoped<AccountSuspension>();
 
 // Demo data, development only (DemoData:Enabled, refused in Production, ADR 0027).
 builder.Services.AddDogoDemoData();

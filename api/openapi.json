@@ -526,7 +526,7 @@
         "tags": [
           "Users"
         ],
-        "summary": "Delete the signed-in user's account: upcoming walks cancelled, dogs, registrations, devices, memberships, blocks and sessions deleted; messages and reports kept without author.",
+        "summary": "Delete the signed-in user's account: upcoming walks cancelled, dogs, registrations, devices, memberships, blocks and sessions deleted; messages and reports kept without author. Allowed to a suspended account (the only write it may do).",
         "operationId": "deleteMe",
         "responses": {
           "204": {
@@ -534,16 +534,6 @@
           },
           "401": {
             "description": "Unauthorized",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3997,7 +3987,7 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Suspend an account: its writes are refused and its sessions revoked. Idempotent.",
+        "summary": "Suspend an account: writes refused (except deleting the account), sessions revoked, weekly series stopped, upcoming walks cancelled with their registrants notified, push devices removed. Idempotent.",
         "operationId": "adminSuspendUser",
         "parameters": [
           {
@@ -4074,7 +4064,7 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Lift an account's suspension. Idempotent.",
+        "summary": "Lift an account's suspension. Restores nothing: series stay stopped, walks cancelled, devices and sessions gone. Idempotent.",
         "operationId": "adminUnsuspendUser",
         "parameters": [
           {

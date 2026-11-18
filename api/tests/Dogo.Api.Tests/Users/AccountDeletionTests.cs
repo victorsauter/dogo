@@ -252,13 +252,25 @@ public sealed class AccountDeletionTests(ApiFixture fixture) : OrganizationTestB
     }
 
     [Fact]
-    public async Task A_suspended_account_cannot_delete_itself()
+    public async Task A_suspended_account_can_delete_itself_and_the_reports_about_it_are_kept()
     {
+        // ADR 0036: the right to erasure outlives a suspension; DELETE /me is its only write.
         var (alice, session) = await SignedInAsync("alice", "Alice");
+        var (bob, bobId, _) = await DogOwnerAsync("bob");
         var (admin, _) = await AdminAsync();
-        await admin.PostAsync($"/api/v1/admin/users/{session.User.Id}/suspend", null, Ct);
+        Assert.Equal(HttpStatusCode.Created, (await ReportAsync(bob, new { type = "HumanBehavior", facts = "Propos insultants envers Bob.", targetUserId = session.User.Id })).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await ReportAsync(alice, new { type = "Altercation", facts = "Altercation au parc avec Bob.", targetUserId = bobId })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsync($"/api/v1/admin/users/{session.User.Id}/suspend", null, Ct)).StatusCode);
+        await AssertProblemAsync(await alice.PatchAsJsonAsync("/api/v1/me", new { bio = "Encore là" }, Ct), HttpStatusCode.Forbidden, "account.suspended");
 
-        await AssertProblemAsync(await DeleteMeAsync(alice), HttpStatusCode.Forbidden, "account.suspended");
-        Assert.Equal(2, await WithDbAsync(db => db.Users.CountAsync(Ct)));
+        Assert.Equal(HttpStatusCode.NoContent, (await DeleteMeAsync(alice)).StatusCode);
+
+        Assert.False(await WithDbAsync(db => db.Users.AnyAsync(u => u.Id == session.User.Id, Ct)));
+        var reports = await WithDbAsync(db => db.Reports.OrderBy(r => r.CreatedAt).ToListAsync(Ct));
+        Assert.Equal(2, reports.Count);
+        Assert.Null(reports[0].TargetUserId);
+        Assert.Equal(bobId, reports[0].ReporterId);
+        Assert.Null(reports[1].ReporterId);
+        Assert.Equal(bobId, reports[1].TargetUserId);
     }
 }
