@@ -109,7 +109,7 @@ function useProfileUpdated() {
   return async (user: SessionUser) => {
     queryClient.setQueryData(queryKeys.me, user);
     await updateUser(user);
-    await queryClient.invalidateQueries({ queryKey: ['users'] });
+    void queryClient.invalidateQueries({ queryKey: ['users'] });
   };
 }
 
@@ -136,11 +136,12 @@ export function useUploadMyPhoto() {
   });
 }
 
-/** Refreshes everything that shows a dog: my list, its detail, public profiles. */
-export function invalidateDogs(queryClient: QueryClient) {
-  return Promise.all([
-    queryClient.invalidateQueries({ queryKey: queryKeys.myDogs }),
-    queryClient.invalidateQueries({ queryKey: ['dogs'] }),
-    queryClient.invalidateQueries({ queryKey: ['users'] }),
-  ]);
+/**
+ * Refreshes everything that shows a dog: my list, its detail, public profiles.
+ * Not awaited, like `walksChanged`.
+ */
+export function invalidateDogs(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: queryKeys.myDogs });
+  void queryClient.invalidateQueries({ queryKey: ['dogs'] });
+  void queryClient.invalidateQueries({ queryKey: ['users'] });
 }

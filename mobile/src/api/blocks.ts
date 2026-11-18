@@ -21,11 +21,9 @@ export function useBlockedUsers() {
  */
 function useBlocksChanged() {
   const queryClient = useQueryClient();
-  return async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: blockKeys.mine }),
-      walksChanged(queryClient),
-    ]);
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: blockKeys.mine });
+    walksChanged(queryClient);
   };
 }
 

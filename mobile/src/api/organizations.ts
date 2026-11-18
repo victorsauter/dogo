@@ -67,12 +67,13 @@ export function organizingOrganizations(mine: MyOrganization[] | undefined) {
   );
 }
 
-/** Refreshes every view of organisations: search, detail, members, my list. */
-export function organizationsChanged(queryClient: QueryClient) {
-  return Promise.all([
-    queryClient.invalidateQueries({ queryKey: organizationKeys.all }),
-    queryClient.invalidateQueries({ queryKey: organizationKeys.mine }),
-  ]);
+/**
+ * Refreshes every view of organisations: search, detail, members, my list.
+ * Not awaited, like `walksChanged`.
+ */
+export function organizationsChanged(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+  void queryClient.invalidateQueries({ queryKey: organizationKeys.mine });
 }
 
 // ---- Writing

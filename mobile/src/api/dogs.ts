@@ -4,6 +4,7 @@ import { api, unwrap } from './client';
 import { photoForm, type PickedPhoto } from './photoUpload';
 import { invalidateDogs, queryKeys } from './profile';
 import type { CreateDogRequest, UpdateDogRequest } from './types';
+import { walksChanged } from './walks';
 
 export function useMyDogs() {
   return useQuery({
@@ -45,13 +46,10 @@ export function useDeleteDog() {
       await unwrap(api.DELETE('/api/v1/dogs/{id}', { params: { path: { id } } }));
       return id;
     },
-    onSuccess: async (id) => {
+    onSuccess: (id) => {
       queryClient.removeQueries({ queryKey: queryKeys.dog(id) });
-      await Promise.all([
-        invalidateDogs(queryClient),
-        queryClient.invalidateQueries({ queryKey: ['walks'] }),
-        queryClient.invalidateQueries({ queryKey: ['me', 'walks'] }),
-      ]);
+      invalidateDogs(queryClient);
+      walksChanged(queryClient);
     },
   });
 }

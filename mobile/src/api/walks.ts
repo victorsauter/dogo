@@ -115,13 +115,14 @@ export function useMyWalks(role: MyWalksRole, when: MyWalksPeriod) {
 /**
  * Keeps every view of walks consistent after a change: the detail (set from
  * the response when there is one), the search results and « Mes balades ».
+ * The refetches start but are not awaited: the write has succeeded, and a
+ * mutation that waited for them would keep its button spinning (and invite a
+ * second tap, so a second walk) for as long as a slow network takes.
  */
-export async function walksChanged(queryClient: QueryClient, detail?: WalkDetail) {
+export function walksChanged(queryClient: QueryClient, detail?: WalkDetail): void {
   if (detail) queryClient.setQueryData(walkKeys.detail(detail.id), detail);
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: walkKeys.all }),
-    queryClient.invalidateQueries({ queryKey: ['me', 'walks'] }),
-  ]);
+  void queryClient.invalidateQueries({ queryKey: walkKeys.all });
+  void queryClient.invalidateQueries({ queryKey: ['me', 'walks'] });
 }
 
 // ---- Organizer: create, edit, cancel
