@@ -31,6 +31,7 @@ public static class ErrorCodes
     public const string UserNotFound = "user.not_found";
     public const string DogNotFound = "dog.not_found";
     public const string DogForbidden = "dog.forbidden";
+    public const string DogSizeInUse = "dog.size_in_use";
 
     // Walks (spec §4.2) and registrations (spec §4.3).
     public const string WalkNotFound = "walk.not_found";

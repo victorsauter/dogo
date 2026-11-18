@@ -171,7 +171,10 @@ public static class RegistrationEndpoints
         }
 
         // The allowed sizes may have changed since the request.
-        var dog = await db.Dogs.AsNoTracking().SingleOrDefaultAsync(d => d.Id == registration.DogId, cancellationToken);
+        // Share-locked like at registration: the dog's size cannot change underneath.
+        var dog = registration.DogId is { } dogId
+            ? (await db.Dogs.FromSql($"SELECT * FROM dogs WHERE id = {dogId} FOR SHARE").AsNoTracking().ToListAsync(cancellationToken)).SingleOrDefault()
+            : null;
         if (dog is null || !walk.AllowedSizes.Contains(dog.Size))
         {
             return RegistrationRules.SizeNotAllowed();

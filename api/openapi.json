@@ -805,7 +805,7 @@
         "tags": [
           "Dogs"
         ],
-        "summary": "Update one of the signed-in user's dogs.",
+        "summary": "Update one of the signed-in user's dogs. The size cannot change while the dog is registered to an upcoming walk that does not allow the new size.",
         "operationId": "updateDog",
         "parameters": [
           {
@@ -871,6 +871,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem+json": {
                 "schema": {

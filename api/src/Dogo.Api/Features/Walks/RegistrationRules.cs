@@ -37,9 +37,12 @@ internal static class RegistrationRules
             return NotOpen();
         }
 
-        // Someone else's dog is reported like a missing one (spec: 404).
-        var dogs = await db.Dogs.AsNoTracking()
-            .Where(d => attempt.DogIds.Contains(d.Id) && d.OwnerId == attempt.UserId)
+        // Someone else's dog is reported like a missing one (spec: 404). The rows are share-locked
+        // so that the dog's size cannot change, nor the dog be deleted, until the registration is written.
+        var dogIds = attempt.DogIds.ToArray();
+        var dogs = await db.Dogs
+            .FromSql($"SELECT * FROM dogs WHERE id = ANY({dogIds}) AND owner_id = {attempt.UserId} FOR SHARE")
+            .AsNoTracking()
             .ToListAsync(cancellationToken);
         if (dogs.Count != attempt.DogIds.Count)
         {
