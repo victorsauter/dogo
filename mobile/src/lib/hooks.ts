@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** `value`, updated only once it has stopped changing for `delayMs` (map panning). */
 export function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -25,4 +26,22 @@ export function useDelayedFlag(flag: boolean, delayMs: number): boolean {
     };
   }, [flag, delayMs]);
   return flag && shown;
+}
+
+/**
+ * Runs `refetch` every time the screen regains focus (coming back from another
+ * screen or tab), but not on the first focus, when the query has just loaded.
+ * For data that changes elsewhere, e.g. an organisation validated by the team.
+ */
+export function useRefetchOnFocus(refetch: () => unknown): void {
+  const first = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (first.current) {
+        first.current = false;
+        return;
+      }
+      void refetch();
+    }, [refetch]),
+  );
 }

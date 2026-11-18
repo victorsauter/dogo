@@ -1,4 +1,5 @@
 export { Avatar, initials, type AvatarProps } from './Avatar';
+export { Banner, type BannerProps, type BannerTone } from './Banner';
 export { Badge, type BadgeProps, type BadgeTone } from './Badge';
 export { Button, type ButtonProps, type ButtonVariant } from './Button';
 export { Card, type CardProps } from './Card';
@@ -22,7 +23,10 @@ export {
   useScrollToFirstError,
   type FieldAnchorProps,
 } from './FormScroll';
+export { OrganizationForm, type OrganizationFormProps } from './OrganizationForm';
+export { OrganizationCard, type OrganizationCardProps } from './OrganizationCard';
 export { Icon, type IconName, type IconProps } from './Icon';
+export { LegalDocument, type LegalDocumentProps } from './LegalDocument';
 export { ListItem, type ListItemProps } from './ListItem';
 export { LoadingState } from './LoadingState';
 export { MessageBubble, PendingBubble } from './MessageBubble';

@@ -24,6 +24,11 @@ export interface SessionContextValue {
   updateUser(user: SessionUser): Promise<void>;
   /** Forgets the session on the device, then revokes the refresh token on the API. */
   signOut(): Promise<void>;
+  /**
+   * Forgets the session on this device only, with no call to the API: for a
+   * deleted account, whose devices and tokens the server already removed.
+   */
+  endSession(): Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -94,6 +99,9 @@ export function SessionProvider({
           await bestEffort(onBeforeSignOut, BEFORE_SIGN_OUT_TIMEOUT_MS);
         await store.clear();
         if (session) void revoke(session.refreshToken);
+      },
+      async endSession() {
+        await store.clear();
       },
     }),
     [snapshot, store, revoke, onBeforeSignOut],

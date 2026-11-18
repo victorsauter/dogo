@@ -28,6 +28,7 @@ async function openProfile() {
 describe('profile tab', () => {
   it('shows my profile and my dogs as cards', async () => {
     mockApi({
+      'GET /api/v1/me/organizations': () => ok([]),
       'GET /api/v1/me': () => ok({ ...testUser, bio: 'Marcheuse du dimanche' }),
       'GET /api/v1/me/dogs': () => ok([testDog]),
     });
@@ -42,6 +43,7 @@ describe('profile tab', () => {
 
   it('invites to add a first dog when there is none', async () => {
     mockApi({
+      'GET /api/v1/me/organizations': () => ok([]),
       'GET /api/v1/me': () => ok(testUser),
       'GET /api/v1/me/dogs': () => ok([]),
     });
@@ -55,6 +57,7 @@ describe('profile tab', () => {
 
   it('shows a French error with a retry when dogs cannot be loaded', async () => {
     mockApi({
+      'GET /api/v1/me/organizations': () => ok([]),
       'GET /api/v1/me': () => ok(testUser),
       'GET /api/v1/me/dogs': () => problemResponse(403, 'account.suspended'),
     });
@@ -65,6 +68,7 @@ describe('profile tab', () => {
 
   it('opens a dog from its card', async () => {
     mockApi({
+      'GET /api/v1/me/organizations': () => ok([]),
       'GET /api/v1/me': () => ok(testUser),
       'GET /api/v1/me/dogs': () => ok([testDog]),
       [`GET /api/v1/dogs/${testDog.id}`]: () => ok(testDog),

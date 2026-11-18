@@ -14,6 +14,8 @@ export interface ListItemProps {
   right?: ReactNode;
   onPress?: () => void;
   accessibilityLabel?: string;
+  /** Title in the danger color (a destructive entry such as « Supprimer mon compte »). */
+  danger?: boolean;
 }
 
 export function ListItem({
@@ -23,6 +25,7 @@ export function ListItem({
   right,
   onPress,
   accessibilityLabel,
+  danger = false,
 }: ListItemProps) {
   const { colors, spacing } = useTheme();
   return (
@@ -43,7 +46,7 @@ export function ListItem({
     >
       {left}
       <View style={{ flex: 1 }}>
-        <Text variant="subheading" numberOfLines={1}>
+        <Text variant="subheading" numberOfLines={1} color={danger ? 'danger' : 'text'}>
           {title}
         </Text>
         {subtitle ? (

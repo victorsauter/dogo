@@ -9,6 +9,12 @@ import { WalkCard } from '../WalkCard';
 const cardLabel = () => screen.getByRole('button').props.accessibilityLabel as string;
 
 describe('WalkCard', () => {
+  it('shows a walk whose organiser deleted their account, without crashing', async () => {
+    await renderWithTheme(<WalkCard walk={walkResult({ organizer: null })} onPress={() => {}} />);
+    expect(screen.getByText('Tour du lac')).toBeTruthy();
+    expect(cardLabel()).toContain('Tour du lac');
+  });
+
   it('shows title, day and time, distance, places, sizes and leash rule', async () => {
     await renderWithTheme(<WalkCard walk={walkResult()} onPress={() => {}} />);
     expect(screen.getByText('Tour du lac')).toBeTruthy();

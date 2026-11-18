@@ -64,6 +64,42 @@ describe('notification links', () => {
     }
   });
 
+  const organizationId = 'c0c0c0c0-0000-4000-8000-000000000001';
+  const organizationUrl = `dogo://organizations/${organizationId}`;
+
+  it('opens the members screen for a membership request, the organisation for the other types', () => {
+    expect(
+      targetForNotification({ type: 'membership_requested', organizationId, url: organizationUrl }),
+    ).toEqual({
+      organizationId,
+      type: 'membership_requested',
+      href: { pathname: '/organizations/[id]/members', params: { id: organizationId } },
+    });
+    for (const type of ['membership_accepted', 'organization_approved']) {
+      expect(targetForNotification({ type, organizationId, url: organizationUrl })?.href).toEqual({
+        pathname: '/organizations/[id]',
+        params: { id: organizationId },
+      });
+    }
+  });
+
+  it('applies the same strict validation to organisation links', () => {
+    const bad = [
+      { url: 'https://evil.example/organizations/abc' },
+      { url: 'dogo://evil/organizations/abc' },
+      { url: 'dogo://organizations/abc/../../admin' },
+      { url: 'dogo://organizations/abc?x=1' },
+      { url: 'dogo://organizations/' },
+      { url: 'dogo://organizations/abc/members' },
+      { url: 'http://organizations/abc' },
+      { type: 'membership_accepted', organizationId: 'other', url: 'dogo://organizations/abc' },
+      // The type must agree with the kind of link.
+      { type: 'membership_accepted', url: `dogo://walks/${walkId}` },
+      { type: 'walk_updated', url: 'dogo://organizations/abc' },
+    ];
+    for (const data of bad) expect(targetForNotification(data)).toBeNull();
+  });
+
   it('ignores anything that is not one of our own walk links', () => {
     const bad = [
       undefined,
@@ -322,6 +358,50 @@ describe('receiving and tapping notifications', () => {
     await renderRouter(APP_DIR, { initialUrl: '/profile' });
     await waitFor(() => expect(screen).toHavePathname(`/walks/${walkId}/messages`));
     expect(notifications.clearLastNotificationResponse).toHaveBeenCalled();
+  });
+
+  it.each([
+    ['membership_requested', '/members'],
+    ['membership_accepted', ''],
+    ['organization_approved', ''],
+  ])('opens the organisation for %s', async (type, suffix) => {
+    const organizationId = 'c0c0c0c0-0000-4000-8000-000000000001';
+    mockApi({
+      ...routes,
+      [`GET /api/v1/organizations/${organizationId}`]: () =>
+        ok({
+          id: organizationId,
+          name: 'Club canin du lac',
+          description: '',
+          city: null,
+          status: 'Approved',
+          createdAt: '2026-11-01T10:00:00Z',
+          memberCount: 1,
+          educators: [],
+          myMembership: { id: 'm', role: 'Owner', status: 'Accepted' },
+          upcomingWalks: [],
+        }),
+      [`GET /api/v1/organizations/${organizationId}/memberships`]: () =>
+        ok({ members: [], requests: [] }),
+    });
+    await start();
+    await act(async () =>
+      notifications.__tap({
+        type,
+        organizationId,
+        url: `dogo://organizations/${organizationId}`,
+      }),
+    );
+    await waitFor(() => expect(screen).toHavePathname(`/organizations/${organizationId}${suffix}`));
+  });
+
+  it('ignores an organisation link carrying a walk type', async () => {
+    mockApi(routes);
+    await start();
+    await act(async () =>
+      notifications.__tap({ type: 'walk_updated', url: 'dogo://organizations/abc' }),
+    );
+    expect(screen).toHavePathname('/profile');
   });
 
   it('ignores an unknown or foreign link', async () => {

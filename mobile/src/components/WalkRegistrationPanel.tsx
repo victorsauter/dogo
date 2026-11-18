@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 
 import { useMyDogs } from '@/api/dogs';
-import { errorMessage } from '@/api/errors';
+import { ApiError, errorMessage } from '@/api/errors';
 import type { Dog, WalkDetail } from '@/api/types';
 import { useCancelRegistration, useRegisterDogs } from '@/api/walks';
 import { offerNotifications } from '@/notifications';
@@ -24,6 +24,8 @@ export interface WalkRegistrationPanelProps {
   /** Registrations are open: the walk is scheduled and has not started. */
   open: boolean;
   onAddDog: () => void;
+  /** Opens the organisation page (professional walks reserved to members). */
+  onOpenOrganization?: (organizationId: string) => void;
 }
 
 const isActive = (status: string) => status === 'Pending' || status === 'Accepted';
@@ -92,7 +94,12 @@ function DogChoice({
  * and the choice of my dogs to register. Dogs whose size is not allowed or
  * that are already registered are shown disabled with the reason.
  */
-export function WalkRegistrationPanel({ walk, open, onAddDog }: WalkRegistrationPanelProps) {
+export function WalkRegistrationPanel({
+  walk,
+  open,
+  onAddDog,
+  onOpenOrganization,
+}: WalkRegistrationPanelProps) {
   const { spacing } = useTheme();
   const dogs = useMyDogs();
   const register = useRegisterDogs(walk.id);
@@ -100,6 +107,7 @@ export function WalkRegistrationPanel({ walk, open, onAddDog }: WalkRegistration
   const [selected, setSelected] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [membersOnly, setMembersOnly] = useState(false);
   const full = isWalkFull(walk);
 
   const dogName = (dogId: string | null) =>
@@ -118,6 +126,7 @@ export function WalkRegistrationPanel({ walk, open, onAddDog }: WalkRegistration
   function submit() {
     setMessage(null);
     setError(null);
+    setMembersOnly(false);
     register.mutate(selected, {
       onSuccess: (registrations) => {
         setSelected([]);
@@ -126,7 +135,10 @@ export function WalkRegistrationPanel({ walk, open, onAddDog }: WalkRegistration
         // Meaningful moment to offer notifications (asked once, never when unavailable).
         void offerNotifications();
       },
-      onError: (e) => setError(errorMessage(e)),
+      onError: (e) => {
+        if (e instanceof ApiError && e.code === 'walk.members_only') setMembersOnly(true);
+        else setError(errorMessage(e));
+      },
     });
   }
 
@@ -231,6 +243,20 @@ export function WalkRegistrationPanel({ walk, open, onAddDog }: WalkRegistration
             <Text color="success" accessibilityLiveRegion="polite">
               {message}
             </Text>
+          ) : null}
+        </Card>
+      ) : null}
+      {membersOnly ? (
+        <Card>
+          <Text variant="heading">{t.walk.membersOnlyTitle}</Text>
+          <Text accessibilityLiveRegion="polite">
+            {format(t.walk.membersOnlyMessage, { name: walk.organization?.name ?? '' })}
+          </Text>
+          {walk.organization && onOpenOrganization ? (
+            <Button
+              label={t.walk.membersOnlyAction}
+              onPress={() => onOpenOrganization(walk.organization!.id)}
+            />
           ) : null}
         </Card>
       ) : null}

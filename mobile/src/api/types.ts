@@ -32,6 +32,15 @@ export type Message = Schemas['MessageResponse'];
 export type MessagePage = Schemas['MessagePageResponse'];
 export type NotificationPreferences = Schemas['NotificationPreferencesResponse'];
 export type DevicePlatform = Schemas['DevicePlatform'];
+export type OrganizationSummary = Schemas['OrganizationSummaryResponse'];
+export type OrganizationDetail = Schemas['OrganizationDetailResponse'];
+export type MyOrganization = Schemas['MyOrganizationResponse'];
+export type MyMembership = Schemas['MyMembershipResponse'];
+export type Membership = Schemas['MembershipResponse'];
+export type CreateOrganizationRequest = Schemas['CreateOrganizationRequest'];
+export type UpdateOrganizationRequest = Schemas['UpdateOrganizationRequest'];
+export type BlockedUser = Schemas['BlockResponse'];
+export type CreateReportRequest = Schemas['CreateReportRequest'];
 
 /** Fields every walk shape shares (search result, my walks, detail): what `WalkCard` shows. */
 export type WalkSummary = Pick<

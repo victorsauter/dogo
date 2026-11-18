@@ -371,7 +371,7 @@ describe('« Mes balades » tab', () => {
       },
     });
     await signIn();
-    await renderRouter(APP_DIR, { initialUrl: '/my-walks' });
+    await renderRouter(APP_DIR, { initialUrl: '/mine' });
 
     expect(await screen.findByText(t.myWalks.emptyOrganizedTitle)).toBeTruthy();
     await fireEvent.press(screen.getByRole('radio', { name: t.myWalks.joined }));
@@ -393,7 +393,7 @@ describe('« Mes balades » tab', () => {
   it('shows cancelled walks and invites to create one when none is organised', async () => {
     mockApi({ 'GET /api/v1/me/walks': () => ok([walkResult({ status: 'Cancelled' })]) });
     await signIn();
-    await renderRouter(APP_DIR, { initialUrl: '/my-walks' });
+    await renderRouter(APP_DIR, { initialUrl: '/mine' });
     expect(await screen.findByText(t.walk.cancelled)).toBeTruthy();
   });
 });

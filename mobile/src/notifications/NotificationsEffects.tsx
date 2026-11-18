@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useRef } from 'react';
 
+import { organizationsChanged } from '@/api/organizations';
 import { walksChanged } from '@/api/walks';
 import { useSession } from '@/auth';
 
@@ -63,8 +64,11 @@ export function NotificationsEffects() {
       };
 
       const received = notifications.addNotificationReceivedListener((notification) => {
-        // Whatever the notification says, the affected walks are stale: refetch them.
-        if (signedInRef.current) void walksChanged(queryClient);
+        // Whatever the notification says, the affected walks and organisations are stale: refetch them.
+        if (signedInRef.current) {
+          void walksChanged(queryClient);
+          void organizationsChanged(queryClient);
+        }
         devLog('received', notification.request.content.data);
       });
       const tapped = notifications.addNotificationResponseReceivedListener((response) => {
