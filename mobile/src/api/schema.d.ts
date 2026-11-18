@@ -227,6 +227,144 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/walks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search scheduled upcoming walks around a point, soonest first, then nearest. */
+        get: operations["searchWalks"];
+        put?: never;
+        /** Create a walk organised by the signed-in user. */
+        post: operations["createWalk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/walks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a walk with its participants, as seen by the signed-in user. */
+        get: operations["getWalk"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a walk before it starts (organizer only). */
+        patch: operations["updateWalk"];
+        trace?: never;
+    };
+    "/api/v1/walks/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a walk before it starts (organizer only). Idempotent. */
+        post: operations["cancelWalk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/walks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the walks the signed-in user organises or takes part in, upcoming or past. */
+        get: operations["listMyWalks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/walks/{id}/registrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register one or more of the signed-in user's dogs to a walk; all or none are registered. */
+        post: operations["createRegistrations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/walks/{id}/registrations/{registrationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel one of the signed-in user's registrations before the walk starts. Idempotent. */
+        delete: operations["cancelRegistration"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/walks/{id}/registrations/{registrationId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept a pending registration (organizer only). Capacity is checked again. */
+        post: operations["acceptRegistration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/walks/{id}/registrations/{registrationId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline a pending registration or remove an accepted participant (organizer only). */
+        post: operations["declineRegistration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -245,6 +383,25 @@ export interface components {
             reactivity: components["schemas"]["Reactivity"];
             leashHabit: components["schemas"]["LeashHabit"];
             description?: null | string;
+        };
+        CreateRegistrationsRequest: {
+            dogIds: string[];
+        };
+        CreateWalkRequest: {
+            title: string;
+            description?: null | string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: int32 */
+            durationMinutes?: number;
+            location: components["schemas"]["GeoPoint"];
+            locationLabel: string;
+            /** Format: int32 */
+            maxDogs: number;
+            allowedSizes: components["schemas"]["DogSize"][];
+            leashRule: components["schemas"]["LeashRule"];
+            rules?: null | string;
+            access: components["schemas"]["WalkAccess"];
         };
         DevSignInRequest: {
             subject: string;
@@ -270,6 +427,12 @@ export interface components {
         };
         /** @enum {string} */
         DogSize: "Small" | "Medium" | "Large";
+        GeoPoint: {
+            /** Format: double */
+            latitude: number;
+            /** Format: double */
+            longitude: number;
+        };
         GoogleSignInRequest: {
             idToken: string;
         };
@@ -293,6 +456,8 @@ export interface components {
         IFormFile: string;
         /** @enum {string} */
         LeashHabit: "OnLeash" | "LongLine" | "OffLeash";
+        /** @enum {string} */
+        LeashRule: "LeashRequired" | "OffLeashAllowed";
         MeResponse: {
             /** Format: uuid */
             id: string;
@@ -304,6 +469,48 @@ export interface components {
             isAdmin: boolean;
             /** Format: date-time */
             createdAt: string;
+        };
+        MyRegistrationResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            dogId: null | string;
+            status: components["schemas"]["RegistrationStatus"];
+        };
+        MyWalkResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: int32 */
+            durationMinutes: number;
+            location: components["schemas"]["GeoPoint"];
+            locationLabel: string;
+            /** Format: int32 */
+            maxDogs: number;
+            /** Format: int32 */
+            acceptedDogsCount: number;
+            allowedSizes: components["schemas"]["DogSize"][];
+            leashRule: components["schemas"]["LeashRule"];
+            access: components["schemas"]["WalkAccess"];
+            status: components["schemas"]["WalkStatus"];
+            organizer: components["schemas"]["UserSummaryResponse"];
+            isProfessional: boolean;
+            organization: null | components["schemas"]["WalkOrganizationResponse"];
+            repeatsWeekly: boolean;
+            hasBlockedParticipant: boolean;
+            myRegistrations: components["schemas"]["MyRegistrationResponse"][];
+        };
+        /** @enum {string} */
+        MyWalksPeriod: "Upcoming" | "Past";
+        /** @enum {string} */
+        MyWalksRole: "Organizer" | "Participant";
+        ParticipantResponse: {
+            /** Format: uuid */
+            registrationId: string;
+            dog: components["schemas"]["DogResponse"];
+            owner: components["schemas"]["UserSummaryResponse"];
         };
         ProblemDetails: {
             type?: null | string;
@@ -328,6 +535,21 @@ export interface components {
         RefreshTokenRequest: {
             refreshToken: string;
         };
+        RegistrationResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            walkId: string;
+            /** Format: uuid */
+            dogId: null | string;
+            /** Format: uuid */
+            userId: string;
+            status: components["schemas"]["RegistrationStatus"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @enum {string} */
+        RegistrationStatus: "Pending" | "Accepted" | "Declined" | "Cancelled";
         SessionResponse: {
             accessToken: string;
             /** Format: date-time */
@@ -352,8 +574,97 @@ export interface components {
             displayName?: null | string;
             bio?: null | string;
         };
+        UpdateWalkRequest: {
+            title?: null | string;
+            description?: null | string;
+            /** Format: date-time */
+            startsAt?: null | string;
+            /** Format: int32 */
+            durationMinutes?: null | number;
+            location?: null | components["schemas"]["GeoPoint"];
+            locationLabel?: null | string;
+            /** Format: int32 */
+            maxDogs?: null | number;
+            allowedSizes?: null | components["schemas"]["DogSize"][];
+            leashRule?: null | components["schemas"]["LeashRule"];
+            rules?: null | string;
+            access?: null | components["schemas"]["WalkAccess"];
+        };
         /** @enum {string} */
         UserStatus: "Active" | "Suspended";
+        UserSummaryResponse: {
+            /** Format: uuid */
+            id: string;
+            displayName: string;
+            photoUrl: null | string;
+        };
+        /** @enum {string} */
+        WalkAccess: "Open" | "Approval";
+        WalkDetailResponse: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            description: string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: int32 */
+            durationMinutes: number;
+            location: components["schemas"]["GeoPoint"];
+            locationLabel: string;
+            /** Format: int32 */
+            maxDogs: number;
+            /** Format: int32 */
+            acceptedDogsCount: number;
+            allowedSizes: components["schemas"]["DogSize"][];
+            leashRule: components["schemas"]["LeashRule"];
+            rules: string;
+            access: components["schemas"]["WalkAccess"];
+            status: components["schemas"]["WalkStatus"];
+            organizer: components["schemas"]["UserSummaryResponse"];
+            isProfessional: boolean;
+            organization: null | components["schemas"]["WalkOrganizationResponse"];
+            repeatsWeekly: boolean;
+            hasBlockedParticipant: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            isOrganizer: boolean;
+            participants: components["schemas"]["ParticipantResponse"][];
+            myRegistrations: components["schemas"]["MyRegistrationResponse"][];
+            pendingRegistrations: components["schemas"]["ParticipantResponse"][];
+        };
+        WalkOrganizationResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        WalkSearchResult: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: int32 */
+            durationMinutes: number;
+            location: components["schemas"]["GeoPoint"];
+            locationLabel: string;
+            /** Format: double */
+            distanceMeters: number;
+            /** Format: int32 */
+            maxDogs: number;
+            /** Format: int32 */
+            acceptedDogsCount: number;
+            allowedSizes: components["schemas"]["DogSize"][];
+            leashRule: components["schemas"]["LeashRule"];
+            access: components["schemas"]["WalkAccess"];
+            status: components["schemas"]["WalkStatus"];
+            organizer: components["schemas"]["UserSummaryResponse"];
+            isProfessional: boolean;
+            organization: null | components["schemas"]["WalkOrganizationResponse"];
+            repeatsWeekly: boolean;
+            hasBlockedParticipant: boolean;
+        };
+        /** @enum {string} */
+        WalkStatus: "Scheduled" | "Cancelled";
     };
     responses: never;
     parameters: never;
@@ -1131,6 +1442,560 @@ export interface operations {
             };
             /** @description Unsupported Media Type */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    searchWalks: {
+        parameters: {
+            query: {
+                lat: number;
+                lng: number;
+                radiusKm?: number;
+                from?: string;
+                to?: string;
+                size?: components["schemas"]["DogSize"];
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalkSearchResult"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    createWalk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWalkRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalkDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getWalk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalkDetailResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    updateWalk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWalkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalkDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    cancelWalk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalkDetailResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    listMyWalks: {
+        parameters: {
+            query: {
+                role: components["schemas"]["MyWalksRole"];
+                when?: components["schemas"]["MyWalksPeriod"];
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyWalkResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    createRegistrations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRegistrationsRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    cancelRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                registrationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    acceptRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                registrationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    declineRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                registrationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
