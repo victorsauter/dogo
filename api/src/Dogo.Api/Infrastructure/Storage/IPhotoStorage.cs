@@ -12,6 +12,10 @@ public interface IPhotoStorage
     /// <summary>Opens a stored file, or returns null when it does not exist.</summary>
     Task<Stream?> OpenReadAsync(string fileName, CancellationToken cancellationToken);
 
-    /// <summary>Deletes a stored file; does nothing when it does not exist.</summary>
+    /// <summary>
+    /// Deletes a stored file; does nothing when it does not exist. Never throws because the file could not be
+    /// removed (rights, disk): callers delete after committing their change, so a failure is logged as a warning
+    /// and the file stays behind rather than failing the request.
+    /// </summary>
     Task DeleteAsync(string fileName, CancellationToken cancellationToken);
 }

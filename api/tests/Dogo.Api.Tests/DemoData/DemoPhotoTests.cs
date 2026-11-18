@@ -102,6 +102,32 @@ public sealed class DemoPhotoTests(ApiFixture fixture) : DemoDataTestBase(fixtur
     }
 
     [Fact]
+    public async Task Downloaded_photos_are_cleaned_like_uploaded_ones()
+    {
+        var sources = PhotoSources();
+        Factory.DemoPhotos.Respond = request => request.RequestUri!.Host == "api.dicebear.com"
+            ? FakeDemoPhotoServer.Image(TestImages.JpegWithMetadata(orientation: 6, width: 4000, height: 3000), "image/jpeg")
+            : sources(request);
+
+        var result = await GenerateAsync(photos: true);
+
+        Assert.True(result.PhotosStored > 0);
+        var files = StoredPhotoFiles();
+        Assert.NotEmpty(files);
+        foreach (var file in files)
+        {
+            var bytes = await File.ReadAllBytesAsync(file, Ct);
+            Assert.False(TestImages.Contains(bytes, TestImages.GpsMarker), file);
+            Assert.False(TestImages.Contains(bytes, TestImages.CommentMarker), file);
+        }
+
+        // The 4000 × 3000 avatars were turned upright (portrait) and scaled down.
+        var marie = (await StatusAsync()).Accounts.Single(a => a.Subject == "demo-marie-schmitt");
+        using var avatar = SkiaSharp.SKBitmap.Decode(await (await CreateClient().GetAsync(marie.PhotoUrl, Ct)).Content.ReadAsByteArrayAsync(Ct));
+        Assert.Equal((1536, 2048), (avatar.Width, avatar.Height));
+    }
+
+    [Fact]
     public async Task An_unreachable_wikipedia_only_skips_the_dog_photos()
     {
         var sources = PhotoSources();
@@ -193,7 +219,7 @@ public sealed class DemoPhotoTests(ApiFixture fixture) : DemoDataTestBase(fixtur
         switch (uri.Host)
         {
             case "api.dicebear.com":
-                return FakeDemoPhotoServer.Image(TestImages.Png(2048));
+                return FakeDemoPhotoServer.Image(TestImages.Png());
             case "en.wikipedia.org":
                 var pages = query["titles"].ToString().Split('|').Select(title => new
                 {

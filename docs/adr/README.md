@@ -33,6 +33,7 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0029](0029-menus-ancres-et-finition-native.md) | Filtres en pastilles-menus ancrées, menu natif d'iOS par `@expo/ui`, matériaux et retour haptique | Accepté |
 | [0030](0030-charte-graphique-uzu.md) | Charte graphique « Uzu » : blanc cassé, fauve et noir, couleurs du pelage d'un Jack Russell | Accepté |
 | [0031](0031-durcissement-de-l-api.md) | Durcissement de l'API : environnements en liste blanche, limitation de débit, en-têtes transférés | Proposé |
+| [0032](0032-nettoyage-des-photos.md) | Nettoyage des photos : décodage et réencodage côté serveur (SkiaSharp), HEIC refusé, cache privé ; précise l'ADR 0010 | Proposé |
 
 ## Statuts
 
