@@ -35,7 +35,7 @@ export interface WalksMapProps {
 /** Height of the « Recherche… » capsule. */
 const SEARCHING_HEIGHT = 32;
 
-/** Map of walks: one pin per walk (accent colour for professional walks), callout opens it. */
+/** Map of walks: one pin per walk (`pro` colour for professional walks), callout opens it. */
 export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
   {
     initialRegion,
@@ -88,7 +88,7 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
                 walk.id === selectedId
                   ? colors.text
                   : walk.isProfessional
-                    ? colors.accent
+                    ? colors.pro
                     : colors.primary
               }
               zIndex={walk.id === selectedId ? 1 : 0}
@@ -101,7 +101,7 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
               coordinate={walk.location}
               title={walk.title}
               description={formatWalkStart(walk.startsAt)}
-              pinColor={walk.isProfessional ? colors.accent : colors.primary}
+              pinColor={walk.isProfessional ? colors.pro : colors.primary}
               onCalloutPress={() => onOpenWalk(walk.id)}
             />
           ),

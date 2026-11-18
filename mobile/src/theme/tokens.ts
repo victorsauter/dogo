@@ -1,7 +1,11 @@
 /**
- * Design tokens. Warm, calm identity: forest green as primary (outdoors, calm),
- * terracotta as accent (warmth), warm neutrals. Text/background pairs meet
- * WCAG AA (checked in `__tests__/theme.test.ts`).
+ * Design tokens. Identity « Uzu »: the coat of a Jack Russell. Warm off-white
+ * background, fawn as primary (actions, active filters, pins, links), warm
+ * black for text and strong elements (professional walks), sand for the soft
+ * tints (information, selection, edges). The dark theme is its own palette: a
+ * warm black background, a lighter fawn, off-white text (professional walks in
+ * off-white). Text/background pairs meet WCAG AA, large text and meaningful
+ * icons 3:1 (checked in `__tests__/theme.test.ts`). See ADR 0030.
  */
 
 export interface ColorTokens {
@@ -19,20 +23,29 @@ export interface ColorTokens {
   onPrimary: string;
   /** Low-emphasis primary tint (selected chip, secondary button). */
   primarySoft: string;
-  accent: string;
-  onAccent: string;
+  /** Professional walks (« Pro » badge, edge of their card, their pin): the strong colour of the coat. */
+  pro: string;
+  /** Text and icons drawn on `pro`. */
+  onPro: string;
   danger: string;
   onDanger: string;
   dangerSoft: string;
   success: string;
   warning: string;
   info: string;
+  /** Background of information badges and banners (sand). */
+  infoSoft: string;
   /**
    * Translucent layer of a floating material (header over the map, menu): laid
    * over the system blur on iOS, alone (nearly opaque) where blur is not available.
    */
   materialTint: string;
   materialFallback: string;
+  /**
+   * Light tint of the system's Liquid Glass (untinted surfaces), so that it
+   * leans towards the warm background rather than the green of the map.
+   */
+  glassTint: string;
   /** Light edge of a floating material drawn with the blur (iOS before Liquid Glass). */
   glassEdge: string;
   /** Hairline between rows of a material (menu items, under a floating header). */
@@ -40,51 +53,55 @@ export interface ColorTokens {
 }
 
 export const lightColors: ColorTokens = {
-  background: '#FAF7F2',
-  surface: '#FFFFFF',
-  surfaceMuted: '#F1ECE3',
-  border: '#DDD5C8',
-  text: '#1F1B16',
-  textMuted: '#61584E',
-  primary: '#2F6B4F',
+  background: '#FBF6EC',
+  surface: '#FFFDF9',
+  surfaceMuted: '#F3EADC',
+  border: '#E3D3BC',
+  text: '#1F1A17',
+  textMuted: '#62564A',
+  primary: '#9C5626',
   onPrimary: '#FFFFFF',
-  primarySoft: '#DCEBE2',
-  accent: '#B5552E',
-  onAccent: '#FFFFFF',
-  danger: '#B3261E',
+  primarySoft: '#F5E8D7',
+  pro: '#1F1A17',
+  onPro: '#FBF6EC',
+  danger: '#A8322A',
   onDanger: '#FFFFFF',
-  dangerSoft: '#F9DEDC',
-  success: '#2E6B34',
+  dangerSoft: '#F8E0D9',
+  success: '#4A6326',
   warning: '#7A4F00',
-  info: '#2B5C8A',
-  materialTint: '#FAF7F299',
-  materialFallback: '#FAF7F2F2',
+  info: '#5C3A1C',
+  infoSoft: '#E9C9A0',
+  materialTint: '#FBF6EC99',
+  materialFallback: '#FBF6ECF2',
+  glassTint: '#FBF6EC99',
   glassEdge: '#FFFFFFB3',
-  separator: '#1F1B1626',
+  separator: '#1F1A1726',
 };
 
 export const darkColors: ColorTokens = {
-  background: '#171512',
-  surface: '#221F1B',
-  surfaceMuted: '#2E2A25',
-  border: '#433D36',
-  text: '#F3EEE7',
-  textMuted: '#B8AEA2',
-  primary: '#86C9A5',
-  onPrimary: '#0F2A1C',
-  primarySoft: '#21392C',
-  accent: '#EE9C77',
-  onAccent: '#2B1308',
-  danger: '#F2B8B5',
-  onDanger: '#601410',
-  dangerSoft: '#4A1D1A',
-  success: '#9BD3A0',
-  warning: '#F0C36A',
-  info: '#9EC5EC',
-  materialTint: '#221F1BA6',
-  materialFallback: '#221F1BF2',
+  background: '#14100D',
+  surface: '#201914',
+  surfaceMuted: '#2C231C',
+  border: '#43372D',
+  text: '#F6EEE2',
+  textMuted: '#BFAE9A',
+  primary: '#E0A06C',
+  onPrimary: '#24140A',
+  primarySoft: '#3A291B',
+  pro: '#F3EADB',
+  onPro: '#1F1A17',
+  danger: '#F2B3A8',
+  onDanger: '#5A1610',
+  dangerSoft: '#4A201A',
+  success: '#B5CC8A',
+  warning: '#EEC36E',
+  info: '#E9C9A0',
+  infoSoft: '#3B2E22',
+  materialTint: '#201914A6',
+  materialFallback: '#201914F2',
+  glassTint: '#14100D40',
   glassEdge: '#FFFFFF2E',
-  separator: '#F3EEE726',
+  separator: '#F6EEE226',
 };
 
 /** Spacing scale, in points. Use these instead of raw numbers. */

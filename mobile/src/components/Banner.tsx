@@ -18,7 +18,7 @@ export function Banner({ message, title, tone = 'danger' }: BannerProps) {
   const palette: Record<BannerTone, { background: keyof ColorTokens; text: keyof ColorTokens }> = {
     danger: { background: 'dangerSoft', text: 'danger' },
     warning: { background: 'surfaceMuted', text: 'warning' },
-    info: { background: 'surfaceMuted', text: 'info' },
+    info: { background: 'infoSoft', text: 'info' },
   };
   const { background, text } = palette[tone];
   return (

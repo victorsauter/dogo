@@ -137,8 +137,8 @@ function PanelSketch() {
   const pin = { position: 'absolute', width: 8, height: 8, borderRadius: radii.pill } as const;
   return (
     <>
-      <View style={{ ...pin, top: 10, left: 16, backgroundColor: colors.accent }} />
-      <View style={{ ...pin, top: 20, left: 46, backgroundColor: colors.accent }} />
+      <View style={{ ...pin, top: 10, left: 16, backgroundColor: colors.primary }} />
+      <View style={{ ...pin, top: 20, left: 46, backgroundColor: colors.pro }} />
       <View
         style={{
           position: 'absolute',

@@ -73,7 +73,7 @@ export function Material({
       <GlassView
         testID={testID}
         glassEffectStyle={{ style: hidden ? 'none' : 'regular', animate: true }}
-        tintColor={tinted ? colors.primary : undefined}
+        tintColor={tinted ? colors.primary : colors.glassTint}
         colorScheme={dark ? 'dark' : 'light'}
         style={style}
       >

@@ -5,7 +5,7 @@ import { useTheme, type ColorTokens } from '@/theme';
 import { Icon, type IconName } from './Icon';
 import { Text } from './Text';
 
-export type BadgeTone = 'neutral' | 'primary' | 'accent' | 'warning' | 'danger' | 'info';
+export type BadgeTone = 'neutral' | 'primary' | 'pro' | 'warning' | 'danger' | 'info';
 
 export interface BadgeProps {
   label: string;
@@ -21,10 +21,10 @@ export function Badge({ label, tone = 'neutral', icon, accessibilityLabel }: Bad
   const palette: Record<BadgeTone, { background: keyof ColorTokens; text: keyof ColorTokens }> = {
     neutral: { background: 'surfaceMuted', text: 'textMuted' },
     primary: { background: 'primarySoft', text: 'primary' },
-    accent: { background: 'accent', text: 'onAccent' },
+    pro: { background: 'pro', text: 'onPro' },
     warning: { background: 'surfaceMuted', text: 'warning' },
     danger: { background: 'dangerSoft', text: 'danger' },
-    info: { background: 'surfaceMuted', text: 'info' },
+    info: { background: 'infoSoft', text: 'info' },
   };
   const { background, text } = palette[tone];
   return (

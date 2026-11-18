@@ -1,8 +1,10 @@
 import { screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import { t } from '@/strings';
 import { walkResult } from '@/test/fixtures';
 import { renderWithTheme } from '@/test/render';
+import { lightColors } from '@/theme/tokens';
 
 import { WalkCard } from '../WalkCard';
 
@@ -84,6 +86,10 @@ describe('WalkCard', () => {
     );
     expect(screen.getByText('Pro · Club canin du lac')).toBeTruthy();
     expect(cardLabel()).toContain('Club canin du lac');
+    // Edge in the strong colour of the coat (warm black), next to the « Pro » label.
+    expect(StyleSheet.flatten(screen.getByRole('button').props.style).borderColor).toBe(
+      lightColors.pro,
+    );
   });
 
   it('shows a discreet warning when a blocked person takes part', async () => {
