@@ -53,8 +53,8 @@ public sealed class WalkSearchTests(ApiFixture fixture) : WalkTestBase(fixture)
         Assert.Equal(near.LeashRule, item.LeashRule);
         Assert.Equal(near.Access, item.Access);
         Assert.Equal(WalkStatus.Scheduled, item.Status);
-        Assert.Equal(session.User.Id, item.Organizer.Id);
-        Assert.Equal("Organizer", item.Organizer.DisplayName);
+        Assert.Equal(session.User.Id, item.Organizer!.Id);
+        Assert.Equal("Organizer", item.Organizer!.DisplayName);
         Assert.False(item.IsProfessional);
         Assert.Null(item.Organization);
         Assert.False(item.RepeatsWeekly);

@@ -53,7 +53,7 @@ public sealed partial class WalkReminderJob(
 
         foreach (var walk in walks)
         {
-            List<Guid> recipients = [walk.OrganizerId, .. participants[walk.Id]];
+            List<Guid> recipients = [.. walk.OrganizerRecipients(), .. participants[walk.Id]];
             notifications.Enqueue(new NotificationRequest(NotificationType.WalkReminder, NotificationSubject.ForWalk(walk), null, recipients));
         }
 

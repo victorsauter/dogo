@@ -31,6 +31,14 @@ public sealed record DevSignInRequest
     [Required]
     [StringLength(User.DisplayNameMaxLength, MinimumLength = 1)]
     public required string DisplayName { get; init; }
+
+    /// <summary>
+    /// Optional e-mail of the test account, taken as verified (dev sign-in only): lets a tester act
+    /// as an administrator by using an address listed in <c>Admin:Emails</c>. Omitted: unchanged.
+    /// </summary>
+    [EmailAddress]
+    [StringLength(320)]
+    public string? Email { get; init; }
 }
 
 public sealed record RefreshTokenRequest

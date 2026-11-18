@@ -48,7 +48,30 @@ public static class ErrorCodes
     public const string WalkNotInSeries = "walk.not_in_series";
     public const string MessageForbidden = "message.forbidden";
 
-    // Lot 4 adds walk.not_allowed (blocked user) and walk.members_only (professional walk).
+    // Registration rules of Lot 4 (spec §4.3) and professional walks (spec §4.6).
+    public const string WalkNotAllowed = "walk.not_allowed";
+    public const string WalkMembersOnly = "walk.members_only";
+    public const string WalkOrganizationForbidden = "walk.organization_forbidden";
+
+    // Organisations and memberships (spec §4.6).
+    public const string OrganizationNotFound = "organization.not_found";
+    public const string OrganizationForbidden = "organization.forbidden";
+    public const string OrganizationTooManyPending = "organization.too_many_pending";
+    public const string OrganizationNotApproved = "organization.not_approved";
+    public const string OrganizationClosed = "organization.closed";
+    public const string MembershipNotFound = "membership.not_found";
+    public const string MembershipDuplicate = "membership.duplicate";
+    public const string MembershipNotPending = "membership.not_pending";
+    public const string MembershipNotAccepted = "membership.not_accepted";
+    public const string MembershipOwnerRole = "membership.owner_role";
+    public const string MembershipSoleOwner = "membership.sole_owner";
+
+    // Blocks, reports and administration (spec §4.7).
+    public const string BlockSelf = "block.self";
+    public const string ReportSelf = "report.self";
+    public const string ReportNotFound = "report.not_found";
+    public const string AdminForbidden = "admin.forbidden";
+    public const string AdminSelfSuspension = "admin.self_suspension";
 
     // Photos.
     public const string PhotoMissing = "photo.missing";

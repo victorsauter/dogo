@@ -32,6 +32,7 @@ public abstract class ApiTestBase(ApiFixture fixture) : IAsyncLifetime
         await WaitForNotificationsAsync();
         await fixture.ResetAsync();
         Factory.PushSender.Clear();
+        Factory.ReportNotifier.Clear();
     }
 
     /// <summary>Push notifications that would have been sent, in order.</summary>
@@ -70,17 +71,24 @@ public abstract class ApiTestBase(ApiFixture fixture) : IAsyncLifetime
         return client;
     }
 
-    protected async Task<SessionResponse> SignInDevAsync(string subject = "alice", string displayName = "Alice")
+    protected async Task<SessionResponse> SignInDevAsync(string subject = "alice", string displayName = "Alice", string? email = null)
     {
-        var response = await CreateClient().PostAsJsonAsync("/api/v1/auth/dev", new { subject, displayName }, Ct);
+        var response = await CreateClient().PostAsJsonAsync("/api/v1/auth/dev", new { subject, displayName, email }, Ct);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<SessionResponse>(Json, Ct))!;
     }
 
-    /// <summary>Signs in a dev account and returns a client carrying its access token.</summary>
-    protected async Task<(HttpClient Client, SessionResponse Session)> SignedInAsync(string subject = "alice", string displayName = "Alice")
+    /// <summary>Signs in a dev account whose e-mail is in <c>Admin:Emails</c>.</summary>
+    protected async Task<(HttpClient Client, SessionResponse Session)> AdminAsync(string subject = "admin")
     {
-        var session = await SignInDevAsync(subject, displayName);
+        var session = await SignInDevAsync(subject, "Admin", DogoApiFactory.AdminEmail);
+        return (CreateClient(session.AccessToken), session);
+    }
+
+    /// <summary>Signs in a dev account and returns a client carrying its access token.</summary>
+    protected async Task<(HttpClient Client, SessionResponse Session)> SignedInAsync(string subject = "alice", string displayName = "Alice", string? email = null)
+    {
+        var session = await SignInDevAsync(subject, displayName, email);
         return (CreateClient(session.AccessToken), session);
     }
 

@@ -44,6 +44,12 @@ public sealed class AdminOptions
     /// <summary>Accounts whose (verified) e-mail is listed here are administrators.</summary>
     public string[] Emails { get; set; } = [];
 
+    /// <summary>
+    /// Address told about every new report (spec §4.7). Not used yet: no e-mail provider is chosen,
+    /// reports are only logged (<c>LoggingReportNotifier</c>).
+    /// </summary>
+    public string? ReportEmail { get; set; }
+
     public bool IsAdmin(string? email) =>
         email is not null && Emails.Contains(email, StringComparer.OrdinalIgnoreCase);
 }

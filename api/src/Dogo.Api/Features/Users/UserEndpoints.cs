@@ -25,6 +25,11 @@ public static class UserEndpoints
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
+        group.MapDelete("/me", DeleteMe)
+            .WithName("deleteMe")
+            .WithSummary("Delete the signed-in user's account: upcoming walks cancelled, dogs, registrations, devices, memberships, blocks and sessions deleted; messages and reports kept without author.")
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
         group.MapGet("/users/{id:guid}", GetUser)
             .WithName("getUser")
             .WithSummary("Get a user's public profile and dogs.")
@@ -64,6 +69,12 @@ public static class UserEndpoints
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.Ok(MeResponse.From(user, admin.Value));
     }
+
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteMe(
+        ClaimsPrincipal principal, AccountDeletion deletion, CancellationToken cancellationToken) =>
+        await deletion.DeleteAsync(principal.GetUserId(), cancellationToken)
+            ? TypedResults.NoContent()
+            : Problems.Unauthorized(ErrorCodes.InvalidToken, "The account no longer exists.");
 
     private static async Task<Results<Ok<PublicUserResponse>, ProblemHttpResult>> GetUser(
         Guid id, DogoDbContext db, CancellationToken cancellationToken)

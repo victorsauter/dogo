@@ -78,10 +78,11 @@ public sealed partial class WalkSeriesJob(
 
         var zone = TimeZoneInfo.FindSystemTimeZoneById(series.TimeZone);
 
-        // Lot 4 copies OrganizationId too.
+        // A professional walk stays professional: the organisation is copied too.
         var next = new Walk
         {
             OrganizerId = latest.OrganizerId,
+            OrganizationId = latest.OrganizationId,
             SeriesId = seriesId,
             Title = latest.Title,
             Description = latest.Description,

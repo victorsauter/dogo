@@ -73,7 +73,7 @@ public static class AuthEndpoints
             return Problems.NotFound(ErrorCodes.NotFound, "Not Found");
         }
 
-        return await sessions.SignInAsync(IdentityProvider.Dev, request.Subject.Trim(), email: null, request.DisplayName, cancellationToken);
+        return await sessions.SignInAsync(IdentityProvider.Dev, request.Subject.Trim(), request.Email?.Trim(), request.DisplayName, cancellationToken);
     }
 
     private static Task<Results<Ok<SessionResponse>, ProblemHttpResult>> Refresh(

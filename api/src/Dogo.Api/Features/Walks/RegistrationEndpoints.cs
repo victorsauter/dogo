@@ -92,7 +92,7 @@ public static class RegistrationEndpoints
 
         // Spec §4.4: the organizer is told (one notification for all the dogs; never for their own dogs).
         var type = status == RegistrationStatus.Pending ? NotificationType.RegistrationRequested : NotificationType.RegistrationCreated;
-        notifications.Enqueue(new NotificationRequest(type, NotificationSubject.ForWalk(walk), userId, [walk.OrganizerId]));
+        notifications.Enqueue(new NotificationRequest(type, NotificationSubject.ForWalk(walk), userId, walk.OrganizerRecipients()));
         return TypedResults.Created((string?)null, registrations.Select(RegistrationResponse.From).ToList());
     }
 

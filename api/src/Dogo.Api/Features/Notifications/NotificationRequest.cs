@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Dogo.Api.Features.Organizations;
 using Dogo.Api.Features.Walks;
 
 namespace Dogo.Api.Features.Notifications;
@@ -37,9 +38,14 @@ public enum NotificationType
     /// <summary>To the accepted registrants of the previous walk of the series.</summary>
     SeriesWalkCreated,
 
-    // Lot 4 adds MembershipRequested, MembershipAccepted and OrganizationApproved here, with
-    // one line each in NotificationTexts (preference Registrations) and a NotificationSubject
-    // for organisations.
+    /// <summary>To the owner and educators of an organisation: someone asks to join.</summary>
+    MembershipRequested,
+
+    /// <summary>To the user whose join request was accepted.</summary>
+    MembershipAccepted,
+
+    /// <summary>To the owner of an organisation an administrator approved.</summary>
+    OrganizationApproved,
 }
 
 /// <summary>What a notification is about; becomes <c>data</c> and the deep link opened by the app.</summary>
@@ -50,6 +56,9 @@ public enum NotificationType
 public sealed record NotificationSubject(string IdKey, Guid Id, string Path, string Name, DateTimeOffset? StartsAt = null)
 {
     public static NotificationSubject ForWalk(Walk walk) => new("walkId", walk.Id, $"walks/{walk.Id}", walk.Title, walk.StartsAt);
+
+    public static NotificationSubject ForOrganization(Organization organization) =>
+        new("organizationId", organization.Id, $"organizations/{organization.Id}", organization.Name);
 }
 
 /// <summary>

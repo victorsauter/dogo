@@ -4,16 +4,25 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Dogo.Api.Features.Walks;
 
-/// <summary>A walk with what every walk response shows next to it.</summary>
+/// <summary>A walk with what every walk response shows next to it, as seen by one viewer.</summary>
+/// <param name="Organizer">Null once the organizer's account has been deleted.</param>
 /// <param name="SeriesActive">The walk belongs to a weekly series that has not been stopped.</param>
-internal sealed record WalkRow(Walk Walk, User Organizer, int AcceptedDogsCount, bool SeriesActive)
+/// <param name="OrganizationName">Name of the organisation of a professional walk.</param>
+/// <param name="HasBlockedParticipant">The viewer blocked the organizer or the owner of an accepted dog (spec §4.7).</param>
+internal sealed record WalkRow(
+    Walk Walk,
+    User? Organizer,
+    int AcceptedDogsCount,
+    bool SeriesActive,
+    string? OrganizationName,
+    bool HasBlockedParticipant)
 {
     public GeoPoint Location => new() { Latitude = Walk.Location.Y, Longitude = Walk.Location.X };
 }
 
 /// <summary>
-/// Walk response fields whose data arrives with later lots. They are already part of the
-/// contract so that the mobile app is written once; this is the single place to fill them.
+/// Walk response fields added by later lots (series, organisations, blocks). They are part of
+/// the contract from Lot 2 so that the mobile app is written once; this is the single place to fill them.
 /// </summary>
 internal sealed record LaterLotFields(
     bool IsProfessional,
@@ -21,23 +30,33 @@ internal sealed record LaterLotFields(
     bool RepeatsWeekly,
     bool HasBlockedParticipant)
 {
-    public static LaterLotFields For(WalkRow row, Guid viewerId)
+    public static LaterLotFields For(WalkRow row)
         => new(
-            IsProfessional: false, // Lot 4: row.Walk.OrganizationId is not null.
-            Organization: null, // Lot 4: { id, name } of the walk's organisation.
+            IsProfessional: row.Walk.OrganizationId is not null,
+            Organization: row.Walk.OrganizationId is { } organizationId && row.OrganizationName is { } name
+                ? new WalkOrganizationResponse(organizationId, name)
+                : null,
             RepeatsWeekly: row.SeriesActive,
-            HasBlockedParticipant: false); // Lot 4: the viewer blocked the organizer or an accepted participant (spec §4.7).
+            HasBlockedParticipant: row.HasBlockedParticipant);
 }
 
 internal static class WalkQueries
 {
-    /// <summary>Projects walks to <see cref="WalkRow"/> (organizer, accepted dogs count, series) in one SQL query.</summary>
-    public static IQueryable<WalkRow> ToRows(this IQueryable<Walk> walks) =>
+    /// <summary>
+    /// Projects walks to <see cref="WalkRow"/> in one SQL query: organizer, accepted dogs count,
+    /// series, organisation, and whether <paramref name="viewerId"/> blocked the organizer or the
+    /// owner of an accepted dog (a subquery on <c>blocks</c>, never computed in memory).
+    /// </summary>
+    public static IQueryable<WalkRow> ToRows(this IQueryable<Walk> walks, DogoDbContext db, Guid viewerId) =>
         walks.Select(w => new WalkRow(
             w,
             w.Organizer,
             w.Registrations.Count(r => r.Status == RegistrationStatus.Accepted),
-            w.Series != null && w.Series.Active));
+            w.Series != null && w.Series.Active,
+            w.Organization != null ? w.Organization.Name : null,
+            db.Blocks.Any(b => b.BlockerId == viewerId
+                && (b.BlockedId == w.OrganizerId
+                    || w.Registrations.Any(r => r.Status == RegistrationStatus.Accepted && r.UserId == b.BlockedId)))));
 
     public static Task<int> CountAcceptedAsync(this DogoDbContext db, Guid walkId, CancellationToken cancellationToken) =>
         db.Registrations.CountAsync(r => r.WalkId == walkId && r.Status == RegistrationStatus.Accepted, cancellationToken);
@@ -61,7 +80,7 @@ internal static class WalkQueries
     /// <summary>Builds the walk page as seen by <paramref name="viewerId"/>; null if the walk does not exist.</summary>
     public static async Task<WalkDetailResponse?> LoadDetailAsync(this DogoDbContext db, Guid id, Guid viewerId, CancellationToken cancellationToken)
     {
-        var row = await db.Walks.AsNoTracking().Where(w => w.Id == id).ToRows().SingleOrDefaultAsync(cancellationToken);
+        var row = await db.Walks.AsNoTracking().Where(w => w.Id == id).ToRows(db, viewerId).SingleOrDefaultAsync(cancellationToken);
         if (row is null)
         {
             return null;
@@ -92,6 +111,6 @@ internal static class WalkQueries
 
         var mine = registrations.Where(r => r.UserId == viewerId).Select(MyRegistrationResponse.From).ToList();
 
-        return WalkDetailResponse.From(row, LaterLotFields.For(row, viewerId), isOrganizer, participants, mine, pending);
+        return WalkDetailResponse.From(row, LaterLotFields.For(row), isOrganizer, participants, mine, pending);
     }
 }

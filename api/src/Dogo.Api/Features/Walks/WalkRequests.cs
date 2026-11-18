@@ -60,6 +60,13 @@ public sealed record CreateWalkRequest
     /// later at the same time (Europe/Paris), until the organizer stops the series.
     /// </summary>
     public bool RepeatWeekly { get; init; }
+
+    /// <summary>
+    /// Makes it a professional walk of this organisation (spec §4.6). Only an owner or educator of
+    /// an approved organisation may set it (403 <c>walk.organization_forbidden</c>); registration is
+    /// then reserved to its accepted members. Cannot be changed afterwards.
+    /// </summary>
+    public Guid? OrganizationId { get; init; }
 }
 
 /// <summary>
