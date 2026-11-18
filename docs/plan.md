@@ -1,10 +1,37 @@
 # dogo — Plan de développement
 
-**Version :** 0.2 · 18/11/2026
+**Version :** 0.3 · 18/11/2026
 
 La V1 se développe en quatre lots, découpés en 31 tâches réparties sur six vagues de travail. Chaque tâche a une difficulté, et chaque groupe de tâches est confié à un sous-agent dont le modèle est choisi selon cette difficulté.
 
 Ce plan applique le [périmètre V1](perimetre-v1.md) et la [spécification technique](specification-v1.md). Les choix techniques sont justifiés dans les [ADR](adr/README.md).
+
+## État au 18/11/2026
+
+Les 31 tâches sont réalisées et fusionnées dans `main`. La V1 tourne en local et a été recettée dans le simulateur iOS ; elle n'est ni hébergée ni publiée.
+
+| Groupe | Contenu | Modèle | Demande de fusion |
+| --- | --- | --- | --- |
+| A1 | Socle de l'API : connexion, profil, chiens, photos | Opus | [#3](https://github.com/victorsauter/dogo/pull/3) |
+| M1 | Socle de l'application mobile | Opus | [#2](https://github.com/victorsauter/dogo/pull/2) |
+| A2 | Balades, recherche géographique, inscriptions | Opus | [#5](https://github.com/victorsauter/dogo/pull/5) |
+| M2 | Connexion, profil, chiens | Sonnet | [#4](https://github.com/victorsauter/dogo/pull/4) |
+| A3 | Fil de balade, notifications, rappels, séries | Opus | [#6](https://github.com/victorsauter/dogo/pull/6) |
+| M3 | Carte, balades, inscriptions | Opus | [#7](https://github.com/victorsauter/dogo/pull/7) |
+| A4 | Organisations, blocage, signalement, administration, suppression de compte | Opus | [#8](https://github.com/victorsauter/dogo/pull/8) |
+| M4 | Fil de balade, notifications, répétition | Sonnet | [#9](https://github.com/victorsauter/dogo/pull/9) |
+| M5 | Organisations, blocage, signalement, compte, textes légaux | Sonnet | [#10](https://github.com/victorsauter/dogo/pull/10) |
+| Recette | Parcours complet dans le simulateur et correctifs | Opus | [#11](https://github.com/victorsauter/dogo/pull/11) |
+
+**Vérifications :** 414 tests côté API sur une vraie base PostGIS, 415 tests côté mobile, CI verte sur `main`. Deux recettes dans le simulateur iOS, la seconde avec un compte neuf, en mode clair, en mode sombre et avec un texte agrandi.
+
+**Défauts connus, non corrigés :**
+
+- Après la première modification du profil, rien n'invite à ajouter un chien.
+- Quitter une organisation ne retire pas les inscriptions aux balades réservées aux membres ; la spécification ne tranche pas.
+- Sans temps réel, un changement fait par quelqu'un d'autre n'apparaît qu'au retour sur l'écran, en tirant pour rafraîchir, ou toutes les 15 secondes dans le fil.
+
+**Jamais essayé, faute de comptes ou d'appareil :** la connexion Apple et Google, la réception d'une notification, l'application sur Android, l'appareil photo, la création automatique de la balade suivante d'une série dans la durée.
 
 ## Organisation du travail
 
