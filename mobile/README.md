@@ -15,7 +15,7 @@ L'application se lance et s'utilise entièrement dans **Expo Go et le simulateur
 - la **connexion Google** (`@react-native-google-signin/google-signin`, code natif absent d'Expo Go) ; sans elle, ou sans identifiants, le bouton est masqué ;
 - plus tard, les notifications (lot 3).
 
-La **connexion Apple** (`expo-apple-authentication`) fonctionne dans Expo Go sur iOS (le bouton est masqué sur Android) ; elle ne réussira pourtant qu'une fois l'API configurée avec un identifiant d'audience Apple (`Auth:Apple:Audiences`). Appareil photo, photothèque et sélecteur de date fonctionnent dans Expo Go. Voir l'[ADR 0018](../docs/adr/0018-connexion-native-chargee-a-la-demande.md).
+La **connexion Apple** (`expo-apple-authentication`) fonctionne dans Expo Go sur iOS (le bouton est masqué sur Android) ; elle ne réussira pourtant qu'une fois l'API configurée avec un identifiant d'audience Apple (`Auth:Apple:Audiences`). Appareil photo, photothèque, sélecteur de date, cartes (`react-native-maps` : Apple Plans sur iOS, Google Maps sur Android) et position (`expo-location`) fonctionnent dans Expo Go. Une version Android publiée demandera une clé Google Maps (voir l'[ADR 0021](../docs/adr/0021-carte-et-position-mobile.md)). Voir l'[ADR 0018](../docs/adr/0018-connexion-native-chargee-a-la-demande.md).
 
 ## Installation
 
@@ -85,12 +85,13 @@ mobile/
     │   ├── (auth)/        écrans accessibles déconnecté (sign-in)
     │   └── (app)/         pile : (tabs)/ (Balades, Mes balades, Profil) et écrans poussés
     │       ├── edit-profile, users/[id], dogs/new, dogs/[id]/{index,edit}
-    ├── api/               client typé, erreurs, cache, photos, énumérations, hooks (profile, dogs)
+    │       └── walks/new, walks/[id]/{index,edit}
+    ├── api/               client typé, erreurs, cache, photos, énumérations, hooks (profile, dogs, walks)
     ├── auth/              session (magasin sécurisé, SessionProvider, useSession), signIn, providers/ (Apple, Google)
     ├── components/        composants de base (Screen, Text, Button, TextField…)
     ├── theme/             couleurs claires et sombres, espacements, rayons, typographie
     ├── strings/           tous les textes français (fr.ts)
-    ├── lib/               configuration, fournisseurs, âge, validation des formulaires, sélecteur de photo
+    ├── lib/               configuration, fournisseurs, âge, dates, géographie, position, validation des formulaires, sélecteur de photo
     └── test/              utilitaires de test (pas de tests ici)
 ```
 
@@ -137,6 +138,16 @@ export function useCreateDog() {
 - Les clés de requête commencent par la ressource (`['me', …]`, `['walks', id]`).
 - Les photos (`photoUrl`, chemins relatifs) s'affichent avec `Avatar` ou `photoUri(photoUrl)`.
 
+### Balades (lot 2)
+
+- **Onglet « Balades »** (`(tabs)/index.tsx`) : carte (`WalksMap`) et liste (`WalkCard`) des mêmes balades, filtres période et gabarit. La recherche suit la zone visible : `searchParamsFor(region, filtres)` (`src/api/walks.ts`) calcule centre, rayon (plafonné à 100 km) et fin de période ; la requête part 400 ms après le dernier déplacement et garde les résultats précédents pendant le chargement (indicateur « Recherche… » après 300 ms seulement).
+- **Fiche** `walks/[id]` : tout sur la balade, inscription de mes chiens (`WalkRegistrationPanel`), et pour l'organisateur demandes en attente, « Retirer », modification et annulation.
+- **Formulaire** `walks/new`, `walks/[id]/edit` : `WalkForm` (validation `validateWalk` dans `src/lib/forms.ts`, point de rendez-vous sur `MeetingPointPicker`). Les conflits `walk.capacity_below_registered` et `walk.size_in_use` s'affichent sur leur champ (`walkSubmitErrors`).
+- **« Mes balades »** : `GET /me/walks` avec `role` (`Organizer`, `Participant`) et `when` (`Upcoming`, `Past`), en PascalCase.
+- **Cohérence** : toute écriture sur une balade passe par `walksChanged()`, qui met la fiche à jour depuis la réponse et invalide `['walks']` et `['me', 'walks']`.
+- **Dates** : `src/lib/dates.ts` (`formatWalkStart` → « Demain à 09:30 », `formatDuration` → « 1 h 30 »), en français et dans le fuseau de l'appareil. Pluriels : `plural(t.discover.resultCount, n)`.
+- **Champs des lots suivants** (`isProfessional`, `organization`, `hasBlockedParticipant`) sont déjà affichés par `WalkCard` et la fiche (badge « Pro » et bordure, nom de l'organisation, avertissement discret).
+
 ### Session
 
 - `useSession()` donne `status` (`loading`, `signedOut`, `signedIn`), `user`, `setSession(réponse)`, `updateUser(user)` (après une modification du profil : met à jour la session et son stockage) et `signOut()`.
@@ -152,4 +163,4 @@ Les textes iOS et Android (position, photos, appareil photo) sont dans `app.conf
 - Choisir une photo : `PhotoPicker` (photothèque ou appareil photo, via `pickPhoto()` de `src/lib/photoPicker.ts`, qui recadre en carré, réduit à 1280 px et réencode en JPEG). L'envoi se fait par `useUploadMyPhoto()` / `useUploadDogPhoto()` (multipart, champ `file`). La partie fichier est un `File` d'`expo-file-system` : depuis le SDK 58, le `fetch` global est celui d'`expo/fetch`, qui refuse l'objet `{ uri, name, type }` propre à React Native (voir `src/api/photoUpload.ts`). Une erreur levée dans l'application (et non par le réseau) donne une `ApiError` de type `client`, jamais « Impossible de joindre le serveur ». Les erreurs `photo.too_large` et `photo.unsupported_type` ont leur message français.
 - Formulaires : limites de l'API dans `src/lib/forms.ts` (`limits`, `validateDog`, `validateProfile`) ; les erreurs de champ du serveur s'affichent sur le bon champ par `serverFieldErrors()`.
 - Défilement vers la première erreur : un formulaire rendu dans un `Screen` qui défile appelle `useScrollToFirstError()(errors)` après un échec de validation (client ou serveur). Les champs se repèrent par leur nom : prop `name` de `TextField` et `DateField`, ou `<FieldAnchor name="…">` autour d'un autre champ (groupe de puces, carte). Le composant qui appelle le crochet doit être **à l'intérieur** du `Screen`.
-- Tests d'écran : `renderRouter('./src/app', …)` avec `mockApi({ 'GET /api/v1/me': () => ok(…) })` (`src/test/mockApi.ts`, qui remplace `fetch`) ; les modules natifs (`expo-apple-authentication`, `photoPicker`, sélecteur de date) sont simulés avec `jest.mock`.
+- Tests d'écran : `renderRouter('./src/app', …)` avec `mockApi({ 'GET /api/v1/me': () => ok(…) })` (`src/test/mockApi.ts`, qui remplace `fetch` ; `call.form` donne le corps multipart relu) ; les modules natifs (`expo-apple-authentication`, `photoPicker`, sélecteur de date) sont simulés avec `jest.mock`. `jest.setup.ts` simule pour tous les tests `expo-file-system` (`File` est un vrai `Blob`), `react-native-maps` (une vue qui transmet `regionChangeComplete` et `press`) et `expo-location` (autorisée, à Paris). Données de balade : `walkResult()`, `walkDetail()`, `participant()` dans `src/test/fixtures.ts`.
