@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
+import { useMyDogs } from '@/api/dogs';
 import { errorMessage } from '@/api/errors';
 import type { PickedPhoto } from '@/api/photoUpload';
 import { useUpdateProfile, useUploadMyPhoto } from '@/api/profile';
@@ -34,6 +35,7 @@ function EditProfileForm({ welcome }: { welcome: boolean }) {
   const scrollToFirstError = useScrollToFirstError();
   const router = useFocusedRouter();
   const update = useUpdateProfile();
+  const dogs = useMyDogs();
   const uploadPhoto = useUploadMyPhoto();
   const [values, setValues] = useState<ProfileFormValues>({
     // The API default name is a placeholder: start from an empty field instead.
@@ -71,6 +73,14 @@ function EditProfileForm({ welcome }: { welcome: boolean }) {
       } catch (error) {
         setPhotoError(errorMessage(error));
         setFormError(t.profile.photoSaveFailed);
+        return;
+      }
+    }
+    // A new member cannot register to a walk without a dog: carry on to adding one.
+    if (welcome) {
+      const mine = dogs.data ?? (await dogs.refetch()).data;
+      if (mine?.length === 0) {
+        router.replace({ pathname: '/dogs/new', params: { welcome: '1' } });
         return;
       }
     }

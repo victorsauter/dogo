@@ -361,6 +361,9 @@ export const fr = {
   dog: {
     myDogsEmptyTitle: 'Ajoute ton premier chien',
     myDogsEmptyMessage: 'Présente ton chien pour pouvoir l’inscrire à des balades.',
+    /** Shown on the new-dog screen right after the welcome profile edit. */
+    welcome:
+      'Dernière étape : présente ton chien. Sans lui, tu ne pourras pas t’inscrire à une balade.',
     add: 'Ajouter un chien',
     addTitle: 'Nouveau chien',
     editTitle: 'Modifier le chien',

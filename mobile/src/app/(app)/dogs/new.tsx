@@ -1,21 +1,23 @@
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { Alert } from 'react-native';
 
 import { useCreateDog, useUploadDogPhoto } from '@/api/dogs';
 import { errorMessage } from '@/api/errors';
-import { DogForm, Screen } from '@/components';
+import { DogForm, Screen, Text } from '@/components';
 import { emptyDogForm, toCreateDogRequest } from '@/lib/forms';
 import { useFocusedRouter } from '@/lib/hooks';
 import { t } from '@/strings';
 
 export default function NewDogScreen() {
   const router = useFocusedRouter();
+  const { welcome } = useLocalSearchParams<{ welcome?: string }>();
   const createDog = useCreateDog();
   const uploadPhoto = useUploadDogPhoto();
 
   return (
     <Screen edges={['left', 'right', 'bottom']}>
       <Stack.Screen options={{ title: t.dog.addTitle }} />
+      {welcome ? <Text color="textMuted">{t.dog.welcome}</Text> : null}
       <DogForm
         initial={emptyDogForm}
         submitLabel={t.dog.add}
