@@ -4,7 +4,7 @@ import { sessionStore } from '@/auth/sessionStore';
 import { config } from '@/lib/config';
 import { t } from '@/strings';
 import { authResponse } from '@/test/fixtures';
-import { mockApi, ok, problemResponse } from '@/test/mockApi';
+import { mockApi, ok, problemResponse, type MockRequest } from '@/test/mockApi';
 
 jest.mock('@/lib/config', () => ({
   config: {
@@ -12,6 +12,7 @@ jest.mock('@/lib/config', () => ({
     devLogin: true,
     googleWebClientId: undefined,
     googleIosClientId: undefined,
+    defaultCenter: { latitude: 47.5339, longitude: 7.1844 },
   },
 }));
 
@@ -33,6 +34,10 @@ const mockGoogle = {
 jest.mock('@react-native-google-signin/google-signin', () => mockGoogle);
 
 const APP_DIR = './src/app';
+
+/** The calls of the sign-in itself: without the demo data state the dev section asks for. */
+const signInCalls = (calls: MockRequest[]) =>
+  calls.filter((call) => call.path !== '/api/v1/dev/demo-data');
 const mutableConfig = config as {
   devLogin: boolean;
   googleWebClientId?: string;
@@ -68,7 +73,7 @@ describe('sign-in: test account', () => {
     await fireEvent.press(screen.getByRole('button', { name: t.auth.devLoginButton }));
 
     expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
-    expect(calls[0]).toMatchObject({
+    expect(signInCalls(calls)[0]).toMatchObject({
       method: 'POST',
       path: '/api/v1/auth/dev',
       json: { subject: t.auth.devDefaultIdentifier, displayName: t.auth.devDefaultDisplayName },
@@ -121,7 +126,7 @@ describe('sign-in: Apple', () => {
     await fireEvent.press(await screen.findByRole('button', { name: t.auth.signInWithApple }));
 
     expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
-    expect(calls[0]).toMatchObject({
+    expect(signInCalls(calls)[0]).toMatchObject({
       path: '/api/v1/auth/apple',
       json: { identityToken: 'apple-token', displayName: 'Léa Martin' },
     });
@@ -135,7 +140,7 @@ describe('sign-in: Apple', () => {
     await fireEvent.press(await screen.findByRole('button', { name: t.auth.signInWithApple }));
 
     await waitFor(() => expect(mockApple.signInAsync).toHaveBeenCalled());
-    expect(calls).toHaveLength(0);
+    expect(signInCalls(calls)).toHaveLength(0);
     expect(screen.queryByText(t.auth.providerFailed)).toBeNull();
     expect(screen).toHavePathname('/sign-in');
   });
@@ -178,7 +183,7 @@ describe('sign-in: Google', () => {
     await fireEvent.press(await screen.findByRole('button', { name: t.auth.signInWithGoogle }));
 
     expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
-    expect(calls[0]).toMatchObject({
+    expect(signInCalls(calls)[0]).toMatchObject({
       path: '/api/v1/auth/google',
       json: { idToken: 'google-token' },
     });
@@ -194,7 +199,7 @@ describe('sign-in: Google', () => {
     await renderRouter(APP_DIR, { initialUrl: '/sign-in' });
     await fireEvent.press(await screen.findByRole('button', { name: t.auth.signInWithGoogle }));
     await waitFor(() => expect(mockGoogle.GoogleSignin.signIn).toHaveBeenCalled());
-    expect(calls).toHaveLength(0);
+    expect(signInCalls(calls)).toHaveLength(0);
     expect(screen.queryByText(t.auth.providerFailed)).toBeNull();
   });
 

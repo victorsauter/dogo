@@ -105,6 +105,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dev/demo-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether demo data exists, its counts and the demo accounts to sign in as (development only). */
+        get: operations["getDemoData"];
+        put?: never;
+        /** Replace the demo data with a fresh data set (development only; 404 unless DemoData:Enabled). Photo downloads never make it fail. */
+        post: operations["generateDemoData"];
+        /** Remove the demo accounts and everything that belongs to them, photo files included (development only). */
+        delete: operations["deleteDemoData"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -864,6 +883,55 @@ export interface components {
             /** Format: uuid */
             organizationId?: null | string;
         };
+        /** @enum {string} */
+        DemoAccountKind: "Owner" | "Educator";
+        DemoAccountResponse: {
+            subject: string;
+            displayName: string;
+            photoUrl: null | string;
+            kind: components["schemas"]["DemoAccountKind"];
+            dogNames: string[];
+            organizationName: null | string;
+        };
+        DemoDataCounts: {
+            /** Format: int32 */
+            owners: number;
+            /** Format: int32 */
+            educators: number;
+            /** Format: int32 */
+            dogs: number;
+            /** Format: int32 */
+            organizations: number;
+            /** Format: int32 */
+            walks: number;
+            /** Format: int32 */
+            upcomingWalks: number;
+            /** Format: int32 */
+            pastWalks: number;
+            /** Format: int32 */
+            registrations: number;
+            /** Format: int32 */
+            messages: number;
+            /** Format: int32 */
+            blocks: number;
+            /** Format: int32 */
+            reports: number;
+            /** Format: int32 */
+            photos: number;
+        };
+        DemoDataGenerationResponse: {
+            counts: components["schemas"]["DemoDataCounts"];
+            photosRequested: boolean;
+            /** Format: int32 */
+            photosStored: number;
+            /** Format: int32 */
+            photosFailed: number;
+        };
+        DemoDataStatusResponse: {
+            exists: boolean;
+            counts: components["schemas"]["DemoDataCounts"];
+            accounts: components["schemas"]["DemoAccountResponse"][];
+        };
         DevSignInRequest: {
             subject: string;
             displayName: string;
@@ -897,6 +965,9 @@ export interface components {
         };
         /** @enum {string} */
         DogSize: "Small" | "Medium" | "Large";
+        GenerateDemoDataRequest: {
+            photos?: boolean;
+        };
         GeoPoint: {
             /** Format: double */
             latitude: number;
@@ -1555,6 +1626,104 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    getDemoData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoDataStatusResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    generateDemoData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["GenerateDemoDataRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemoDataGenerationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    deleteDemoData: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
