@@ -7,7 +7,7 @@ dogo est une application mobile pour trouver et organiser des balades entre chie
 | [Périmètre V1](perimetre-v1.md) | Ce que fait la V1, ce qui en est exclu, les décisions produit |
 | [Spécification technique](specification-v1.md) | Modèle de données, règles métier, points d'entrée de l'API |
 | [Plan de développement](plan.md) | Les 31 tâches, leur difficulté et leur répartition en vagues |
-| [Plan : onglet Balades avec panneau](plan-panneau-balades.md) | Le passage à une carte en plein écran avec un panneau coulissant ; planifié, non commencé |
+| [Plan : vues de l'onglet Balades](plan-panneau-balades.md) | Deux vues au choix, panneau coulissant par défaut et liste ; planifié, non commencé |
 | [Décisions d'architecture](adr/README.md) | Un fichier par décision technique, avec son contexte et ses alternatives |
 
 ## Tenir la documentation à jour

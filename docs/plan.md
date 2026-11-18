@@ -33,7 +33,7 @@ Les 31 tâches sont réalisées et fusionnées dans `main`. La V1 tourne en loca
 
 **Jamais essayé, faute de comptes ou d'appareil :** la connexion Apple et Google, la réception d'une notification, l'application sur Android, l'appareil photo, la création automatique de la balade suivante d'une série dans la durée.
 
-**Suite planifiée :** l'onglet Balades passera à une carte en plein écran avec un panneau coulissant. Le détail est dans le [plan dédié](plan-panneau-balades.md) ; rien n'est encore développé.
+**Suite planifiée :** l'onglet Balades proposera deux vues au choix, un panneau coulissant sur la carte par défaut et une liste. Le détail est dans le [plan dédié](plan-panneau-balades.md) ; rien n'est encore développé.
 
 ## Organisation du travail
 
