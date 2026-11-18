@@ -12,8 +12,13 @@ import { setSignInNotice, useSignInNotice } from '@/lib/signInNotice';
 import { t } from '@/strings';
 import { useTheme } from '@/theme';
 
-// Development only: null (and never loaded) unless EXPO_PUBLIC_DEV_LOGIN is true.
+// Development only: null (and never loaded) outside a development build with EXPO_PUBLIC_DEV_LOGIN=true.
 const DemoDataSection = loadDemoDataSection();
+
+/** Test sign-in and demo data: development builds only (`config.devLogin` also requires `__DEV__`). */
+function showDevTools(): boolean {
+  return __DEV__ && config.devLogin;
+}
 
 export default function SignInScreen() {
   const { spacing } = useTheme();
@@ -37,12 +42,13 @@ export default function SignInScreen() {
     };
   }, []);
 
-  // The notice (« Ton compte a été supprimé ») is shown once, until the person leaves this screen.
+  // The notice (account deleted, session expired, account suspended) is shown once, until the person leaves this screen.
   useEffect(() => () => setSignInNotice(null), []);
 
   const busy = apple.isPending || google.isPending || dev.isPending;
   const error = [apple, google, dev].find((mutation) => mutation.isError)?.error;
-  const hasMethod = appleAvailable || googleAvailable || config.devLogin;
+  const devTools = showDevTools();
+  const hasMethod = appleAvailable || googleAvailable || devTools;
 
   return (
     <Screen contentStyle={{ justifyContent: 'center' }}>
@@ -86,7 +92,7 @@ export default function SignInScreen() {
         </View>
       ) : null}
 
-      {config.devLogin ? (
+      {devTools ? (
         <Card>
           <Text variant="subheading">{t.auth.devLoginSection}</Text>
           <Text variant="caption" color="textMuted">
@@ -120,7 +126,7 @@ export default function SignInScreen() {
         </Card>
       ) : null}
 
-      {config.devLogin && DemoDataSection ? (
+      {devTools && DemoDataSection ? (
         <DemoDataSection
           busy={busy}
           onSignInAs={(account) => {

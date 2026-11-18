@@ -82,4 +82,127 @@ describe('session store', () => {
     await store.clear();
     expect(listener).toHaveBeenCalledTimes(2);
   });
+
+  it('records why a session was ended, only when it was imposed', async () => {
+    const store = createSessionStore();
+    await store.set(authResponse());
+    await store.clear('suspended');
+    expect(store.getSnapshot()).toEqual({
+      status: 'signedOut',
+      session: null,
+      endReason: 'suspended',
+    });
+    await store.set(authResponse());
+    await store.clear();
+    expect(store.getSnapshot().endReason).toBeUndefined();
+  });
+});
+
+/** In-memory secure storage whose operations can be made to fail. */
+function flakyStorage() {
+  const values = new Map<string, string>();
+  const failures = { set: 0, delete: 0 };
+  const storage = {
+    values,
+    failures,
+    getItemAsync: jest.fn(async (key: string) => values.get(key) ?? null),
+    setItemAsync: jest.fn(async (key: string, value: string) => {
+      if (failures.set > 0) {
+        failures.set -= 1;
+        throw new Error('Keychain unavailable');
+      }
+      values.set(key, value);
+    }),
+    deleteItemAsync: jest.fn(async (key: string) => {
+      if (failures.delete > 0) {
+        failures.delete -= 1;
+        throw new Error('Keychain unavailable');
+      }
+      values.delete(key);
+    }),
+  };
+  return storage;
+}
+
+const storedRefreshToken = (storage: ReturnType<typeof flakyStorage>) => {
+  const raw = storage.values.get(SESSION_STORAGE_KEY);
+  return raw ? (JSON.parse(raw) as { refreshToken: string }).refreshToken : null;
+};
+
+describe('session store persistence failures', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  it('retries a failed write of the renewed session', async () => {
+    const storage = flakyStorage();
+    const store = createSessionStore(storage);
+    await store.set(authResponse());
+    const renewed = authResponse();
+    storage.failures.set = 2;
+
+    await store.set(renewed);
+
+    expect(storage.setItemAsync).toHaveBeenCalledTimes(4);
+    expect(storedRefreshToken(storage)).toBe(renewed.refreshToken);
+  });
+
+  it('never leaves the old refresh token stored when the write keeps failing', async () => {
+    const storage = flakyStorage();
+    const store = createSessionStore(storage);
+    await store.set(authResponse());
+    const renewed = authResponse();
+    storage.failures.set = 10;
+
+    await expect(store.set(renewed)).resolves.toMatchObject({
+      refreshToken: renewed.refreshToken,
+    });
+
+    // Kept in memory for this launch; the stale entry is gone, so the next
+    // launch is signed out instead of presenting a revoked token (ADR 0009).
+    expect(store.getSession()?.refreshToken).toBe(renewed.refreshToken);
+    expect(storage.values.has(SESSION_STORAGE_KEY)).toBe(false);
+    expect(console.warn).toHaveBeenCalled();
+  });
+
+  it('signs out in memory even when the stored session cannot be deleted', async () => {
+    const storage = flakyStorage();
+    const store = createSessionStore(storage);
+    await store.set(authResponse());
+    storage.failures.delete = 10;
+
+    await expect(store.clear()).resolves.toBeUndefined();
+
+    expect(store.getSnapshot().status).toBe('signedOut');
+    // Fallback: the entry is overwritten with an empty, signed-out value.
+    const restored = createSessionStore(storage);
+    await restored.load();
+    expect(restored.getSnapshot().status).toBe('signedOut');
+  });
+
+  it('applies storage writes in call order: a sign-out during a refresh write wins', async () => {
+    const storage = flakyStorage();
+    const store = createSessionStore(storage);
+    await store.set(authResponse());
+    let releaseWrite!: () => void;
+    storage.setItemAsync.mockImplementationOnce(
+      (key, value) =>
+        new Promise<void>((resolve) => {
+          releaseWrite = () => {
+            storage.values.set(key, value);
+            resolve();
+          };
+        }),
+    );
+
+    const refreshing = store.set(authResponse());
+    const clearing = store.clear();
+    expect(store.getSnapshot().status).toBe('signedOut');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    releaseWrite();
+    await Promise.all([refreshing, clearing]);
+
+    expect(store.getSnapshot().status).toBe('signedOut');
+    expect(storage.values.has(SESSION_STORAGE_KEY)).toBe(false);
+  });
 });

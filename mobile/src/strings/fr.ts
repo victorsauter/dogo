@@ -42,6 +42,8 @@ export const fr = {
     devDefaultDisplayName: 'Camille Test',
     signOut: 'Se déconnecter',
     sessionExpired: 'Ta session a expiré. Reconnecte-toi.',
+    accountSuspended:
+      'Ton compte a été suspendu par l’équipe dogo : tu ne peux plus te connecter pour l’instant.',
     noMethodTitle: 'Aucune méthode de connexion disponible',
     noMethodMessage:
       'La connexion Apple et Google demande une version de développement de l’application.',
@@ -648,14 +650,32 @@ export const fr = {
     forbidden: 'Tu n’as pas accès à cette action.',
     server: 'Le service rencontre un problème. Réessaie dans un instant.',
     network: 'Impossible de joindre le serveur. Vérifie ta connexion internet.',
+    timeout: 'Le serveur met trop de temps à répondre. Vérifie ta connexion et réessaie.',
+    tooManyRequests: 'Trop de demandes d’un coup. Réessaie dans un instant.',
     unexpected:
       'Un problème est survenu dans l’application. Réessaie ; s’il persiste, redémarre-la.',
     generic: 'Une erreur est survenue. Réessaie.',
+    /** Startup screen of a distribution build whose API address is missing or not https. */
+    configTitle: 'Application mal configurée',
+    configMissingApiUrl:
+      'L’adresse du serveur dogo n’est pas renseignée dans cette version de l’application. Elle ne peut rien charger : installe une version corrigée.',
+    configInsecureApiUrl:
+      'L’adresse du serveur dogo de cette version n’est pas sécurisée (https). Par prudence, l’application ne s’y connecte pas : installe une version corrigée.',
   },
 } as const;
 
 export type Strings = typeof fr;
 export type ApiErrorCode = Exclude<
   keyof Strings['errors'],
-  'notFound' | 'forbidden' | 'server' | 'network' | 'unexpected' | 'generic'
+  | 'notFound'
+  | 'forbidden'
+  | 'server'
+  | 'network'
+  | 'timeout'
+  | 'tooManyRequests'
+  | 'unexpected'
+  | 'generic'
+  | 'configTitle'
+  | 'configMissingApiUrl'
+  | 'configInsecureApiUrl'
 >;
