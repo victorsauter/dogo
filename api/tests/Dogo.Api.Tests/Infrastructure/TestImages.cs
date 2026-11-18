@@ -102,6 +102,13 @@ public static class TestImages
         return Encode(bitmap, SKEncodedImageFormat.Jpeg);
     }
 
+    public static byte[] SolidWebP(int width, int height)
+    {
+        using var bitmap = new SKBitmap(width, height);
+        bitmap.Erase(Blue);
+        return Encode(bitmap, SKEncodedImageFormat.Webp);
+    }
+
     /// <summary>Colour of the pixel at the middle of quadrant (<paramref name="column"/>, <paramref name="row"/>) in 0 or 1.</summary>
     public static SKColor QuadrantColor(SKBitmap bitmap, int column, int row) =>
         bitmap.GetPixel((bitmap.Width * ((column * 2) + 1)) / 4, (bitmap.Height * ((row * 2) + 1)) / 4);

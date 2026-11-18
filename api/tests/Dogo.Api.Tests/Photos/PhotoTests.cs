@@ -142,11 +142,28 @@ public sealed class PhotoTests(ApiFixture fixture) : ApiTestBase(fixture)
         Assert.Equal((2048, 1536), (bitmap.Width, bitmap.Height));
     }
 
+    [Theory]
+    [InlineData("jpeg")]
+    [InlineData("webp")]
+    public async Task Very_large_photo_within_the_pixel_limit_is_scaled_down(string format)
+    {
+        var (client, _) = await SignedInAsync();
+        var image = format == "jpeg" ? TestImages.SolidJpeg(5000, 4000) : TestImages.SolidWebP(5000, 4000); // 20 MP
+
+        var response = await client.PutAsync("/api/v1/me/photo", PhotoContent(image), Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var me = (await response.Content.ReadFromJsonAsync<MeResponse>(Json, Ct))!;
+        using var bitmap = SKBitmap.Decode(await (await CreateClient().GetAsync(me.PhotoUrl, Ct)).Content.ReadAsByteArrayAsync(Ct));
+        Assert.Equal((2048, 1638), (bitmap.Width, bitmap.Height));
+        Assert.Equal(TestImages.Blue, TestImages.Nearest(TestImages.QuadrantColor(bitmap, 0, 0)));
+    }
+
     [Fact]
     public async Task Image_with_too_many_pixels_is_rejected()
     {
         var (client, _) = await SignedInAsync();
-        var bomb = TestImages.LargePng(7000, 6000); // 42 MP, a few dozen KB
+        var bomb = TestImages.LargePng(5001, 5000); // 25.005 MP (limit: 25 MP), a few dozen KB
 
         Assert.True(bomb.Length < 5 * 1024 * 1024);
         var response = await client.PutAsync("/api/v1/me/photo", PhotoContent(bomb, "image/png"), Ct);
@@ -160,7 +177,7 @@ public sealed class PhotoTests(ApiFixture fixture) : ApiTestBase(fixture)
     {
         var (client, _) = await SignedInAsync();
 
-        var response = await client.PutAsync("/api/v1/me/photo", PhotoContent(TestImages.LargePng(6000, 6000), "image/png"), Ct);
+        var response = await client.PutAsync("/api/v1/me/photo", PhotoContent(TestImages.LargePng(5000, 5000), "image/png"), Ct);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
