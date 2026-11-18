@@ -406,6 +406,13 @@ export const fr = {
   states: {
     errorTitle: 'Oups, un problème est survenu',
     emptyDefaultTitle: 'Rien à afficher',
+    /** Last-resort screen (render error caught by the root error boundary). */
+    crashTitle: 'Oups, dogo a rencontré un problème',
+    crashMessage:
+      "Quelque chose s'est mal passé. Tu peux réessayer ; si le problème revient, ferme puis rouvre l'application.",
+    notFoundTitle: 'Page introuvable',
+    notFoundMessage: "Ce lien ne mène à aucune page de l'application.",
+    notFoundHome: "Retour à l'accueil",
   },
   permissions: {
     // iOS and Android permission texts live in app.config.ts; this one is shown

@@ -1,12 +1,14 @@
-import { SplashScreen, Stack } from 'expo-router';
+import { SplashScreen, Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { useSessionUserSync } from '@/api/profile';
 import { useSession } from '@/auth';
+import { EmptyState, Screen } from '@/components';
 import { AppProviders } from '@/lib/AppProviders';
 import { NotificationsEffects } from '@/notifications';
-import { useTheme } from '@/theme';
+import { t } from '@/strings';
+import { ThemeProvider, useTheme } from '@/theme';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -15,6 +17,26 @@ export default function RootLayout() {
     <AppProviders>
       <RootNavigator />
     </AppProviders>
+  );
+}
+
+/**
+ * Expo Router renders this in place of the root layout when a screen throws
+ * while rendering, instead of closing the app. It sits outside `AppProviders`
+ * (the layout that threw is gone), so it brings the little it needs: the theme. « Réessayer » (`retry`) renders the route again.
+ */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return (
+    <ThemeProvider>
+      <Screen scroll={false}>
+        <EmptyState
+          icon="warning"
+          title={t.states.crashTitle}
+          message={t.states.crashMessage}
+          action={{ label: t.common.retry, onPress: () => void retry() }}
+        />
+      </Screen>
+    </ThemeProvider>
   );
 }
 

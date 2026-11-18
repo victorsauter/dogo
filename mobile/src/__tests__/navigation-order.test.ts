@@ -14,7 +14,11 @@ const { join } = require('node:path') as { join(...parts: string[]): string };
 
 const APP_DIR = join(__dirname, '..', 'app');
 
-/** Route names of a directory, as Expo Router names them (`dogs/[id]/index`, `(tabs)`). */
+/**
+ * Route names of a directory, as Expo Router names them (`dogs/[id]/index`, `(tabs)`).
+ * `_layout` and `+not-found` are left out: the latter is sorted last whether it is
+ * Expo Router's own or `src/app/+not-found.tsx`, and layouts never declare it.
+ */
 function routeNames(dir: string, prefix = ''): string[] {
   const names: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
@@ -24,7 +28,7 @@ function routeNames(dir: string, prefix = ''): string[] {
       if (prefix === '' && /^\(.+\)$/.test(entry.name)) names.push(entry.name);
       else if (!/^\(.+\)$/.test(entry.name))
         names.push(...routeNames(join(dir, entry.name), `${prefix}${entry.name}/`));
-    } else if (/\.tsx?$/.test(entry.name) && !entry.name.startsWith('_')) {
+    } else if (/\.tsx?$/.test(entry.name) && !/^[_+]/.test(entry.name)) {
       names.push(prefix + entry.name.replace(/\.tsx?$/, ''));
     }
   }
