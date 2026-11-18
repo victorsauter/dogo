@@ -16,6 +16,7 @@ import { useSession } from '@/auth';
 import {
   Avatar,
   Badge,
+  Banner,
   Button,
   Card,
   ErrorState,
@@ -30,6 +31,7 @@ import {
 } from '@/components';
 import { formatDuration, formatWalkStart, walkTiming } from '@/lib/dates';
 import { regionAround } from '@/lib/geo';
+import { reportHref } from '@/lib/report';
 import { canUseThread } from '@/lib/thread';
 import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
@@ -52,20 +54,6 @@ function Row({ label, value }: { label: string; value: string }) {
         {label}
       </Text>
       <Text>{value}</Text>
-    </View>
-  );
-}
-
-function Banner({ message }: { message: string }) {
-  const { colors, radii, spacing } = useTheme();
-  return (
-    <View
-      accessibilityRole="alert"
-      style={{ backgroundColor: colors.dangerSoft, borderRadius: radii.md, padding: spacing.md }}
-    >
-      <Text color="danger" style={{ fontWeight: '600' }}>
-        {message}
-      </Text>
     </View>
   );
 }
@@ -116,6 +104,8 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
   const openDog = (dogId: string) => router.push({ pathname: '/dogs/[id]', params: { id: dogId } });
   const openUser = (userId: string) =>
     router.push({ pathname: '/users/[id]', params: { id: userId } });
+  const openOrganization = (organizationId: string) =>
+    router.push({ pathname: '/organizations/[id]', params: { id: organizationId } });
 
   const onError = (error: unknown) => setOrganizerError(errorMessage(error));
 
@@ -164,6 +154,9 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
       {cancelled ? <Banner message={t.walk.cancelledBanner} /> : null}
       {!cancelled && timing === 'past' ? <Banner message={t.walk.pastBanner} /> : null}
       {!cancelled && timing === 'started' ? <Banner message={t.walk.startedBanner} /> : null}
+      {walk.hasBlockedParticipant ? (
+        <Banner tone="warning" message={t.walk.blockedWarning} />
+      ) : null}
 
       <View style={{ gap: spacing.sm }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
@@ -187,17 +180,29 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
       </View>
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <ListItem
-          title={walk.organizer.displayName}
-          subtitle={
-            walk.organization
-              ? format(t.walk.organization, { name: walk.organization.name })
-              : t.walk.organizer
-          }
-          left={<Avatar name={walk.organizer.displayName} photoUrl={walk.organizer.photoUrl} />}
-          accessibilityLabel={format(t.walk.organizerA11y, { name: walk.organizer.displayName })}
-          onPress={() => openUser(walk.organizer.id)}
-        />
+        {walk.organizer ? (
+          <ListItem
+            title={walk.organizer.displayName}
+            subtitle={t.walk.organizer}
+            left={<Avatar name={walk.organizer.displayName} photoUrl={walk.organizer.photoUrl} />}
+            accessibilityLabel={format(t.walk.organizerA11y, { name: walk.organizer.displayName })}
+            onPress={() => openUser(walk.organizer!.id)}
+          />
+        ) : (
+          <ListItem
+            title={t.walk.organizerDeleted}
+            subtitle={t.walk.organizer}
+            left={<Avatar name="" />}
+          />
+        )}
+        {walk.organization ? (
+          <ListItem
+            title={walk.organization.name}
+            subtitle={t.walk.organizationOf}
+            accessibilityLabel={format(t.walk.organizationA11y, { name: walk.organization.name })}
+            onPress={() => openOrganization(walk.organization!.id)}
+          />
+        ) : null}
       </Card>
 
       <Card>
@@ -351,7 +356,12 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
         </Text>
       ) : null}
 
-      <WalkRegistrationPanel walk={walk} open={open} onAddDog={() => router.push('/dogs/new')} />
+      <WalkRegistrationPanel
+        walk={walk}
+        open={open}
+        onAddDog={() => router.push('/dogs/new')}
+        onOpenOrganization={openOrganization}
+      />
 
       {organizer && walk.repeatsWeekly ? (
         <Button
@@ -359,6 +369,14 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
           variant="secondary"
           loading={stopSeries.isPending}
           onPress={confirmStopSeries}
+        />
+      ) : null}
+
+      {!organizer ? (
+        <Button
+          label={t.report.action}
+          variant="secondary"
+          onPress={() => router.push(reportHref('walk', walk.id, walk.title))}
         />
       ) : null}
 

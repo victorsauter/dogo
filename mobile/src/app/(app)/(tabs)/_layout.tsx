@@ -11,6 +11,12 @@ function tabIcon(name: IconName) {
   };
 }
 
+/**
+ * Screens are declared in the order Expo Router sorts the route files (index,
+ * then by name length: `mine` before `profile`), which is also the tab order.
+ * A different order makes the navigator report a ROUTE_NAMES_CHANGED action
+ * « not handled by any navigator » at start-up (ADR 0026).
+ */
 export default function AppTabsLayout() {
   const { colors } = useTheme();
   return (
@@ -25,7 +31,7 @@ export default function AppTabsLayout() {
     >
       <Tabs.Screen name="index" options={{ title: t.tabs.discover, tabBarIcon: tabIcon('map') }} />
       <Tabs.Screen
-        name="my-walks"
+        name="mine"
         options={{ title: t.tabs.myWalks, tabBarIcon: tabIcon('calendar') }}
       />
       <Tabs.Screen

@@ -35,6 +35,11 @@ export interface WalkFormProps {
   userLocation?: GeoPoint | null;
   /** Shows the « Répéter chaque semaine » switch: only when creating a walk. */
   allowRepeat?: boolean;
+  /**
+   * Organisations the person may organise for (creation only): when there is
+   * at least one, the « Organiser pour » field offers « Moi » and each of them.
+   */
+  organizations?: readonly { id: string; name: string }[];
   /** Creates or updates the walk. Throw an `ApiError` to show it on the form. */
   onSubmit: (values: WalkFormValues) => Promise<void>;
 }
@@ -45,6 +50,7 @@ type WalkErrors = FieldErrors<keyof WalkFormValues>;
 const conflictFields: Partial<Record<string, keyof WalkFormValues>> = {
   'walk.capacity_below_registered': 'maxDogs',
   'walk.size_in_use': 'allowedSizes',
+  'walk.organization_forbidden': 'organizationId',
 };
 
 /** Field errors of a failed submission: validation errors, or a conflict on its field. */
@@ -69,6 +75,7 @@ export function WalkForm({
   submitLabel,
   userLocation,
   allowRepeat = false,
+  organizations = [],
   onSubmit,
 }: WalkFormProps) {
   const { spacing } = useTheme();
@@ -117,6 +124,11 @@ export function WalkForm({
     value: value as LeashRule,
     label: enumLabel('LeashRule', value),
   }));
+  const ME = 'me';
+  const organizerOptions = [
+    { value: ME, label: t.walk.organizeForMe },
+    ...organizations.map((organization) => ({ value: organization.id, label: organization.name })),
+  ];
   const accessOptions = enumValues.WalkAccess.map((value) => ({
     value: value as WalkAccess,
     label: enumLabel('WalkAccess', value),
@@ -237,6 +249,21 @@ export function WalkForm({
         />
         <GroupError message={errors.access} />
       </FieldAnchor>
+      {organizations.length > 0 ? (
+        <FieldAnchor name="organizationId" style={{ gap: spacing.sm }}>
+          <Text variant="label">{t.walk.organizeFor}</Text>
+          <ChoiceGroup
+            accessibilityLabel={t.walk.organizeFor}
+            options={organizerOptions}
+            value={values.organizationId ?? ME}
+            onChange={(choice) => set('organizationId', choice === ME ? null : choice)}
+          />
+          <Text variant="caption" color="textMuted">
+            {t.walk.organizeForHint}
+          </Text>
+          <GroupError message={errors.organizationId} />
+        </FieldAnchor>
+      ) : null}
       {allowRepeat ? (
         <SwitchRow
           label={t.walk.repeatWeekly}

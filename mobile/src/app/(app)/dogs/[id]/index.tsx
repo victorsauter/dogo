@@ -7,6 +7,7 @@ import { errorMessage } from '@/api/errors';
 import { useSession } from '@/auth';
 import { Avatar, Button, Card, ErrorState, LoadingState, Screen, Text } from '@/components';
 import { formatAge } from '@/lib/age';
+import { reportHref } from '@/lib/report';
 import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
 
@@ -88,11 +89,18 @@ export default function DogDetailScreen() {
         <Text>{data.description || t.dog.noDescription}</Text>
       </Card>
       {!mine ? (
-        <Button
-          label={t.dog.ownedBy}
-          variant="secondary"
-          onPress={() => router.push({ pathname: '/users/[id]', params: { id: data.ownerId } })}
-        />
+        <View style={{ gap: spacing.md }}>
+          <Button
+            label={t.dog.ownedBy}
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/users/[id]', params: { id: data.ownerId } })}
+          />
+          <Button
+            label={t.report.action}
+            variant="secondary"
+            onPress={() => router.push(reportHref('dog', data.id, data.name))}
+          />
+        </View>
       ) : null}
       {mine ? (
         <View style={{ gap: spacing.md }}>

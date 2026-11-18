@@ -87,7 +87,7 @@ describe('create a walk', () => {
 
     expect(screen.getAllByText(t.common.required)).toHaveLength(2); // title, label
     expect(screen.getByText(t.walk.sizesRequired)).toBeTruthy();
-    expect(calls).toHaveLength(0);
+    expect(calls.filter((c) => c.method !== 'GET')).toHaveLength(0);
   });
 
   it('creates the walk, then opens its detail', async () => {
@@ -112,7 +112,8 @@ describe('create a walk', () => {
 
     expect(await screen.findByText(t.walk.cancelWalk)).toBeTruthy();
     expect(screen).toHavePathname('/walks/new-walk-id');
-    expect(calls[0]!.json).toMatchObject({
+    const body = calls.find((c) => c.method === 'POST')!.json;
+    expect(body).toMatchObject({
       title: 'Balade du soir',
       location: { latitude: 48.87, longitude: 2.33 },
       locationLabel: 'Fontaine',
@@ -122,9 +123,8 @@ describe('create a walk', () => {
       leashRule: 'LeashRequired',
       access: 'Approval',
     });
-    expect(new Date((calls[0]!.json as { startsAt: string }).startsAt).getTime()).toBeGreaterThan(
-      Date.now(),
-    );
+    expect(new Date((body as { startsAt: string }).startsAt).getTime()).toBeGreaterThan(Date.now());
+    expect(body).not.toHaveProperty('organizationId');
   });
 
   it('shows server field errors on the right fields', async () => {

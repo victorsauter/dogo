@@ -1,6 +1,7 @@
 import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 
+import { organizingOrganizations, useMyOrganizations } from '@/api/organizations';
 import { useCreateWalk } from '@/api/walks';
 import { Screen, WalkForm } from '@/components';
 import { defaultWalkStart } from '@/lib/dates';
@@ -15,6 +16,11 @@ export default function NewWalkScreen() {
   const router = useRouter();
   const createWalk = useCreateWalk();
   const location = useUserLocation();
+  const mine = useMyOrganizations();
+  const organizations = organizingOrganizations(mine.data).map(({ organization }) => ({
+    id: organization.id,
+    name: organization.name,
+  }));
   const [initial] = useState(() => emptyWalkForm(DEFAULT_CENTER, defaultWalkStart()));
 
   return (
@@ -24,6 +30,7 @@ export default function NewWalkScreen() {
         initial={initial}
         userLocation={location.coords}
         allowRepeat
+        organizations={organizations}
         submitLabel={t.walk.create}
         onSubmit={async (values) => {
           const walk = await createWalk.mutateAsync(toCreateWalkRequest(values));

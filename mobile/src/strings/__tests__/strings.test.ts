@@ -48,6 +48,23 @@ describe('error messages', () => {
     'walk.not_open',
     'walk.not_allowed',
     'walk.members_only',
+    'walk.organization_forbidden',
+    'organization.not_found',
+    'organization.forbidden',
+    'organization.closed',
+    'organization.not_approved',
+    'organization.too_many_pending',
+    'membership.duplicate',
+    'membership.not_found',
+    'membership.not_pending',
+    'membership.owner_role',
+    'membership.not_accepted',
+    'membership.sole_owner',
+    'block.self',
+    'report.self',
+    'report.not_found',
+    'admin.forbidden',
+    'admin.self_suspension',
     'walk.capacity_below_registered',
     'account.suspended',
     'validation.failed',
@@ -62,6 +79,12 @@ describe('error messages', () => {
     'network',
   ])('has a French message for %s', (code) => {
     expect((t.errors as Record<string, string>)[code]).toMatch(/\S/);
+  });
+});
+
+describe('refusals that must not reveal anything', () => {
+  it('the message of walk.not_allowed does not suggest a block', () => {
+    expect(t.errors['walk.not_allowed']).not.toMatch(/bloqu|interdit|banni|refus/i);
   });
 });
 

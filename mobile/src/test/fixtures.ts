@@ -1,6 +1,10 @@
 import type {
   AuthResponse,
   Dog,
+  Membership,
+  MyMembership,
+  OrganizationDetail,
+  OrganizationSummary,
   Participant,
   SessionUser,
   WalkDetail,
@@ -125,4 +129,62 @@ export function walkDetail(overrides: Partial<WalkDetail> = {}): WalkDetail {
 
 export function participant(dog: Dog, registrationId: string, owner = otherUser): Participant {
   return { registrationId, dog, owner };
+}
+
+// ---- Organisations (lot 4)
+
+export const orgId = 'c0c0c0c0-0000-4000-8000-000000000001';
+
+export function organizationSummary(
+  overrides: Partial<OrganizationSummary> = {},
+): OrganizationSummary {
+  return {
+    id: orgId,
+    name: 'Club canin du lac',
+    description: 'Éducation positive, cours collectifs.',
+    city: 'Annecy',
+    status: 'Approved',
+    memberCount: 12,
+    createdAt: '2026-11-01T10:00:00Z',
+    ...overrides,
+  };
+}
+
+/** The detail of an organisation, seen by someone who is not a member. */
+export function organizationDetail(
+  overrides: Partial<OrganizationDetail> = {},
+): OrganizationDetail {
+  const { id, name, description, city, status, memberCount, createdAt } = organizationSummary();
+  return {
+    id,
+    name,
+    description,
+    city,
+    status,
+    memberCount,
+    createdAt,
+    educators: [{ user: otherUser, role: 'Owner' }],
+    myMembership: null,
+    upcomingWalks: [],
+    ...overrides,
+  };
+}
+
+export function myMembership(
+  role: MyMembership['role'] = 'Member',
+  status: MyMembership['status'] = 'Accepted',
+): MyMembership {
+  return { id: 'e0e0e0e0-0000-4000-8000-0000000000aa', role, status };
+}
+
+export function membership(overrides: Partial<Membership> = {}): Membership {
+  return {
+    id: 'e0e0e0e0-0000-4000-8000-000000000001',
+    organizationId: orgId,
+    user: otherUser,
+    role: 'Member',
+    status: 'Accepted',
+    createdAt: '2026-11-05T10:00:00Z',
+    ...overrides,
+  };
 }

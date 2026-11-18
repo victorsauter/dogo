@@ -13,6 +13,7 @@ import type {
   LeashHabit,
   LeashRule,
   Reactivity,
+  ReportType,
   Sociability,
   WalkAccess,
 } from '@/api/enums';
@@ -37,6 +38,12 @@ export const limits = {
   walkDurationStep: 15,
   walkDogsMin: 1,
   walkDogsMax: 50,
+  organizationNameMin: 3,
+  organizationName: 80,
+  organizationDescription: 2000,
+  organizationCity: 80,
+  reportFactsMin: 10,
+  reportFacts: 4000,
 } as const;
 
 export type FieldErrors<K extends string> = Partial<Record<K, string>>;
@@ -173,6 +180,57 @@ export function toUpdateDogRequest(values: DogFormValues): UpdateDogRequest {
   };
 }
 
+// ---- Organization
+
+export interface OrganizationFormValues {
+  name: string;
+  description: string;
+  city: string;
+}
+
+export const organizationFields = ['name', 'description', 'city'] as const;
+
+export function validateOrganization(values: OrganizationFormValues) {
+  const errors: FieldErrors<keyof OrganizationFormValues> = {};
+  const name = values.name.trim();
+  if (!name) errors.name = t.common.required;
+  else if (name.length < limits.organizationNameMin || name.length > limits.organizationName) {
+    errors.name = format(t.organization.nameLength, {
+      min: limits.organizationNameMin,
+      max: limits.organizationName,
+    });
+  }
+  if (values.description.trim().length > limits.organizationDescription) {
+    errors.description = tooLong(limits.organizationDescription);
+  }
+  if (values.city.trim().length > limits.organizationCity) {
+    errors.city = tooLong(limits.organizationCity);
+  }
+  return errors;
+}
+
+// ---- Report
+
+export interface ReportFormValues {
+  type: ReportType | null;
+  facts: string;
+}
+
+export const reportFields = ['type', 'facts'] as const;
+
+export function validateReport(values: ReportFormValues) {
+  const errors: FieldErrors<keyof ReportFormValues> = {};
+  if (!values.type) errors.type = t.report.typeRequired;
+  const facts = values.facts.trim().length;
+  if (facts < limits.reportFactsMin || facts > limits.reportFacts) {
+    errors.facts = format(t.report.factsLength, {
+      min: limits.reportFactsMin,
+      max: limits.reportFacts,
+    });
+  }
+  return errors;
+}
+
 // ---- Walk
 
 export interface WalkFormValues {
@@ -189,6 +247,8 @@ export interface WalkFormValues {
   access: WalkAccess;
   /** Creation only: a new walk is created every week (spec §4.5). */
   repeatWeekly: boolean;
+  /** Creation only: the organisation the walk is organised for; `null` for myself (spec §4.6). */
+  organizationId: string | null;
 }
 
 export const walkFields = [
@@ -220,6 +280,7 @@ export function emptyWalkForm(location: GeoPoint, startsAt: Date): WalkFormValue
     rules: '',
     access: 'Open',
     repeatWeekly: false,
+    organizationId: null,
   };
 }
 
@@ -237,6 +298,7 @@ export function walkFormFrom(walk: WalkDetail): WalkFormValues {
     rules: walk.rules,
     access: walk.access,
     repeatWeekly: walk.repeatsWeekly,
+    organizationId: walk.organization?.id ?? null,
   };
 }
 
@@ -295,11 +357,19 @@ export function toCreateWalkRequest(values: WalkFormValues): CreateWalkRequest {
     rules: values.rules.trim(),
     access: values.access,
     repeatWeekly: values.repeatWeekly,
+    ...(values.organizationId ? { organizationId: values.organizationId } : {}),
   };
 }
 
-/** Body of `PATCH /walks/{id}`: every field is sent; empty strings clear description and rules. */
+/**
+ * Body of `PATCH /walks/{id}`: every field is sent; empty strings clear
+ * description and rules. The series and the organisation are fixed at creation.
+ */
 export function toUpdateWalkRequest(values: WalkFormValues): UpdateWalkRequest {
-  const { repeatWeekly: _repeatWeekly, ...request } = toCreateWalkRequest(values);
+  const {
+    repeatWeekly: _repeatWeekly,
+    organizationId: _organizationId,
+    ...request
+  } = toCreateWalkRequest(values);
   return request;
 }

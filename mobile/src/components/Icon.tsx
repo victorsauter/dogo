@@ -20,6 +20,7 @@ const icons = {
   warning: { ios: 'exclamationmark.triangle', android: 'warning', web: 'warning' },
   repeat: { ios: 'repeat', android: 'repeat', web: 'repeat' },
   info: { ios: 'info.circle', android: 'info', web: 'info' },
+  chevron: { ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' },
 } as const;
 
 export type IconName = keyof typeof icons;

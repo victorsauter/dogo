@@ -26,6 +26,8 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0021](0021-carte-et-position-mobile.md) | Carte et position dans l'application mobile | Accepté |
 | [0022](0022-notifications-push-mobile.md) | Notifications push mobile : module chargé seulement avec un projet EAS, indisponibilité silencieuse | Accepté |
 | [0023](0023-suppression-de-compte.md) | Suppression de compte : suppression réelle en une transaction, balades conservées sans organisateur | Accepté |
+| [0025](0025-pages-legales-hors-garde.md) | Pages légales hors de la garde d'authentification | Accepté |
+| [0026](0026-ordre-de-declaration-des-ecrans.md) | Écrans déclarés dans l'ordre de tri d'Expo Router | Accepté |
 
 ## Statuts
 

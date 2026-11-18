@@ -9,9 +9,14 @@ import {
   profileFields,
   serverFieldErrors,
   toCreateDogRequest,
+  emptyWalkForm,
+  toCreateWalkRequest,
   toUpdateDogRequest,
+  toUpdateWalkRequest,
   validateDog,
+  validateOrganization,
   validateProfile,
+  validateReport,
   type DogFormValues,
 } from '../forms';
 import { testDog } from '@/test/fixtures';
@@ -122,5 +127,57 @@ describe('serverFieldErrors', () => {
 
   it('ignores other errors', () => {
     expect(serverFieldErrors(new Error('x'), dogFields)).toEqual({});
+  });
+});
+
+describe('validateOrganization', () => {
+  it('mirrors the API limits (name 3 to 80, description 2 000, city 80)', () => {
+    expect(validateOrganization({ name: 'Club', description: '', city: '' })).toEqual({});
+    expect(validateOrganization({ name: ' ', description: '', city: '' }).name).toBe(
+      t.common.required,
+    );
+    expect(validateOrganization({ name: 'ab', description: '', city: '' }).name).toMatch(/3 et 80/);
+    expect(validateOrganization({ name: 'a'.repeat(81), description: '', city: '' }).name).toMatch(
+      /3 et 80/,
+    );
+    expect(
+      validateOrganization({ name: 'Club', description: 'a'.repeat(2001), city: 'b'.repeat(81) }),
+    ).toEqual({ description: 'Maximum 2000 caractères.', city: 'Maximum 80 caractères.' });
+  });
+});
+
+describe('validateReport', () => {
+  it('needs a type and 10 to 4 000 characters of facts', () => {
+    expect(validateReport({ type: 'Altercation', facts: 'a'.repeat(10) })).toEqual({});
+    expect(validateReport({ type: null, facts: 'a'.repeat(4000) })).toEqual({
+      type: t.report.typeRequired,
+    });
+    expect(Object.keys(validateReport({ type: 'Altercation', facts: ' 123456789 ' }))).toEqual([
+      'facts',
+    ]);
+    expect(Object.keys(validateReport({ type: 'Altercation', facts: 'a'.repeat(4001) }))).toEqual([
+      'facts',
+    ]);
+  });
+});
+
+describe('organisation of a walk', () => {
+  const form = {
+    ...emptyWalkForm({ latitude: 1, longitude: 2 }, new Date('2030-01-01T10:00:00Z')),
+    title: 'Cours',
+    locationLabel: 'Parc',
+  };
+
+  it('is sent on creation only when chosen', () => {
+    expect(toCreateWalkRequest(form)).not.toHaveProperty('organizationId');
+    expect(toCreateWalkRequest({ ...form, organizationId: 'org-1' })).toMatchObject({
+      organizationId: 'org-1',
+    });
+  });
+
+  it('is never sent when editing (the API ignores it)', () => {
+    expect(toUpdateWalkRequest({ ...form, organizationId: 'org-1' })).not.toHaveProperty(
+      'organizationId',
+    );
   });
 });
