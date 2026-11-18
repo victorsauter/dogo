@@ -1,3 +1,21 @@
+import { timeoutManager } from '@tanstack/react-query';
+
+// TanStack Query keeps a 5-minute timer per unobserved query (`gcTime`). Left
+// running after a test, it kept Node alive and made Jest report « A worker
+// process has failed to exit gracefully ». Long timers no longer hold the
+// process open; short ones (anti-rebond, stale time) behave as usual.
+const UNREF_FROM_MS = 60_000;
+timeoutManager.setTimeoutProvider({
+  setTimeout: (callback, delay) => {
+    const timer = setTimeout(callback, delay);
+    if (delay >= UNREF_FROM_MS) (timer as { unref?: () => void }).unref?.();
+    return timer as unknown as number;
+  },
+  clearTimeout: (timer) => clearTimeout(timer as unknown as ReturnType<typeof setTimeout>),
+  setInterval: (callback, delay) => setInterval(callback, delay) as unknown as number,
+  clearInterval: (timer) => clearInterval(timer as unknown as ReturnType<typeof setInterval>),
+});
+
 // In-memory replacement for expo-secure-store, shared by every test.
 jest.mock('expo-secure-store', () => {
   const store = new Map<string, string>();
