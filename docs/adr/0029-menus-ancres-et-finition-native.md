@@ -1,6 +1,6 @@
 # ADR 0029 — Filtres en pastilles-menus ancrées, menu natif d'iOS par `@expo/ui`, matériaux et retour haptique
 
-- **Statut :** Proposé
+- **Statut :** Accepté
 - **Date :** 18/11/2026
 
 ## Contexte
