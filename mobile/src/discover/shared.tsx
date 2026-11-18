@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState, type RefObject } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, ScrollView, View, type TextStyle, type ViewStyle } from 'react-native';
 import type MapView from 'react-native-maps';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { enumValues, type DogSize } from '@/api/enums';
@@ -94,6 +95,9 @@ export interface FilterBarProps {
   onFiltersChange: FiltersUpdate;
   /** The radius pill, only for the « Liste » view (a map follows its visible area). */
   radius?: { value: SearchRadiusKm; onChange: (km: SearchRadiusKm) => void };
+  /** Overrides of the row (by default it bleeds to the screen's edges from a margin). */
+  style?: ViewStyle;
+  contentContainerStyle?: ViewStyle;
 }
 
 /**
@@ -101,15 +105,26 @@ export interface FilterBarProps {
  * in the list, distance. A pill shows its current value and is filled when it
  * differs from the default. With large text the row scrolls sideways.
  */
-export function FilterBar({ filters, onFiltersChange, radius }: FilterBarProps) {
+export function FilterBar({
+  filters,
+  onFiltersChange,
+  radius,
+  style,
+  contentContainerStyle,
+}: FilterBarProps) {
   const { spacing } = useTheme();
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      // The pills start at the screen's margin and scroll to its edges.
-      style={{ marginHorizontal: -spacing.lg, flexGrow: 0 }}
-      contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}
+      // The pills start at the screen's margin and scroll to its edges. Not clipped:
+      // the glass's light and shadow spill past each pill, and a clipped scroll
+      // view would draw them as a rectangle.
+      style={[{ marginHorizontal: -spacing.lg, flexGrow: 0, overflow: 'visible' }, style]}
+      contentContainerStyle={[
+        { paddingHorizontal: spacing.lg, gap: spacing.sm },
+        contentContainerStyle,
+      ]}
     >
       <MenuPill
         testID="filter-period"
@@ -147,32 +162,27 @@ export function FilterBar({ filters, onFiltersChange, radius }: FilterBarProps) 
 export interface DiscoverHeaderProps extends FilterBarProps {
   /** Sentence under the filters (position unknown). */
   notice?: string | null;
-  /** Hides the title row (the full-screen map has its own bottom buttons). */
-  showTitle?: boolean;
   style?: ViewStyle;
 }
 
-/** Title with « Créer », then the row of filter pills. */
+/** Header of the « Liste » view, over the list: title with « Créer », then the row of pills. */
 export function DiscoverHeader({
   filters,
   onFiltersChange,
   radius,
   notice,
-  showTitle = true,
   style,
 }: DiscoverHeaderProps) {
   const { spacing } = useTheme();
   const { createWalk } = useDiscoverNavigation();
   return (
     <View style={[{ gap: spacing.xs }, style]}>
-      {showTitle ? (
-        <View
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-        >
-          <Text variant="title">{t.discover.title}</Text>
-          <CreateButton onPress={createWalk} />
-        </View>
-      ) : null}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text variant="title" accessibilityRole="header">
+          {t.discover.title}
+        </Text>
+        <CreateButton onPress={createWalk} />
+      </View>
       <FilterBar filters={filters} onFiltersChange={onFiltersChange} radius={radius} />
       {notice ? (
         <Text variant="caption" color="textMuted">
@@ -183,73 +193,117 @@ export function DiscoverHeader({
   );
 }
 
-/** « Créer » of the header: a compact filled pill with a plus. */
-function CreateButton({ onPress }: { onPress: () => void }) {
-  const { colors, radii, spacing, minTouchSize, pillHeight } = useTheme();
+/**
+ * « Créer », the main action of the tab: a round button with a plus, on the
+ * floating material tinted with the primary colour (like the main action of
+ * an iOS toolbar), the same size as the pills.
+ */
+export function CreateButton({ onPress }: { onPress: () => void }) {
+  const { minTouchSize, controlHeight } = useTheme();
   return (
     <PressableScale
+      testID="create-walk"
       accessibilityRole="button"
       accessibilityLabel={t.discover.createA11y}
       onPress={onPress}
-      style={{ minHeight: minTouchSize, justifyContent: 'center' }}
+      style={{ minWidth: minTouchSize, minHeight: minTouchSize, justifyContent: 'center' }}
     >
-      <View
+      <Material
+        tinted
         style={{
-          flexDirection: 'row',
+          alignSelf: 'center',
+          width: controlHeight,
+          height: controlHeight,
           alignItems: 'center',
-          gap: spacing.xs,
-          minHeight: pillHeight,
-          paddingLeft: spacing.md,
-          paddingRight: spacing.lg,
-          borderRadius: radii.pill,
-          backgroundColor: colors.primary,
+          justifyContent: 'center',
+          borderRadius: controlHeight / 2,
         }}
       >
-        <Icon name="plus" size={15} color="onPrimary" />
-        <Text variant="label" style={{ color: colors.onPrimary }}>
-          {t.discover.create}
-        </Text>
-      </View>
+        <Icon name="plus" size={20} color="onPrimary" />
+      </Material>
     </PressableScale>
   );
 }
 
 /**
- * The header floating over a full-screen map, on a translucent material (the
- * map shows through, blurred), from the very top of the screen. Reports its
- * height so the map and the panel keep clear of it.
+ * Controls floating over a full-screen map, from the top of the screen and
+ * without any band: the pills on the left, « Créer » on the right (when
+ * given), a notice under them. The title stays, hidden, for screen readers
+ * (the tab bar already shows it). Reports its height so the map and the panel
+ * keep clear of it.
  */
-export function FloatingHeader({
+export function MapTopControls({
+  filters,
+  onFiltersChange,
+  notice,
+  onCreate,
   onHeightChange,
-  ...props
-}: DiscoverHeaderProps & { onHeightChange: (height: number) => void }) {
-  const { colors, spacing } = useTheme();
+}: FilterBarProps & {
+  notice?: string | null;
+  onCreate?: () => void;
+  onHeightChange: (height: number) => void;
+}) {
+  const { spacing, minTouchSize, controlHeight } = useTheme();
   const insets = useSafeAreaInsets();
   return (
-    <Material
-      testID="floating-header"
+    <View
+      testID="map-top-controls"
+      pointerEvents="box-none"
+      onLayout={(event) => onHeightChange(Math.round(event.nativeEvent.layout.height))}
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: colors.separator,
+        paddingTop: insets.top,
+        // Keeps the panel, at its high position, a little away from the pills.
+        paddingBottom: spacing.sm,
+        gap: spacing.xs,
       }}
     >
+      {onCreate ? (
+        <Text accessibilityRole="header" style={visuallyHidden}>
+          {t.discover.title}
+        </Text>
+      ) : null}
       <View
-        onLayout={(event) => onHeightChange(Math.round(event.nativeEvent.layout.height))}
+        pointerEvents="box-none"
+        // « Créer » keeps the screen's margin (its touch area is larger than the button).
         style={{
-          paddingTop: insets.top + (props.showTitle === false ? spacing.xs : 0),
-          paddingHorizontal: spacing.lg,
-          paddingBottom: spacing.xs,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingRight: spacing.lg - (minTouchSize - controlHeight) / 2,
         }}
       >
-        <DiscoverHeader {...props} />
+        <FilterBar
+          filters={filters}
+          onFiltersChange={onFiltersChange}
+          style={{ marginHorizontal: 0, flexShrink: 1 }}
+          contentContainerStyle={{ paddingRight: spacing.sm }}
+        />
+        {onCreate ? (
+          <View style={{ marginLeft: 'auto' }}>
+            <CreateButton onPress={onCreate} />
+          </View>
+        ) : null}
       </View>
-    </Material>
+      {notice ? (
+        <View pointerEvents="box-none" style={{ paddingHorizontal: spacing.lg }}>
+          <MapNotice message={notice} align="start" />
+        </View>
+      ) : null}
+    </View>
   );
 }
+
+/** Kept for screen readers, invisible on screen (transparent, one point, no layout). */
+const visuallyHidden: TextStyle = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  overflow: 'hidden',
+  color: 'transparent',
+};
 
 export function locationUnknown(location: UserLocation): boolean {
   return location.status === 'denied' || location.status === 'unavailable';
@@ -341,7 +395,10 @@ export interface FloatingButtonProps {
   testID?: string;
 }
 
-/** Big pill with an icon and a word (« Carte », « Liste »), floating over the content. */
+/**
+ * Big capsule with an icon and a word (« Carte », « Liste »), floating over the
+ * content, on the material tinted with the primary colour.
+ */
 export function FloatingButton({
   label,
   accessibilityLabel,
@@ -349,16 +406,18 @@ export function FloatingButton({
   onPress,
   testID,
 }: FloatingButtonProps) {
-  const { colors, radii, spacing, minTouchSize, shadows } = useTheme();
+  const { colors, spacing, minTouchSize } = useTheme();
   return (
     <PressableScale
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={[
-        {
-          alignSelf: 'center',
+      style={{ alignSelf: 'center' }}
+    >
+      <Material
+        tinted
+        style={{
           flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.sm,
@@ -366,16 +425,14 @@ export function FloatingButton({
           minWidth: minTouchSize * 2.5,
           justifyContent: 'center',
           paddingHorizontal: spacing.xl,
-          borderRadius: radii.pill,
-          backgroundColor: colors.primary,
-        },
-        shadows.floating,
-      ]}
-    >
-      <Icon name={icon} color="onPrimary" size={20} />
-      <Text variant="subheading" style={{ color: colors.onPrimary }}>
-        {label}
-      </Text>
+          borderRadius: FLOATING_BUTTON_HEIGHT / 2,
+        }}
+      >
+        <Icon name={icon} color="onPrimary" size={20} />
+        <Text variant="subheading" style={{ color: colors.onPrimary }}>
+          {label}
+        </Text>
+      </Material>
     </PressableScale>
   );
 }
@@ -383,20 +440,28 @@ export function FloatingButton({
 export const FLOATING_BUTTON_HEIGHT = 52;
 
 /**
- * Round « Ma position » button over a map, on the floating material: recentres
- * the map on the user. Not shown without a position (permission refused or
- * services off: the screen already says so, and there is nothing to centre on).
+ * Round « Ma position » button over a map, a capsule of the floating material
+ * like the pills: recentres the map on the user. Not shown without a position
+ * (permission refused or services off: the screen already says so, and there
+ * is nothing to centre on). `hidden` makes it give way (and fade).
  */
 export function LocateButton({
   location,
   map,
+  hidden = false,
   style,
 }: {
   location: UserLocation;
   map: RefObject<MapView | null>;
+  hidden?: boolean;
   style?: ViewStyle;
 }) {
-  const { colors, radii, minTouchSize, shadows } = useTheme();
+  const { minTouchSize, controlHeight, motion } = useTheme();
+  const shown = useSharedValue(hidden ? 0 : 1);
+  useEffect(() => {
+    shown.set(withTiming(hidden ? 0 : 1, { duration: motion.durations.fade }));
+  }, [hidden, shown, motion]);
+  const iconStyle = useAnimatedStyle(() => ({ opacity: shown.value }));
   const { coords } = location;
   if (location.status !== 'granted' || !coords) return null;
   return (
@@ -404,45 +469,54 @@ export function LocateButton({
       testID="locate-button"
       accessibilityRole="button"
       accessibilityLabel={t.discover.locate}
+      disabled={hidden}
       onPress={() => map.current?.animateToRegion(regionAround(coords), 400)}
       style={[
-        { width: minTouchSize, height: minTouchSize, borderRadius: radii.pill },
-        shadows.floating,
+        {
+          width: minTouchSize,
+          height: minTouchSize,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
         style,
       ]}
     >
       <Material
+        hidden={hidden}
         style={{
-          flex: 1,
+          width: controlHeight,
+          height: controlHeight,
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: radii.pill,
-          overflow: 'hidden',
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.separator,
+          borderRadius: controlHeight / 2,
         }}
       >
-        <Icon name="locate" color="primary" size={20} />
+        <Animated.View style={iconStyle}>
+          <Icon name="locate" color="primary" size={20} />
+        </Animated.View>
       </Material>
     </PressableScale>
   );
 }
 
-/** Small rounded label over the map (hint, empty area, error with retry). */
+/** Small rounded label over the map (hint, empty area, error with retry, notice). */
 export function MapNotice({
   message,
   busy,
   action,
+  align = 'center',
 }: {
   message: string;
   busy?: boolean;
   action?: { label: string; onPress: () => void };
+  /** `start`: against the left margin, under the pills. */
+  align?: 'center' | 'start';
 }) {
-  const { colors, radii, spacing, shadows } = useTheme();
+  const { colors, radii, spacing } = useTheme();
   return (
     <View
       accessibilityLiveRegion="polite"
-      style={[{ alignSelf: 'center', maxWidth: '100%', borderRadius: radii.md }, shadows.floating]}
+      style={{ alignSelf: align === 'start' ? 'flex-start' : 'center', maxWidth: '100%' }}
     >
       <Material
         style={{
@@ -454,9 +528,6 @@ export function MapNotice({
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.sm,
           borderRadius: radii.md,
-          overflow: 'hidden',
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.separator,
         }}
       >
         {busy ? <ActivityIndicator size="small" color={colors.primary} /> : null}

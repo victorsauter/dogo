@@ -211,3 +211,15 @@ jest.mock('expo-blur', () => {
   const { View } = jest.requireActual<typeof import('react-native')>('react-native');
   return { BlurView: View };
 });
+
+// Liquid Glass is native: a plain View in tests (its props can be read), and
+// unavailable (the blur is used) unless a test makes both checks return true.
+jest.mock('expo-glass-effect', () => {
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    GlassView: View,
+    GlassContainer: View,
+    isLiquidGlassAvailable: jest.fn(() => false),
+    isGlassEffectAPIAvailable: jest.fn(() => false),
+  };
+});

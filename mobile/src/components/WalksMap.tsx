@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import type { WalkSummary } from '@/api/types';
@@ -32,6 +32,9 @@ export interface WalksMapProps {
   topInset?: number;
 }
 
+/** Height of the « Recherche… » capsule. */
+const SEARCHING_HEIGHT = 32;
+
 /** Map of walks: one pin per walk (accent colour for professional walks), callout opens it. */
 export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
   {
@@ -48,7 +51,7 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
   },
   ref,
 ) {
-  const { colors, radii, spacing, shadows } = useTheme();
+  const { colors, spacing } = useTheme();
   return (
     <View style={{ flex: 1 }}>
       <MapView
@@ -109,27 +112,16 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
           accessible
           accessibilityRole="progressbar"
           accessibilityLabel={t.discover.searching}
-          style={[
-            {
-              position: 'absolute',
-              top: topInset + spacing.sm,
-              alignSelf: 'center',
-              borderRadius: radii.pill,
-            },
-            shadows.floating,
-          ]}
+          style={{ position: 'absolute', top: topInset + spacing.sm, alignSelf: 'center' }}
         >
           <Material
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               gap: spacing.xs,
+              minHeight: SEARCHING_HEIGHT,
               paddingHorizontal: spacing.md,
-              paddingVertical: spacing.xs,
-              borderRadius: radii.pill,
-              overflow: 'hidden',
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: colors.separator,
+              borderRadius: SEARCHING_HEIGHT / 2,
             }}
           >
             <ActivityIndicator size="small" color={colors.primary} />

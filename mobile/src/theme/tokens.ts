@@ -33,6 +33,8 @@ export interface ColorTokens {
    */
   materialTint: string;
   materialFallback: string;
+  /** Light edge of a floating material drawn with the blur (iOS before Liquid Glass). */
+  glassEdge: string;
   /** Hairline between rows of a material (menu items, under a floating header). */
   separator: string;
 }
@@ -57,6 +59,7 @@ export const lightColors: ColorTokens = {
   info: '#2B5C8A',
   materialTint: '#FAF7F299',
   materialFallback: '#FAF7F2F2',
+  glassEdge: '#FFFFFFB3',
   separator: '#1F1B1626',
 };
 
@@ -80,6 +83,7 @@ export const darkColors: ColorTokens = {
   info: '#9EC5EC',
   materialTint: '#221F1BA6',
   materialFallback: '#221F1BF2',
+  glassEdge: '#FFFFFF2E',
   separator: '#F3EEE726',
 };
 
@@ -103,8 +107,12 @@ export const radii = {
 /** Minimum touch target (Apple HIG 44 pt, Material 48 dp). */
 export const minTouchSize = 48;
 
-/** Visible height of a compact pill (filter, « Créer »), centred in a `minTouchSize` touch area. */
-export const pillHeight = 36;
+/**
+ * Visible height of a floating control on its material (filter pill, « Créer »,
+ * « Ma position »), centred in a `minTouchSize` touch area. They are capsules:
+ * their corner radius is half of it.
+ */
+export const controlHeight = 44;
 
 export const typography = {
   title: { fontSize: 28, lineHeight: 34, fontWeight: '700' },
@@ -149,7 +157,7 @@ export const motion = {
 
 /** Soft shadows of floating elements (iOS shadow props, Android elevation). */
 export const shadows = {
-  /** Round button over the map. */
+  /** Floating control drawn without Liquid Glass (which casts its own shadow). */
   floating: {
     shadowColor: '#000',
     shadowOpacity: 0.18,
@@ -188,7 +196,7 @@ export interface Theme {
   radii: typeof radii;
   typography: typeof typography;
   minTouchSize: number;
-  pillHeight: number;
+  controlHeight: number;
   motion: typeof motion;
   shadows: typeof shadows;
   material: (typeof materials)['light' | 'dark'];
@@ -201,7 +209,7 @@ export const lightTheme: Theme = {
   radii,
   typography,
   minTouchSize,
-  pillHeight,
+  controlHeight,
   motion,
   shadows,
   material: materials.light,

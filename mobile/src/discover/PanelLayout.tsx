@@ -1,5 +1,6 @@
 import BottomSheet, {
   BottomSheetFlatList,
+  type BottomSheetBackgroundProps,
   type BottomSheetFlatListMethods,
 } from '@gorhom/bottom-sheet';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -20,7 +21,16 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { WalkSearchResult } from '@/api/types';
-import { EmptyState, ErrorState, Icon, LoadingState, Text, WalkCard, WalksMap } from '@/components';
+import {
+  EmptyState,
+  ErrorState,
+  Icon,
+  LoadingState,
+  Material,
+  Text,
+  WalkCard,
+  WalksMap,
+} from '@/components';
 import { DEFAULT_CENTER, regionAround } from '@/lib/geo';
 import { haptics } from '@/lib/haptics';
 import type { UserLocation } from '@/lib/location';
@@ -29,9 +39,9 @@ import { useTheme } from '@/theme';
 
 import {
   byStartDate,
-  FloatingHeader,
   LocateButton,
   locationUnknown,
+  MapTopControls,
   useDiscoverNavigation,
   useMapAreaSearch,
   type DiscoverFilterState,
@@ -56,9 +66,9 @@ const GRABBER = { width: 36, height: 5 };
 
 /**
  * « Panneau » view (the default): the map fills the tab up to the top of the
- * screen, under a floating translucent header (title, « Créer », filters); the
- * walks of the visible area live in a bottom panel with three positions, the
- * high one stopping under the header. The panel's handle is a real button that
+ * screen, with controls floating over it (filter pills, « Créer »); the walks
+ * of the visible area live in a bottom panel with three positions, the high
+ * one stopping under the controls. The panel's handle is a real button that
  * moves it (low → middle → high → low), so dragging is optional. Tapping a pin
  * brings its card to the top of the panel, highlighted.
  */
@@ -69,7 +79,7 @@ export function PanelLayout({
   location: UserLocation;
   filterState: DiscoverFilterState;
 }) {
-  const { colors, radii, spacing, shadows, minTouchSize } = useTheme();
+  const { colors, radii, spacing, shadows, minTouchSize, controlHeight } = useTheme();
   const { openWalk, createWalk } = useDiscoverNavigation();
   const { filters, setFilters } = filterState;
   const map = useRef<MapView>(null);
@@ -79,7 +89,7 @@ export function PanelLayout({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [handleHeight, setHandleHeight] = useState(64);
   const [containerHeight, setContainerHeight] = useState(0);
-  const [headerHeight, setHeaderHeight] = useState(0);
+  const [controlsHeight, setControlsHeight] = useState(0);
   // Top of the panel in the view, followed frame by frame (drag or snap).
   const sheetTop = useSharedValue(0);
 
@@ -101,13 +111,13 @@ export function PanelLayout({
   // the low position: the middle one then shows at least one more card's worth.
   const { snapPoints, lowHeight, middleHeight } = useMemo(() => {
     const low = handleHeight + PEEK_HEIGHT;
-    const visible = containerHeight - headerHeight;
+    const visible = containerHeight - controlsHeight;
     if (visible <= 0) {
       return { snapPoints: [low, '50%', '100%'], lowHeight: low, middleHeight: low + 140 };
     }
     const middle = Math.max(Math.min(Math.max(visible / 2, low + 140), visible - 80), low + 1);
     return { snapPoints: [low, middle, '100%'], lowHeight: low, middleHeight: middle };
-  }, [handleHeight, containerHeight, headerHeight]);
+  }, [handleHeight, containerHeight, controlsHeight]);
 
   const moveTo = useCallback((next: PanelPosition) => {
     sheet.current?.snapToIndex(next);
@@ -128,20 +138,13 @@ export function PanelLayout({
     list.current?.scrollToOffset({ offset: 0, animated: true });
   }
 
-  // « Ma position » rides on the panel's top edge, and fades out as the panel
-  // nears the header (at the high position the list covers the map).
-  const locateStyle = useAnimatedStyle(() => {
-    const fadeStart = headerHeight + minTouchSize;
-    return {
-      transform: [{ translateY: sheetTop.value - minTouchSize - spacing.md }],
-      opacity: interpolate(
-        sheetTop.value,
-        [fadeStart, fadeStart + minTouchSize * 2],
-        [0, 1],
-        Extrapolation.CLAMP,
-      ),
-    };
-  });
+  // « Ma position » rides on the panel's top edge, never above the controls at
+  // the top (while the panel is dragged up); it gives way at the high position.
+  const locateStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: Math.max(sheetTop.value - minTouchSize - spacing.sm, controlsHeight) },
+    ],
+  }));
 
   // The map's own controls (the « Plans » logo, « Légal ») sit just above the
   // panel where it rests, low or middle; at the high position the list covers
@@ -183,7 +186,7 @@ export function PanelLayout({
         onOpenWalk={openWalk}
         onSelectWalk={selectWalk}
         selectedId={selectedId}
-        topInset={headerHeight}
+        topInset={controlsHeight}
         bottomInset={coveredBottom}
         searching={searching}
         showsUserLocation={location.status === 'granted'}
@@ -194,15 +197,19 @@ export function PanelLayout({
         pointerEvents={position === 2 ? 'none' : 'box-none'}
         accessibilityElementsHidden={position === 2}
         importantForAccessibility={position === 2 ? 'no-hide-descendants' : 'auto'}
-        style={[{ position: 'absolute', top: 0, right: spacing.lg }, locateStyle]}
+        // The button (not its larger touch area) keeps the screen's margin.
+        style={[
+          { position: 'absolute', top: 0, right: spacing.lg - (minTouchSize - controlHeight) / 2 },
+          locateStyle,
+        ]}
       >
-        <LocateButton location={location} map={map} />
+        <LocateButton location={location} map={map} hidden={position === 2} />
       </Animated.View>
       <BottomSheet
         ref={sheet}
         index={1}
         snapPoints={snapPoints}
-        topInset={headerHeight}
+        topInset={controlsHeight}
         animatedPosition={sheetTop}
         enableDynamicSizing={false}
         enablePanDownToClose={false}
@@ -221,13 +228,7 @@ export function PanelLayout({
         handleComponent={null}
         // The panel itself is not one accessible element: its handle and cards are.
         accessible={false}
-        backgroundStyle={{
-          backgroundColor: colors.background,
-          borderTopLeftRadius: radii.lg,
-          borderTopRightRadius: radii.lg,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.border,
-        }}
+        backgroundComponent={PanelBackground}
         style={shadows.panel}
       >
         <View
@@ -318,13 +319,40 @@ export function PanelLayout({
           ListEmptyComponent={listEmpty}
         />
       </BottomSheet>
-      <FloatingHeader
+      <MapTopControls
         filters={filters}
         onFiltersChange={setFilters}
+        onCreate={createWalk}
         notice={locationUnknown(location) ? t.discover.locationDenied : null}
-        onHeightChange={setHeaderHeight}
+        onHeightChange={setControlsHeight}
       />
     </View>
+  );
+}
+
+/**
+ * The panel's background: the floating material at the low and middle
+ * positions, where it sits over the map like the pills; it turns opaque on the
+ * way to the high position, where it holds a long list (as iOS sheets do).
+ * The fade is a layer inside the material: glass must keep its full opacity.
+ */
+function PanelBackground({ style, animatedIndex }: BottomSheetBackgroundProps) {
+  const { colors, radii } = useTheme();
+  const corners = { borderTopLeftRadius: radii.lg, borderTopRightRadius: radii.lg };
+  const opaqueStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(animatedIndex.value, [1, 2], [0, 1], Extrapolation.CLAMP),
+  }));
+  return (
+    <Material style={[style, corners]}>
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          corners,
+          { backgroundColor: colors.background },
+          opaqueStyle,
+        ]}
+      />
+    </Material>
   );
 }
 

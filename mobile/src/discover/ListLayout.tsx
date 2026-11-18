@@ -33,10 +33,10 @@ import {
   DiscoverHeader,
   FLOATING_BUTTON_HEIGHT,
   FloatingButton,
-  FloatingHeader,
   LocateButton,
   locationUnknown,
   MapNotice,
+  MapTopControls,
   useDiscoverNavigation,
   useMapAreaSearch,
   useRefreshableSearch,
@@ -157,13 +157,7 @@ export function ListLayout({
             statusBarStyle,
           ]}
         >
-          <Material
-            style={{
-              flex: 1,
-              borderBottomWidth: StyleSheet.hairlineWidth,
-              borderBottomColor: colors.separator,
-            }}
-          />
+          <Material variant="bar" style={{ flex: 1 }} />
         </Animated.View>
         <View
           pointerEvents="box-none"
@@ -193,9 +187,9 @@ export function ListLayout({
 }
 
 /**
- * The full-screen map of the « Liste » view, up to the top of the screen under
- * a floating header with the same filters as the list (no distance: the search
- * follows the visible area). Its last area is reported to the parent.
+ * The full-screen map of the « Liste » view, up to the top of the screen, with
+ * the same pills as the list floating over it (no distance: the search follows
+ * the visible area). Its last area is reported to the parent.
  */
 function FullScreenMap({
   location,
@@ -214,7 +208,7 @@ function FullScreenMap({
   onClose: () => void;
   onOpenWalk: (id: string) => void;
 }) {
-  const { colors, radii, spacing, minTouchSize, shadows } = useTheme();
+  const { colors, radii, spacing, minTouchSize, controlHeight } = useTheme();
   const map = useRef<MapView>(null);
   const located = location.status !== 'pending';
   // Fixed for this opening: the map must not jump when the reported area comes back as a prop.
@@ -269,20 +263,18 @@ function FullScreenMap({
           gap: spacing.md,
         }}
       >
-        <LocateButton location={location} map={map} style={{ alignSelf: 'flex-end' }} />
+        <LocateButton
+          location={location}
+          map={map}
+          // The button (not its larger touch area) keeps the screen's margin.
+          style={{ alignSelf: 'flex-end', marginRight: -(minTouchSize - controlHeight) / 2 }}
+        />
         {notice}
         {selected ? (
-          <View style={[{ borderRadius: radii.lg }, shadows.floating]}>
+          <View>
             <Material
               testID="selected-walk"
-              style={{
-                gap: spacing.xs,
-                padding: spacing.sm,
-                borderRadius: radii.lg,
-                overflow: 'hidden',
-                borderWidth: StyleSheet.hairlineWidth,
-                borderColor: colors.separator,
-              }}
+              style={{ gap: spacing.xs, padding: spacing.sm, borderRadius: radii.lg }}
             >
               <View
                 style={{
@@ -320,10 +312,9 @@ function FullScreenMap({
           onPress={onClose}
         />
       </View>
-      <FloatingHeader
+      <MapTopControls
         filters={filters}
         onFiltersChange={onFiltersChange}
-        showTitle={false}
         onHeightChange={setHeaderHeight}
       />
     </View>

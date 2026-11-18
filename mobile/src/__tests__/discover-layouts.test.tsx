@@ -248,6 +248,16 @@ describe('« Panneau » view — map and sliding panel', () => {
     expect(screen.getByText('2 balades dans cette zone')).toBeTruthy();
   });
 
+  it('floats its controls over the map, the title kept for screen readers only', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('panel');
+    await screen.findByText(lake.title);
+
+    expect(screen.getByRole('header', { name: t.discover.title })).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: t.discover.createA11y }));
+    await waitFor(() => expect(screen).toHavePathname('/walks/new'));
+  });
+
   it('brings the walk of a tapped pin into view, highlighted', async () => {
     mockApi({ 'GET /api/v1/walks': () => ok([lake, forest]) });
     await open('panel');

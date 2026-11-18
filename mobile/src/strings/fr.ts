@@ -92,7 +92,6 @@ export const fr = {
   },
   discover: {
     title: 'Balades',
-    create: 'Créer',
     createA11y: 'Créer une balade',
     mapLabel: 'Carte des balades proches',
     searching: 'Recherche…',

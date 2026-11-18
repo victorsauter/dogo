@@ -132,22 +132,23 @@ export function MenuPill<T extends string>({
   );
 }
 
-/** The visible pill: its text and a small chevron. */
+/**
+ * The visible pill, a capsule of the floating material: its text and a small
+ * chevron. Active, it is tinted with the primary colour and its text is bold.
+ */
 function PillFace({ text, active }: { text: string; active: boolean }) {
-  const { colors, radii, spacing, pillHeight } = useTheme();
+  const { colors, spacing, controlHeight } = useTheme();
   return (
-    <View
+    <Material
+      tinted={active}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.xs,
-        minHeight: pillHeight,
-        paddingLeft: spacing.md + 2,
-        paddingRight: spacing.md,
-        borderRadius: radii.pill,
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: active ? colors.primary : colors.border,
-        backgroundColor: active ? colors.primary : colors.surface,
+        minHeight: controlHeight,
+        paddingLeft: spacing.lg,
+        paddingRight: spacing.md + 2,
+        borderRadius: controlHeight / 2,
       }}
     >
       <Text
@@ -161,7 +162,7 @@ function PillFace({ text, active }: { text: string; active: boolean }) {
         {text}
       </Text>
       <Icon name="chevronDown" size={11} color={active ? 'onPrimary' : 'textMuted'} />
-    </View>
+    </Material>
   );
 }
 
@@ -310,15 +311,7 @@ function AnchoredMenu<T extends string>({
           animatedStyle,
         ]}
       >
-        <Material
-          style={{
-            borderRadius: radii.md,
-            overflow: 'hidden',
-            // Keeps the menu's edge visible on a background of the same tone (dark mode).
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: colors.separator,
-          }}
-        >
+        <Material style={{ borderRadius: radii.md, overflow: 'hidden' }}>
           {options.map((option, index) => {
             const checked = option.value === value;
             return (
