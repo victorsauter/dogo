@@ -1,0 +1,58 @@
+import type { ReactNode } from 'react';
+import { Pressable, View } from 'react-native';
+
+import { useTheme } from '@/theme';
+
+import { Text } from './Text';
+
+export interface ListItemProps {
+  title: string;
+  subtitle?: string;
+  /** Leading element, typically an `Avatar`. */
+  left?: ReactNode;
+  /** Trailing element, typically a chevron or a status chip. */
+  right?: ReactNode;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+}
+
+export function ListItem({
+  title,
+  subtitle,
+  left,
+  right,
+  onPress,
+  accessibilityLabel,
+}: ListItemProps) {
+  const { colors, spacing } = useTheme();
+  return (
+    <Pressable
+      disabled={!onPress}
+      onPress={onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={accessibilityLabel ?? (subtitle ? `${title}, ${subtitle}` : title)}
+      style={({ pressed }) => ({
+        minHeight: 56,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.lg,
+        backgroundColor: pressed ? colors.surfaceMuted : 'transparent',
+      })}
+    >
+      {left}
+      <View style={{ flex: 1 }}>
+        <Text variant="subheading" numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text variant="caption" color="textMuted" numberOfLines={2}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      {right}
+    </Pressable>
+  );
+}
