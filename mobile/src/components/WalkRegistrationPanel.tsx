@@ -161,6 +161,11 @@ export function WalkRegistrationPanel({
   }
 
   const mine = walk.myRegistrations;
+  const errorText = error ? (
+    <Text color="danger" accessibilityLiveRegion="polite">
+      {error}
+    </Text>
+  ) : null;
   return (
     <View style={{ gap: spacing.md }}>
       {mine.length > 0 ? (
@@ -244,27 +249,24 @@ export function WalkRegistrationPanel({
               {message}
             </Text>
           ) : null}
-        </Card>
-      ) : null}
-      {membersOnly ? (
-        <Card>
-          <Text variant="heading">{t.walk.membersOnlyTitle}</Text>
-          <Text accessibilityLiveRegion="polite">
-            {format(t.walk.membersOnlyMessage, { name: walk.organization?.name ?? '' })}
-          </Text>
-          {walk.organization && onOpenOrganization ? (
-            <Button
-              label={t.walk.membersOnlyAction}
-              onPress={() => onOpenOrganization(walk.organization!.id)}
-            />
+          {/* Right under the button: a refusal below the card was off screen. */}
+          {membersOnly ? (
+            <View style={{ gap: spacing.sm }}>
+              <Text variant="subheading">{t.walk.membersOnlyTitle}</Text>
+              <Text accessibilityLiveRegion="polite">{t.walk.membersOnlyMessage}</Text>
+              {walk.organization && onOpenOrganization ? (
+                <Button
+                  label={t.walk.membersOnlyAction}
+                  onPress={() => onOpenOrganization(walk.organization!.id)}
+                />
+              ) : null}
+            </View>
           ) : null}
+          {errorText}
         </Card>
-      ) : null}
-      {error ? (
-        <Text color="danger" accessibilityLiveRegion="polite">
-          {error}
-        </Text>
-      ) : null}
+      ) : (
+        errorText
+      )}
     </View>
   );
 }
