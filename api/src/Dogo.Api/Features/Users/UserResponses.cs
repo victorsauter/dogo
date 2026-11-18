@@ -41,3 +41,9 @@ public sealed record PublicUserResponse(
         PhotoUrls.For(user.PhotoFileName),
         dogs.Select(DogResponse.From).ToList());
 }
+
+/// <summary>A user as shown next to a walk, a participant or (later) a message.</summary>
+public sealed record UserSummaryResponse(Guid Id, string DisplayName, string? PhotoUrl)
+{
+    public static UserSummaryResponse From(User user) => new(user.Id, user.DisplayName, PhotoUrls.For(user.PhotoFileName));
+}

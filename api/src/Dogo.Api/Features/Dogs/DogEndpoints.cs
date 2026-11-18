@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Dogo.Api.Common;
+using Dogo.Api.Features.Walks;
 using Dogo.Api.Infrastructure.Persistence;
 using Dogo.Api.Infrastructure.Storage;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -145,7 +146,12 @@ public static class DogEndpoints
     }
 
     private static async Task<Results<NoContent, ProblemHttpResult>> DeleteDog(
-        Guid id, ClaimsPrincipal principal, DogoDbContext db, IPhotoStorage photos, CancellationToken cancellationToken)
+        Guid id,
+        ClaimsPrincipal principal,
+        DogoDbContext db,
+        IPhotoStorage photos,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
     {
         var (dog, problem) = await FindOwnedDogAsync(db, id, principal, cancellationToken);
         if (dog is null)
@@ -153,9 +159,18 @@ public static class DogEndpoints
             return problem!;
         }
 
-        // Spec §4.1 "deleting a dog cancels its upcoming registrations": to add with registrations (Lot 2).
+        // Spec §4.1: deleting a dog cancels its upcoming registrations, which frees their places.
+        // Registrations of past walks are kept as history; the foreign key sets their dog to null.
+        var now = timeProvider.GetUtcNow();
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.Registrations
+            .Where(r => r.DogId == id
+                && (r.Status == RegistrationStatus.Pending || r.Status == RegistrationStatus.Accepted)
+                && r.Walk.StartsAt > now)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RegistrationStatus.Cancelled), cancellationToken);
         db.Dogs.Remove(dog);
         await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         if (dog.PhotoFileName is not null)
         {
             await photos.DeleteAsync(dog.PhotoFileName, cancellationToken);

@@ -31,6 +31,21 @@ public static class ErrorCodes
     public const string DogNotFound = "dog.not_found";
     public const string DogForbidden = "dog.forbidden";
 
+    // Walks (spec §4.2) and registrations (spec §4.3).
+    public const string WalkNotFound = "walk.not_found";
+    public const string WalkForbidden = "walk.forbidden";
+    public const string WalkNotOpen = "walk.not_open";
+    public const string WalkFull = "walk.full";
+    public const string WalkSizeNotAllowed = "walk.size_not_allowed";
+    public const string WalkCapacityBelowRegistered = "walk.capacity_below_registered";
+    public const string WalkSizeInUse = "walk.size_in_use";
+    public const string RegistrationNotFound = "registration.not_found";
+    public const string RegistrationForbidden = "registration.forbidden";
+    public const string RegistrationDuplicate = "registration.duplicate";
+    public const string RegistrationNotActive = "registration.not_active";
+
+    // Lot 4 adds walk.not_allowed (blocked user) and walk.members_only (professional walk).
+
     // Photos.
     public const string PhotoMissing = "photo.missing";
     public const string PhotoTooLarge = "photo.too_large";
