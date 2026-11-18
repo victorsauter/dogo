@@ -83,3 +83,59 @@ jest.mock('expo-location', () => ({
     coords: { latitude: 48.8566, longitude: 2.3522 },
   })),
 }));
+
+type Listener = (...args: never[]) => void;
+type Emit = (...args: unknown[]) => void;
+
+// Notifications: the module is only loaded when an EAS project ID is configured
+// (never by default), and this mock stands in for it in the tests that do set one.
+// `__reset()` restores the defaults: permission undetermined, a token available.
+jest.mock('expo-notifications', () => {
+  const state = {
+    permission: { granted: false, status: 'undetermined' as string, canAskAgain: true },
+    token: 'ExponentPushToken[test-token]',
+    received: new Set<Listener>(),
+    responses: new Set<Listener>(),
+    last: null as unknown,
+  };
+  const subscribe = (set: Set<Listener>) => (listener: Listener) => {
+    set.add(listener);
+    return { remove: jest.fn(() => set.delete(listener)) };
+  };
+  const mock = {
+    __state: state,
+    __reset() {
+      state.permission = { granted: false, status: 'undetermined', canAskAgain: true };
+      state.token = 'ExponentPushToken[test-token]';
+      state.received.clear();
+      state.responses.clear();
+      state.last = null;
+    },
+    /** Delivers a notification tap (`data` is the payload) to the listeners. */
+    __tap(data: unknown) {
+      const response = { notification: { request: { content: { data } } } };
+      state.responses.forEach((listener) => (listener as unknown as Emit)(response));
+    },
+    /** Delivers a notification received in the foreground. */
+    __receive(data: unknown) {
+      const notification = { request: { content: { data } } };
+      state.received.forEach((listener) => (listener as unknown as Emit)(notification));
+    },
+    AndroidImportance: { DEFAULT: 3 },
+    setNotificationHandler: jest.fn(),
+    setNotificationChannelAsync: jest.fn(async () => null),
+    getPermissionsAsync: jest.fn(async () => ({ ...state.permission })),
+    requestPermissionsAsync: jest.fn(async () => {
+      state.permission = { granted: true, status: 'granted', canAskAgain: true };
+      return { ...state.permission };
+    }),
+    getExpoPushTokenAsync: jest.fn(async () => ({ type: 'expo', data: state.token })),
+    addNotificationReceivedListener: jest.fn(subscribe(state.received)),
+    addNotificationResponseReceivedListener: jest.fn(subscribe(state.responses)),
+    getLastNotificationResponse: jest.fn(() => state.last),
+    clearLastNotificationResponse: jest.fn(() => {
+      state.last = null;
+    }),
+  };
+  return mock;
+});

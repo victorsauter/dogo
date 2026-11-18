@@ -13,7 +13,7 @@ Application iOS et Android de dogo, en React Native avec Expo (SDK 58, React Nat
 L'application se lance et s'utilise entièrement dans **Expo Go et le simulateur iOS** avec la connexion de test. Ce qui demande une **version de développement** (`expo prebuild` ou EAS, pas encore faits) :
 
 - la **connexion Google** (`@react-native-google-signin/google-signin`, code natif absent d'Expo Go) ; sans elle, ou sans identifiants, le bouton est masqué ;
-- plus tard, les notifications (lot 3).
+- les **notifications push** : sans projet EAS (`EXPO_PUBLIC_EAS_PROJECT_ID`), elles sont indisponibles et l'application l'ignore sans rien afficher (voir « Notifications » plus bas et l'[ADR 0022](../docs/adr/0022-notifications-push-mobile.md)).
 
 La **connexion Apple** (`expo-apple-authentication`) fonctionne dans Expo Go sur iOS (le bouton est masqué sur Android) ; elle ne réussira pourtant qu'une fois l'API configurée avec un identifiant d'audience Apple (`Auth:Apple:Audiences`). Appareil photo, photothèque, sélecteur de date, cartes (`react-native-maps` : Apple Plans sur iOS, Google Maps sur Android) et position (`expo-location`) fonctionnent dans Expo Go. Une version Android publiée demandera une clé Google Maps (voir l'[ADR 0021](../docs/adr/0021-carte-et-position-mobile.md)). Voir l'[ADR 0018](../docs/adr/0018-connexion-native-chargee-a-la-demande.md).
 
@@ -45,12 +45,13 @@ Après un changement de `.env`, relancer Metro avec `npx expo start --clear`.
 
 Lues une seule fois dans `src/lib/config.ts` (objet `config` typé). Expo intègre les variables `EXPO_PUBLIC_*` au moment de la construction : elles ne sont pas secrètes et ne doivent jamais contenir de secret.
 
-| Variable                           | Défaut                  | Rôle                                                                                                       |
-| ---------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `EXPO_PUBLIC_API_URL`              | `http://localhost:5080` | Adresse de l'API, sans `/api/v1`                                                                           |
-| `EXPO_PUBLIC_DEV_LOGIN`            | absente                 | `true` affiche la connexion de test (l'API doit avoir `Auth:AllowDevLogin=true`)                           |
-| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | absente                 | Identifiant client OAuth web de Google ; sans lui, bouton Google masqué (version de développement requise) |
-| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | absente                 | Identifiant client OAuth iOS, requis en plus sur iOS ; il sert aussi au plugin natif (`app.config.ts`)     |
+| Variable                           | Défaut                  | Rôle                                                                                                        |
+| ---------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_API_URL`              | `http://localhost:5080` | Adresse de l'API, sans `/api/v1`                                                                            |
+| `EXPO_PUBLIC_DEV_LOGIN`            | absente                 | `true` affiche la connexion de test (l'API doit avoir `Auth:AllowDevLogin=true`)                            |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | absente                 | Identifiant client OAuth web de Google ; sans lui, bouton Google masqué (version de développement requise)  |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | absente                 | Identifiant client OAuth iOS, requis en plus sur iOS ; il sert aussi au plugin natif (`app.config.ts`)      |
+| `EXPO_PUBLIC_EAS_PROJECT_ID`       | absente                 | Identifiant du projet EAS (`eas init`) : sans lui, notifications push indisponibles (`extra.eas.projectId`) |
 
 ## Scripts
 
@@ -87,6 +88,7 @@ mobile/
     │       ├── edit-profile, users/[id], dogs/new, dogs/[id]/{index,edit}
     │       └── walks/new, walks/[id]/{index,edit}
     ├── api/               client typé, erreurs, cache, photos, énumérations, hooks (profile, dogs, walks)
+    ├── notifications/     notifications push : chargement conditionnel, enregistrement de l'appareil, liens, écoute
     ├── auth/              session (magasin sécurisé, SessionProvider, useSession), signIn, providers/ (Apple, Google)
     ├── components/        composants de base (Screen, Text, Button, TextField…)
     ├── theme/             couleurs claires et sombres, espacements, rayons, typographie
@@ -148,11 +150,20 @@ export function useCreateDog() {
 - **Dates** : `src/lib/dates.ts` (`formatWalkStart` → « Demain à 09:30 », `formatDuration` → « 1 h 30 »), en français et dans le fuseau de l'appareil. Pluriels : `plural(t.discover.resultCount, n)`.
 - **Champs des lots suivants** (`isProfessional`, `organization`, `hasBlockedParticipant`) sont déjà affichés par `WalkCard` et la fiche (badge « Pro » et bordure, nom de l'organisation, avertissement discret).
 
+### Fil de balade, répétition et notifications (lot 3)
+
+- **Fil** `walks/[id]/messages` : visible de l'organisateur et des propriétaires de chiens acceptés (`canUseThread`, `src/lib/thread.ts`) ; les autres voient, sur la fiche, une phrase qui explique l'absence du bouton. `useWalkMessages` (`src/api/messages.ts`) charge la dernière page (clé `['walks', id, 'messages']`, donc rafraîchie par `walksChanged`), la recharge au focus, par tirer pour rafraîchir et toutes les 15 s tant que l'écran est au premier plan, et ajoute les pages plus anciennes avec `before=<id du premier message>`. `useSendMessage` envoie de façon optimiste : le texte s'affiche aussitôt (« Envoi… »), puis devient le vrai message, ou « Message non envoyé » avec « Réessayer » / « Supprimer ». Annulée : lecture seule avec une bannière.
+- **Notifications** (`src/notifications/`, voir l'[ADR 0022](../docs/adr/0022-notifications-push-mobile.md)) : `expo-notifications` n'est chargé que si `EXPO_PUBLIC_EAS_PROJECT_ID` est défini ; sinon tout est inactif, sans message. `offerNotifications()` explique puis demande l'autorisation (une seule fois, après une inscription ou une création de balade) ; `registerDevice()` / `unregisterDevice()` gèrent `PUT` et `DELETE /me/devices` (la déconnexion supprime l'appareil avant d'effacer la session) ; `targetForNotification()` ne suit que `dogo://walks/<id>` (le fil pour `message_posted`, sinon la fiche) ; `NotificationsEffects` (dans la disposition racine) écoute les notifications. Les tests activent la fonction avec `config.easProjectId = '…'` ; `expo-notifications` y est simulé (`jest.setup.ts` : `__tap(data)`, `__receive(data)`, `__state`).
+- **Notifications reçues, sur un appareil** : il faut une version de développement et un projet EAS (`eas init`, puis `EXPO_PUBLIC_EAS_PROJECT_ID`) ; ni Expo Go ni le simulateur sans projet ne peuvent obtenir de jeton. Sur Android, Expo Go ne gère plus les notifications push depuis le SDK 53.
+- **Réglages** : écran `notifications` (onglet « Profil »), quatre interrupteurs liés à `/me/notification-preferences` (`useUpdateNotificationPreferences`, enregistrement immédiat, retour en arrière en cas d'échec) et l'état de l'autorisation du téléphone.
+- **Répétition** : `repeatWeekly` dans `WalkForm` (création seulement, option `allowRepeat`), badge « Chaque semaine » (`repeatsWeekly`) sur `WalkCard` et la fiche, « Arrêter la répétition » (`useStopSeries`) pour l'organisateur.
+- `SwitchRow` (interrupteur avec description) est le composant à réutiliser pour tout réglage.
+
 ### Session
 
 - `useSession()` donne `status` (`loading`, `signedOut`, `signedIn`), `user`, `setSession(réponse)`, `updateUser(user)` (après une modification du profil : met à jour la session et son stockage) et `signOut()`.
 - Après un appel de connexion (`/auth/apple`, `/auth/google`, `/auth/dev`), appeler `setSession(réponse)` : la garde affiche alors les onglets.
-- La session est conservée dans `expo-secure-store`. Le cache des données est vidé à la déconnexion.
+- La session est conservée dans `expo-secure-store`. Avant d'être effacée à la déconnexion, `onBeforeSignOut` (3 s au plus, échec ignoré) retire l'appareil des notifications. Le cache des données est vidé à la déconnexion.
 
 ### Permissions
 

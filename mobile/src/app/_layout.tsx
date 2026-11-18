@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 
 import { useSession } from '@/auth';
 import { AppProviders } from '@/lib/AppProviders';
+import { NotificationsEffects } from '@/notifications';
 import { useTheme } from '@/theme';
 
 void SplashScreen.preventAutoHideAsync();
@@ -31,6 +32,7 @@ function RootNavigator() {
 
   return (
     <>
+      <NotificationsEffects />
       <StatusBar style={theme.dark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{

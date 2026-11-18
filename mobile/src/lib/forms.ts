@@ -187,6 +187,8 @@ export interface WalkFormValues {
   leashRule: LeashRule;
   rules: string;
   access: WalkAccess;
+  /** Creation only: a new walk is created every week (spec §4.5). */
+  repeatWeekly: boolean;
 }
 
 export const walkFields = [
@@ -217,6 +219,7 @@ export function emptyWalkForm(location: GeoPoint, startsAt: Date): WalkFormValue
     leashRule: 'LeashRequired',
     rules: '',
     access: 'Open',
+    repeatWeekly: false,
   };
 }
 
@@ -233,6 +236,7 @@ export function walkFormFrom(walk: WalkDetail): WalkFormValues {
     leashRule: walk.leashRule,
     rules: walk.rules,
     access: walk.access,
+    repeatWeekly: walk.repeatsWeekly,
   };
 }
 
@@ -290,10 +294,12 @@ export function toCreateWalkRequest(values: WalkFormValues): CreateWalkRequest {
     leashRule: values.leashRule,
     rules: values.rules.trim(),
     access: values.access,
+    repeatWeekly: values.repeatWeekly,
   };
 }
 
 /** Body of `PATCH /walks/{id}`: every field is sent; empty strings clear description and rules. */
 export function toUpdateWalkRequest(values: WalkFormValues): UpdateWalkRequest {
-  return toCreateWalkRequest(values);
+  const { repeatWeekly: _repeatWeekly, ...request } = toCreateWalkRequest(values);
+  return request;
 }

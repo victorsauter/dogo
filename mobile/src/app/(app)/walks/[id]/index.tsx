@@ -5,7 +5,13 @@ import MapView, { Marker } from 'react-native-maps';
 
 import { errorMessage } from '@/api/errors';
 import type { Participant, WalkDetail } from '@/api/types';
-import { useAcceptRegistration, useCancelWalk, useDeclineRegistration, useWalk } from '@/api/walks';
+import {
+  useAcceptRegistration,
+  useCancelWalk,
+  useDeclineRegistration,
+  useStopSeries,
+  useWalk,
+} from '@/api/walks';
 import { useSession } from '@/auth';
 import {
   Avatar,
@@ -24,6 +30,7 @@ import {
 } from '@/components';
 import { formatDuration, formatWalkStart, walkTiming } from '@/lib/dates';
 import { regionAround } from '@/lib/geo';
+import { canUseThread } from '@/lib/thread';
 import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
 
@@ -97,6 +104,7 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
   const accept = useAcceptRegistration(walk.id);
   const decline = useDeclineRegistration(walk.id);
   const cancelWalk = useCancelWalk(walk.id);
+  const stopSeries = useStopSeries(walk.id);
   const [organizerError, setOrganizerError] = useState<string | null>(null);
 
   const cancelled = walk.status === 'Cancelled';
@@ -139,6 +147,18 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
     ]);
   }
 
+  function confirmStopSeries() {
+    setOrganizerError(null);
+    Alert.alert(t.walk.stopSeriesTitle, t.walk.stopSeriesMessage, [
+      { text: t.walk.keep, style: 'cancel' },
+      {
+        text: t.walk.stopSeriesConfirm,
+        style: 'destructive',
+        onPress: () => stopSeries.mutate(undefined, { onError }),
+      },
+    ]);
+  }
+
   return (
     <>
       {cancelled ? <Banner message={t.walk.cancelledBanner} /> : null}
@@ -150,6 +170,7 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
           {walk.isProfessional ? <Badge tone="accent" label={t.walk.professional} /> : null}
           {walk.access === 'Approval' ? <Badge tone="info" label={t.walk.approval} /> : null}
           {full ? <Badge tone="danger" label={t.walk.full} /> : null}
+          {walk.repeatsWeekly ? <Badge tone="info" icon="repeat" label={t.walk.weekly} /> : null}
           {walk.hasBlockedParticipant ? (
             <Badge
               tone="warning"
@@ -223,6 +244,24 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
         <Text>{walk.description || t.walk.noDescription}</Text>
         <Text variant="heading">{t.walk.rules}</Text>
         <Text>{walk.rules || t.walk.noRules}</Text>
+      </Card>
+
+      <Card>
+        <Text variant="heading">{t.thread.title}</Text>
+        {canUseThread(walk) ? (
+          <>
+            <Text color="textMuted">{t.thread.entryHint}</Text>
+            <Button
+              label={t.thread.open}
+              variant="secondary"
+              onPress={() =>
+                router.push({ pathname: '/walks/[id]/messages', params: { id: walk.id } })
+              }
+            />
+          </>
+        ) : (
+          <Text color="textMuted">{t.thread.hiddenReason}</Text>
+        )}
       </Card>
 
       <Text variant="heading">{t.walk.participants}</Text>
@@ -313,6 +352,15 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
       ) : null}
 
       <WalkRegistrationPanel walk={walk} open={open} onAddDog={() => router.push('/dogs/new')} />
+
+      {organizer && walk.repeatsWeekly ? (
+        <Button
+          label={t.walk.stopSeries}
+          variant="secondary"
+          loading={stopSeries.isPending}
+          onPress={confirmStopSeries}
+        />
+      ) : null}
 
       {organizer && open ? (
         <View style={{ gap: spacing.md }}>

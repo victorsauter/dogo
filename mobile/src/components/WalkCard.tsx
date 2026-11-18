@@ -73,6 +73,7 @@ export function WalkCard({ walk, onPress, origin, now = new Date() }: WalkCardPr
     sizesLabel(walk.allowedSizes),
     enumLabel('LeashRule', walk.leashRule),
     walk.access === 'Approval' ? t.walk.approval : null,
+    walk.repeatsWeekly ? t.walk.weekly : null,
     walk.hasBlockedParticipant ? t.walk.blockedParticipantA11y : null,
   ]
     .filter(Boolean)
@@ -136,6 +137,7 @@ export function WalkCard({ walk, onPress, origin, now = new Date() }: WalkCardPr
         <Badge label={sizesLabel(walk.allowedSizes)} />
         <Badge label={enumLabel('LeashRule', walk.leashRule)} />
         {walk.access === 'Approval' ? <Badge tone="info" label={t.walk.approval} /> : null}
+        {walk.repeatsWeekly ? <Badge tone="info" icon="repeat" label={t.walk.weekly} /> : null}
       </View>
     </Card>
   );

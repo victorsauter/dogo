@@ -7,6 +7,7 @@ import { defaultWalkStart } from '@/lib/dates';
 import { emptyWalkForm, toCreateWalkRequest } from '@/lib/forms';
 import { DEFAULT_CENTER } from '@/lib/geo';
 import { useUserLocation } from '@/lib/location';
+import { offerNotifications } from '@/notifications';
 import { t } from '@/strings';
 
 /** Create a walk; the meeting point starts at the user's position (or the default centre). */
@@ -22,9 +23,11 @@ export default function NewWalkScreen() {
       <WalkForm
         initial={initial}
         userLocation={location.coords}
+        allowRepeat
         submitLabel={t.walk.create}
         onSubmit={async (values) => {
           const walk = await createWalk.mutateAsync(toCreateWalkRequest(values));
+          void offerNotifications();
           router.replace({ pathname: '/walks/[id]', params: { id: walk.id } });
         }}
       />

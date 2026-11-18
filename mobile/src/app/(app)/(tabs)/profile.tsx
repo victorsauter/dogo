@@ -70,6 +70,12 @@ export default function ProfileScreen() {
       )}
 
       <Button
+        label={t.notifications.open}
+        variant="secondary"
+        onPress={() => router.push('/notifications')}
+      />
+
+      <Button
         label={t.auth.signOut}
         variant="danger"
         loading={signingOut}

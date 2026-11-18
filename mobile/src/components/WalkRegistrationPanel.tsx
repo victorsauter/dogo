@@ -5,6 +5,7 @@ import { useMyDogs } from '@/api/dogs';
 import { errorMessage } from '@/api/errors';
 import type { Dog, WalkDetail } from '@/api/types';
 import { useCancelRegistration, useRegisterDogs } from '@/api/walks';
+import { offerNotifications } from '@/notifications';
 import { enumLabel, format, plural, t } from '@/strings';
 import { useTheme } from '@/theme';
 
@@ -122,6 +123,8 @@ export function WalkRegistrationPanel({ walk, open, onAddDog }: WalkRegistration
         setSelected([]);
         const pending = registrations.some((r) => r.status === 'Pending');
         setMessage(pending ? t.walk.registeredApproval : t.walk.registeredOpen);
+        // Meaningful moment to offer notifications (asked once, never when unavailable).
+        void offerNotifications();
       },
       onError: (e) => setError(errorMessage(e)),
     });

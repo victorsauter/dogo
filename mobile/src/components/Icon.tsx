@@ -18,6 +18,7 @@ const icons = {
   pin: { ios: 'mappin.and.ellipse', android: 'location_on', web: 'location_on' },
   clock: { ios: 'clock', android: 'schedule', web: 'schedule' },
   warning: { ios: 'exclamationmark.triangle', android: 'warning', web: 'warning' },
+  repeat: { ios: 'repeat', android: 'repeat', web: 'repeat' },
   info: { ios: 'info.circle', android: 'info', web: 'info' },
 } as const;
 

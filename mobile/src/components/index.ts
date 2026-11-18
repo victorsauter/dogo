@@ -25,8 +25,11 @@ export {
 export { Icon, type IconName, type IconProps } from './Icon';
 export { ListItem, type ListItemProps } from './ListItem';
 export { LoadingState } from './LoadingState';
+export { MessageBubble, PendingBubble } from './MessageBubble';
+export { MessageComposer } from './MessageComposer';
 export { MeetingPointPicker, type MeetingPointPickerProps } from './MeetingPointPicker';
 export { PhotoPicker, type PhotoPickerProps } from './PhotoPicker';
+export { SwitchRow, type SwitchRowProps } from './SwitchRow';
 export { Screen, type ScreenProps } from './Screen';
 export { Stepper, type StepperProps } from './Stepper';
 export { Text, type TextProps } from './Text';

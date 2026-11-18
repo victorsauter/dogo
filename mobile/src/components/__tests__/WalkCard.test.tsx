@@ -21,6 +21,19 @@ describe('WalkCard', () => {
     expect(screen.queryByText(t.walk.full)).toBeNull();
   });
 
+  it('shows « Chaque semaine » only when the walk repeats', async () => {
+    await renderWithTheme(
+      <WalkCard walk={walkResult({ repeatsWeekly: true })} onPress={() => {}} />,
+    );
+    expect(screen.getByText(t.walk.weekly)).toBeTruthy();
+    expect(cardLabel()).toContain(t.walk.weekly);
+  });
+
+  it('has no weekly badge for a single walk', async () => {
+    await renderWithTheme(<WalkCard walk={walkResult()} onPress={() => {}} />);
+    expect(screen.queryByText(t.walk.weekly)).toBeNull();
+  });
+
   it('says « Complet » when every place is taken', async () => {
     await renderWithTheme(<WalkCard walk={walkResult({ acceptedDogsCount: 6 })} />);
     expect(screen.getByText(t.walk.full)).toBeTruthy();

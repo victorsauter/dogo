@@ -24,6 +24,7 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0019](0019-notifications-et-taches-planifiees.md) | Notifications et tâches planifiées : file en mémoire, boucle périodique, rappels au plus une fois | Accepté |
 | [0020](0020-administration-par-e-mails-configures.md) | Administration : comptes désignés par leur e-mail dans la configuration, points d'entrée `/admin` sans écran | Accepté |
 | [0021](0021-carte-et-position-mobile.md) | Carte et position dans l'application mobile | Accepté |
+| [0022](0022-notifications-push-mobile.md) | Notifications push mobile : module chargé seulement avec un projet EAS, indisponibilité silencieuse | Accepté |
 | [0023](0023-suppression-de-compte.md) | Suppression de compte : suppression réelle en une transaction, balades conservées sans organisateur | Accepté |
 
 ## Statuts

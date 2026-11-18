@@ -136,6 +136,16 @@ export function useCancelWalk(id: string) {
   });
 }
 
+/** The organizer stops the weekly series: this walk stays, no further one is created. */
+export function useStopSeries(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      unwrap(api.POST('/api/v1/walks/{id}/stop-series', { params: { path: { id } } })),
+    onSuccess: (detail) => walksChanged(queryClient, detail),
+  });
+}
+
 // ---- Registrations
 
 export function useRegisterDogs(walkId: string) {

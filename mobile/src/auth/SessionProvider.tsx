@@ -28,16 +28,41 @@ export interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+const BEFORE_SIGN_OUT_TIMEOUT_MS = 3000;
+
+/** Runs `task`, giving up after `ms` and ignoring its failure: signing out must never hang. */
+async function bestEffort(task: () => Promise<void>, ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      task(),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, ms);
+      }),
+    ]);
+  } catch {
+    // best effort
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const revokeOnApi = (refreshToken: string) => revokeRefreshToken(config.apiUrl, refreshToken);
 
 export function SessionProvider({
   children,
   store = sessionStore,
   revoke = revokeOnApi,
+  onBeforeSignOut,
   onSignedOut,
 }: PropsWithChildren<{
   store?: SessionStore;
   revoke?: (refreshToken: string) => Promise<void>;
+  /**
+   * Awaited (at most `BEFORE_SIGN_OUT_TIMEOUT_MS`, failures ignored) while the
+   * session still exists, to undo what needs it: removing the push device.
+   */
+  onBeforeSignOut?: () => Promise<void>;
   /** Called when a signed-in session ends (sign-out or rejected refresh). */
   onSignedOut?: () => void;
 }>) {
@@ -65,11 +90,13 @@ export function SessionProvider({
       },
       async signOut() {
         const session = store.getSession();
+        if (session && onBeforeSignOut)
+          await bestEffort(onBeforeSignOut, BEFORE_SIGN_OUT_TIMEOUT_MS);
         await store.clear();
         if (session) void revoke(session.refreshToken);
       },
     }),
-    [snapshot, store, revoke],
+    [snapshot, store, revoke, onBeforeSignOut],
   );
 
   return <SessionContext value={value}>{children}</SessionContext>;

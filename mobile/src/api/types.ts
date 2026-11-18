@@ -28,6 +28,10 @@ export type MyRegistration = Schemas['MyRegistrationResponse'];
 export type Registration = Schemas['RegistrationResponse'];
 export type CreateWalkRequest = Schemas['CreateWalkRequest'];
 export type UpdateWalkRequest = Schemas['UpdateWalkRequest'];
+export type Message = Schemas['MessageResponse'];
+export type MessagePage = Schemas['MessagePageResponse'];
+export type NotificationPreferences = Schemas['NotificationPreferencesResponse'];
+export type DevicePlatform = Schemas['DevicePlatform'];
 
 /** Fields every walk shape shares (search result, my walks, detail): what `WalkCard` shows. */
 export type WalkSummary = Pick<
@@ -48,6 +52,7 @@ export type WalkSummary = Pick<
   | 'isProfessional'
   | 'organization'
   | 'hasBlockedParticipant'
+  | 'repeatsWeekly'
 > & {
   distanceMeters?: number;
   myRegistrations?: MyRegistration[];

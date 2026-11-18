@@ -21,6 +21,7 @@ import { DateTimeField } from './DateTimeField';
 import { FieldAnchor, useScrollToFirstError } from './FormScroll';
 import { MeetingPointPicker } from './MeetingPointPicker';
 import { Stepper } from './Stepper';
+import { SwitchRow } from './SwitchRow';
 import { Text } from './Text';
 import { TextField } from './TextField';
 
@@ -32,6 +33,8 @@ export interface WalkFormProps {
    * pin follows it until the person moves the pin.
    */
   userLocation?: GeoPoint | null;
+  /** Shows the « Répéter chaque semaine » switch: only when creating a walk. */
+  allowRepeat?: boolean;
   /** Creates or updates the walk. Throw an `ApiError` to show it on the form. */
   onSubmit: (values: WalkFormValues) => Promise<void>;
 }
@@ -61,7 +64,13 @@ function GroupError({ message }: { message?: string }) {
 }
 
 /** Create and edit form of a walk. Render it inside a scrolling `Screen`. */
-export function WalkForm({ initial, submitLabel, userLocation, onSubmit }: WalkFormProps) {
+export function WalkForm({
+  initial,
+  submitLabel,
+  userLocation,
+  allowRepeat = false,
+  onSubmit,
+}: WalkFormProps) {
   const { spacing } = useTheme();
   const [values, setValues] = useState(initial);
   const [errors, setErrors] = useState<WalkErrors>({});
@@ -228,6 +237,14 @@ export function WalkForm({ initial, submitLabel, userLocation, onSubmit }: WalkF
         />
         <GroupError message={errors.access} />
       </FieldAnchor>
+      {allowRepeat ? (
+        <SwitchRow
+          label={t.walk.repeatWeekly}
+          description={t.walk.repeatWeeklyHint}
+          value={values.repeatWeekly}
+          onValueChange={(repeat) => set('repeatWeekly', repeat)}
+        />
+      ) : null}
       {formError ? (
         <Text color="danger" accessibilityLiveRegion="polite">
           {formError}
