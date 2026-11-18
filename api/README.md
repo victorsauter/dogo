@@ -57,7 +57,7 @@ Ajouter une fonctionnalité : voir l'[ADR 0011](../docs/adr/0011-conventions-api
 - Toutes les routes sont sous `/api/v1`. Tout exige un jeton d'accès (`Authorization: Bearer …`) sauf `/api/v1/auth/*`, `/api/v1/health` et les photos.
 - JSON en camelCase, énumérations en chaînes, dates en ISO 8601 UTC (`+00:00`), `birthDate` au format `AAAA-MM-JJ`.
 - Erreurs au format `application/problem+json` (RFC 9457) avec une extension `code` stable (`dog.not_found`, `validation.failed`, `account.suspended`, `auth.invalid_token`…). Les erreurs de validation listent les champs fautifs dans `errors`, par nom JSON. Liste complète : `src/Dogo.Api/Common/ErrorCodes.cs`.
-- `PATCH` modifie seulement les propriétés envoyées ; `null` laisse un champ obligatoire inchangé mais efface `birthDate` et `breed` ; une chaîne vide efface `bio` et `description`.
+- `PATCH` modifie seulement les propriétés envoyées ; `null` laisse un champ obligatoire inchangé mais efface `birthDate` et `breed` ; une chaîne vide efface `bio`, `description` et `rules`.
 - Toute écriture d'un compte suspendu renvoie 403 `account.suspended` (middleware global).
 
 ### Photos
@@ -65,6 +65,29 @@ Ajouter une fonctionnalité : voir l'[ADR 0011](../docs/adr/0011-conventions-api
 `PUT /api/v1/me/photo` et `PUT /api/v1/dogs/{id}/photo` reçoivent un formulaire multipart avec un champ `file` : JPEG, PNG, WebP ou HEIC, 5 Mo au plus, format vérifié sur le contenu. Erreurs : 413 `photo.too_large`, 415 `photo.unsupported_type`, 400 `validation.failed` si le fichier manque.
 
 Les photos sont servies sans authentification sur `/photos/{fichier}` (hors `/api/v1`, noms aléatoires impossibles à deviner). **`photoUrl` est un chemin relatif à l'origine de l'API**, par exemple `/photos/3f2a….jpg` : l'application le préfixe par l'URL de base de l'API (`http://localhost:5080` + `photoUrl`). Les fichiers sont écrits dans `Storage:Local:Path` (`./data/photos` par défaut, relatif à `src/Dogo.Api/`, ignoré par git).
+
+### Balades et inscriptions (lot 2)
+
+- **Lieu.** `location` vaut `{ "latitude": …, "longitude": … }` en degrés WGS 84 ; stocké en `geography(Point, 4326)` avec un index GiST. La recherche filtre et trie dans PostGIS (`ST_DWithin`, `ST_Distance`, en mètres).
+- **Recherche** `GET /walks?lat&lng` (obligatoires) `&radiusKm` (10 par défaut, 100 au plus) `&from&to` (ISO 8601, `+` encodé en `%2B`) `&size&limit` : balades `Scheduled` pas encore commencées, triées par début puis par distance, avec `distanceMeters` et `acceptedDogsCount`.
+- **Mes balades** `GET /me/walks?role=Organizer|Participant&when=Upcoming|Past` : valeurs d'énumération en PascalCase comme partout ; balades annulées comprises ; `myRegistrations` donne le statut de mes inscriptions sur chaque balade.
+- **Fiche** `GET /walks/{id}` : `participants` (inscriptions `Accepted`), `myRegistrations` (les miennes, tout statut), `pendingRegistrations` (rempli pour l'organisateur seulement). Une balade annulée ou passée reste lisible.
+- **Champs des lots suivants**, déjà dans le contrat : `isProfessional`, `organization`, `repeatsWeekly`, `hasBlockedParticipant` valent `false`/`null` (une seule méthode à compléter : `LaterLotFields.For`).
+- **Inscriptions** `POST /walks/{id}/registrations` `{ "dogIds": [...] }` (1 à 10) : tout ou rien, 201 avec les inscriptions créées. `DELETE …/registrations/{registrationId}` (propriétaire, 204), `…/accept` et `…/decline` (organisateur, 200).
+- **Concurrence.** Toute écriture qui dépend de la capacité verrouille la ligne de la balade (`SELECT … FOR UPDATE`, ADR 0015) ; un index unique partiel interdit deux inscriptions actives d'un même chien.
+- **Supprimer un chien** annule ses inscriptions à venir ; celles des balades passées sont gardées avec `dogId` à `null`.
+- **Erreurs** (409 sauf mention) : `walk.not_found` (404), `walk.forbidden` (403), `walk.not_open`, `walk.full`, `walk.size_not_allowed`, `walk.capacity_below_registered`, `walk.size_in_use`, `registration.not_found` (404), `registration.forbidden` (403), `registration.duplicate`, `registration.not_active`, et `dog.not_found` (404) pour un chien inconnu ou d'un autre utilisateur.
+
+Essai rapide (après la connexion de test de deux comptes) :
+
+```bash
+curl -s -X POST http://localhost:5080/api/v1/walks -H "Authorization: Bearer $ALICE" -H 'Content-Type: application/json' \
+  -d '{"title":"Tour du lac","startsAt":"2030-05-01T09:00:00Z","location":{"latitude":48.853,"longitude":2.35},
+       "locationLabel":"Parvis","maxDogs":5,"allowedSizes":["Small","Medium"],"leashRule":"LeashRequired","access":"Open"}'
+curl -s "http://localhost:5080/api/v1/walks?lat=48.85&lng=2.35&radiusKm=5" -H "Authorization: Bearer $BOB"
+curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/registrations -H "Authorization: Bearer $BOB" \
+  -H 'Content-Type: application/json' -d '{"dogIds":["<dogId>"]}'
+```
 
 ## Migrations
 
