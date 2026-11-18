@@ -8,8 +8,8 @@ public sealed class PhotoProcessingOptions
 {
     public const string SectionName = "Photos";
 
-    /// <summary>Largest decoded image accepted, in pixels (width × height). Protects against decompression bombs.</summary>
-    public long MaxPixels { get; set; } = 40_000_000;
+    /// <summary>Largest decoded image accepted, in pixels (width × height). Protects against decompression bombs; bounds the memory of a PNG decoded in full (4 bytes per pixel).</summary>
+    public long MaxPixels { get; set; } = 25_000_000;
 
     /// <summary>Longest side kept, in pixels: larger images are scaled down. The app shows photos far smaller than this.</summary>
     public int MaxSide { get; set; } = 2048;

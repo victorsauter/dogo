@@ -24,8 +24,9 @@ public sealed record ProcessedPhoto(byte[] Content, PhotoFormat Format);
 /// </summary>
 public sealed class PhotoProcessor(PhotoProcessingOptions options)
 {
-    // Decoding holds the whole bitmap (4 bytes per pixel) in memory: bound how many run at once.
-    private static readonly SemaphoreSlim Gate = new(2, 2);
+    // Decoding holds a bitmap (4 bytes per pixel) in memory: one image at a time, so the peak per
+    // upload is bounded and documented (ADR 0032).
+    private static readonly SemaphoreSlim Gate = new(1, 1);
 
     public async Task<(ProcessedPhoto? Photo, PhotoRejection? Rejection)> ProcessAsync(byte[] content, CancellationToken cancellationToken)
     {
@@ -69,17 +70,24 @@ public sealed class PhotoProcessor(PhotoProcessingOptions options)
                 return (null, PhotoRejection.TooManyPixels);
             }
 
+            // Decoded at reduced size when the format allows it (JPEG and WebP), so that the full
+            // resolution of a very large image is never allocated.
+            var (decodeWidth, decodeHeight) = DecodeSize(codec, width, height);
+
             // sRGB: colours are converted from the embedded profile, which is then dropped.
-            var info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul, SKColorSpace.CreateSrgb());
+            var info = new SKImageInfo(decodeWidth, decodeHeight, SKColorType.Rgba8888, SKAlphaType.Premul, SKColorSpace.CreateSrgb());
             using var decoded = new SKBitmap(info);
             if (codec.GetPixels(info, decoded.GetPixels()) != SKCodecResult.Success)
             {
                 return (null, PhotoRejection.UnsupportedFormat);
             }
 
-            using var oriented = Orient(decoded, codec.EncodedOrigin);
-            using var image = SKImage.FromBitmap(oriented);
-            using var encoded = image.Encode(SkiaFormat(format), format == PhotoFormat.WebP ? options.WebpQuality : options.JpegQuality);
+            // Immutable: drawing from it or encoding it does not copy the pixels.
+            decoded.SetImmutable();
+
+            // Only when the image must be turned or scaled is a second bitmap (at most MaxSide × MaxSide) allocated.
+            using var transformed = Transform(decoded, codec.EncodedOrigin);
+            using var encoded = (transformed ?? decoded).Encode(SkiaFormat(format), format == PhotoFormat.WebP ? options.WebpQuality : options.JpegQuality);
             return encoded is null ? (null, PhotoRejection.UnsupportedFormat) : (new ProcessedPhoto(encoded.ToArray(), format), null);
         }
         catch (Exception e) when (e is not OutOfMemoryException)
@@ -94,8 +102,39 @@ public sealed class PhotoProcessor(PhotoProcessingOptions options)
         : format == PhotoFormat.Png ? SKEncodedImageFormat.Png
         : SKEncodedImageFormat.Webp;
 
-    /// <summary>Applies the EXIF orientation to the pixels and scales down to <see cref="PhotoProcessingOptions.MaxSide"/>.</summary>
-    private SKBitmap Orient(SKBitmap source, SKEncodedOrigin origin)
+    /// <summary>
+    /// Size to decode at: the full size, or, above <see cref="PhotoProcessingOptions.MaxSide"/>, the smallest size the
+    /// codec produces natively (JPEG: 1/2, 1/4, 1/8 steps; WebP) whose longest side stays at least <c>MaxSide</c>.
+    /// PNG cannot be decoded scaled and is decoded in full (hence the cap on pixels).
+    /// </summary>
+    private (int Width, int Height) DecodeSize(SKCodec codec, int width, int height)
+    {
+        var longest = Math.Max(width, height);
+        if (longest <= options.MaxSide)
+        {
+            return (width, height);
+        }
+
+        // The codec rounds to the sizes it supports, possibly below the requested one (JPEG: 1/8 steps):
+        // when that is too small, ask for the next multiple of 1/8.
+        var desired = (float)options.MaxSide / longest;
+        foreach (var scale in new[] { desired, MathF.Ceiling(desired * 8) / 8 })
+        {
+            var scaled = codec.GetScaledDimensions(scale);
+            if (Math.Max(scaled.Width, scaled.Height) >= options.MaxSide && scaled.Width <= width && scaled.Height <= height)
+            {
+                return (scaled.Width, scaled.Height);
+            }
+        }
+
+        return (width, height);
+    }
+
+    /// <summary>
+    /// Applies the EXIF orientation to the pixels and scales down to <see cref="PhotoProcessingOptions.MaxSide"/>.
+    /// Returns null, with no copy, when the image needs neither.
+    /// </summary>
+    private SKBitmap? Transform(SKBitmap source, SKEncodedOrigin origin)
     {
         var (w, h) = (source.Width, source.Height);
         var swapped = origin is SKEncodedOrigin.LeftTop or SKEncodedOrigin.RightTop
@@ -105,7 +144,7 @@ public sealed class PhotoProcessor(PhotoProcessingOptions options)
 
         if (origin == SKEncodedOrigin.TopLeft && scale >= 1f)
         {
-            return source.Copy();
+            return null;
         }
 
         var targetWidth = Math.Max(1, (int)Math.Round(orientedWidth * scale));
@@ -115,7 +154,7 @@ public sealed class PhotoProcessor(PhotoProcessingOptions options)
         canvas.Clear(SKColors.Transparent);
         canvas.Scale((float)targetWidth / orientedWidth, (float)targetHeight / orientedHeight);
         canvas.Concat(OriginMatrix(origin, w, h));
-        using var sourceImage = SKImage.FromBitmap(source);
+        using var sourceImage = SKImage.FromBitmap(source); // shares the immutable pixels
         canvas.DrawImage(sourceImage, 0, 0, new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
         return target;
     }
