@@ -15,7 +15,7 @@ docker compose up -d --wait        # PostgreSQL + PostGIS sur localhost:54329 (p
 dotnet run --project src/Dogo.Api  # API sur http://localhost:5080, environnement Development
 ```
 
-En Development, les migrations s'appliquent au démarrage, la connexion de test `POST /api/v1/auth/dev` est active et la description OpenAPI est servie sur `http://localhost:5080/openapi/v1.json`.
+En Development, les migrations s'appliquent au démarrage, la connexion de test `POST /api/v1/auth/dev` est active, l'adresse `admin@dogo.local` est administratrice (voir « Agir en administrateur en local ») et la description OpenAPI est servie sur `http://localhost:5080/openapi/v1.json`.
 
 Arrêter la base sans perdre les données : `docker compose -p dogo down` (le volume `dogo_dogo-db` est conservé ; `down -v` le supprime).
 
@@ -34,7 +34,7 @@ cd api
 dotnet test
 ```
 
-Les tests d'intégration démarrent un conteneur PostGIS avec Testcontainers (un seul pour toute la série ; chaque test repart d'une base vide). Seul Docker est nécessaire : les jetons Apple et Google sont validés par un faux validateur, les notifications sont enregistrées par un faux expéditeur, aucun test n'appelle le réseau. Les tâches planifiées sont éteintes dans les tests, qui les appellent avec une horloge contrôlée.
+Les tests d'intégration démarrent un conteneur PostGIS avec Testcontainers (un seul pour toute la série ; chaque test repart d'une base vide). Seul Docker est nécessaire : les jetons Apple et Google sont validés par un faux validateur, les notifications et les signalements sont enregistrés par des faux, aucun test n'appelle le réseau. Les tâches planifiées sont éteintes dans les tests, qui les appellent avec une horloge contrôlée.
 
 ## Organisation du code
 
@@ -58,7 +58,7 @@ Ajouter une fonctionnalité : voir l'[ADR 0011](../docs/adr/0011-conventions-api
 - JSON en camelCase, énumérations en chaînes, dates en ISO 8601 UTC (`+00:00`), `birthDate` au format `AAAA-MM-JJ`.
 - Erreurs au format `application/problem+json` (RFC 9457) avec une extension `code` stable (`dog.not_found`, `validation.failed`, `account.suspended`, `auth.invalid_token`…). Les erreurs de validation listent les champs fautifs dans `errors`, par nom JSON. Liste complète : `src/Dogo.Api/Common/ErrorCodes.cs`.
 - `PATCH` modifie seulement les propriétés envoyées ; `null` laisse un champ obligatoire inchangé mais efface `birthDate` et `breed` ; une chaîne vide efface `bio`, `description` et `rules`.
-- Toute écriture d'un compte suspendu renvoie 403 `account.suspended` (middleware global).
+- Toute écriture d'un compte suspendu renvoie 403 `account.suspended`, et toute requête d'un compte qui n'existe plus (supprimé avec un jeton d'accès encore valide) renvoie 401 `auth.invalid_token` : un middleware global (`AccountStatusMiddleware`) relit le compte à chaque requête authentifiée.
 
 ### Photos
 
@@ -72,7 +72,7 @@ Les photos sont servies sans authentification sur `/photos/{fichier}` (hors `/ap
 - **Recherche** `GET /walks?lat&lng` (obligatoires) `&radiusKm` (10 par défaut, 100 au plus) `&from&to` (ISO 8601, `+` encodé en `%2B`) `&size&limit` : balades `Scheduled` pas encore commencées, triées par début puis par distance, avec `distanceMeters` et `acceptedDogsCount`.
 - **Mes balades** `GET /me/walks?role=Organizer|Participant&when=Upcoming|Past` : valeurs d'énumération en PascalCase comme partout ; balades annulées comprises ; `myRegistrations` donne le statut de mes inscriptions sur chaque balade.
 - **Fiche** `GET /walks/{id}` : `participants` (inscriptions `Accepted`), `myRegistrations` (les miennes, tout statut), `pendingRegistrations` (rempli pour l'organisateur seulement). Une balade annulée ou passée reste lisible.
-- **Champs des lots suivants**, déjà dans le contrat : `isProfessional`, `organization`, `hasBlockedParticipant` valent `false`/`null` (une seule méthode à compléter : `LaterLotFields.For`) ; `repeatsWeekly` est rempli depuis le lot 3.
+- **Champs des lots suivants** : `repeatsWeekly` (lot 3), `isProfessional`, `organization` et `hasBlockedParticipant` (lot 4) sont remplis par `LaterLotFields.For`. `organizer` vaut `null` quand le compte de l'organisateur a été supprimé (ADR 0023).
 - **Inscriptions** `POST /walks/{id}/registrations` `{ "dogIds": [...] }` (1 à 10) : tout ou rien, 201 avec les inscriptions créées. `DELETE …/registrations/{registrationId}` (propriétaire, 204), `…/accept` et `…/decline` (organisateur, 200).
 - **Concurrence.** Toute écriture qui dépend de la capacité verrouille la ligne de la balade (`SELECT … FOR UPDATE`, ADR 0015) ; un index unique partiel interdit deux inscriptions actives d'un même chien.
 - **Supprimer un chien** annule ses inscriptions à venir ; celles des balades passées sont gardées avec `dogId` à `null`.
@@ -99,7 +99,7 @@ curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/registrations -H "Au
 
 #### Notifications
 
-Chaque événement est déposé dans une file en mémoire **après** la validation de la transaction ; un service d'arrière-plan l'envoie (ADR 0019). La requête n'attend jamais l'envoi et n'échoue jamais à cause de lui ; les échecs sont journalisés. Le service retire l'auteur de l'action et les doublons, applique les préférences, puis envoie une notification par appareil. `data` vaut `{ "type": "<type>", "walkId": "<id>", "url": "dogo://walks/<id>" }`.
+Chaque événement est déposé dans une file en mémoire **après** la validation de la transaction ; un service d'arrière-plan l'envoie (ADR 0019). La requête n'attend jamais l'envoi et n'échoue jamais à cause de lui ; les échecs sont journalisés. Le service retire l'auteur de l'action et les doublons, applique les préférences, puis envoie une notification par appareil. `data` vaut `{ "type": "<type>", "walkId": "<id>", "url": "dogo://walks/<id>" }` pour une balade, `{ "type": "<type>", "organizationId": "<id>", "url": "dogo://organizations/<id>" }` pour une organisation.
 
 | `type` | Destinataires | Préférence | Titre | Texte |
 | --- | --- | --- | --- | --- |
@@ -112,8 +112,11 @@ Chaque événement est déposé dans une file en mémoire **après** la validati
 | `message_posted` | Organisateur et inscrits `Accepted`, sauf l'auteur | `messages` | {titre} | « {nom} : {début du message, 120 caractères} » |
 | `walk_reminder` | Organisateur et inscrits `Accepted` | `reminders` | Balade bientôt | « « {titre} » commence à {HH:MM}. » |
 | `series_walk_created` | Inscrits `Accepted` de la balade précédente | `walkChanges` | Nouvelle date | « « {titre} » revient le {…}. Inscris-toi à nouveau pour y participer. » |
+| `membership_requested` | Responsable et éducateurs de l'organisation | `registrations` | Nouvelle demande d'adhésion | « {nom} demande à rejoindre « {organisation} ». » |
+| `membership_accepted` | Auteur de la demande | `registrations` | Adhésion acceptée | « Tu fais maintenant partie de « {organisation} ». » |
+| `organization_approved` | Responsable de l'organisation | `registrations` | Organisation validée | « « {organisation} » est validée : tu peux y proposer des balades. » |
 
-Les heures sont données dans le fuseau `Europe/Paris`. Les textes sont tous dans `Features/Notifications/NotificationTexts.cs` : ajouter un type, c'est une valeur de `NotificationType` et une ligne dans ce fichier. Une modification (`PATCH`) ne notifie que si une valeur change réellement.
+Une suppression de compte envoie aussi `walk_cancelled` aux inscrits de ses balades à venir. Une demande d'adhésion refusée n'est pas notifiée. Les heures sont données dans le fuseau `Europe/Paris`. Les textes sont tous dans `Features/Notifications/NotificationTexts.cs` : ajouter un type, c'est une valeur de `NotificationType` et une ligne dans ce fichier. Une modification (`PATCH`) ne notifie que si une valeur change réellement.
 
 **Envoi.** `Notifications:Provider` vaut `Log` (par défaut : la notification est seulement écrite dans le journal, sans le jeton) ou `Expo` (envoi par `https://exp.host/--/api/v2/push/send`, par lots de 100, un message par appareil ; un appareil signalé `DeviceNotRegistered` est supprimé). Pour activer l'envoi réel : `Notifications__Provider=Expo`, et `Notifications__Expo__AccessToken=<jeton>` seulement si la « sécurité renforcée des notifications » est activée dans le projet Expo. Les accusés de réception d'Expo ne sont pas consultés ; un échec HTTP (429, 5xx) est journalisé sans nouvel essai. Les tests remplacent l'envoi par un faux qui enregistre les messages : aucun test n'envoie de notification.
 
@@ -136,6 +139,74 @@ curl -s -X POST http://localhost:5080/api/v1/walks -H "Authorization: Bearer $AL
 curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/messages -H "Authorization: Bearer $BOB" \
   -H 'Content-Type: application/json' -d '{"text":"On se retrouve au portail ?"}'
 # le journal de l'API affiche : Push notification (not sent, log provider) to user <id d'Alice>: …
+```
+
+### Organisations, blocages, signalements, administration et suppression de compte (lot 4)
+
+#### Organisations et adhésions
+
+- **Créer** `POST /organizations` `{ "name" (3 à 80), "description"? (2 000 au plus), "city"? (80 au plus) }` → 201, organisation `Pending`, le créateur en est `Owner` (adhésion `Accepted`). Trois organisations `Pending` au plus par personne : 409 `organization.too_many_pending`.
+- **Chercher** `GET /organizations?query&limit` : organisations `Approved` seulement, `query` sur le nom ou la ville sans tenir compte de la casse (`%` et `_` pris littéralement), triées par nom. Chaque élément : `{ id, name, description, city, status, memberCount, createdAt }` (`memberCount` : adhésions `Accepted`, tous rôles).
+- **Lire** `GET /organizations/{id}` : `{ id, name, description, city, status, createdAt, memberCount, educators: [{ user, role }], myMembership: { id, role, status } | null, upcomingWalks: [...] }`. `educators` : le responsable puis les éducateurs ; `upcomingWalks` : ses 20 prochaines balades `Scheduled`, mêmes champs qu'un résultat de recherche sans `distanceMeters`. Une organisation non `Approved` n'est visible que de ses membres acceptés et des administrateurs : 404 `organization.not_found` pour les autres, comme si elle n'existait pas.
+- **Modifier** `PATCH /organizations/{id}` (responsable seulement ; chaîne vide pour effacer `description` ou `city`) : 403 `organization.forbidden`, 409 `organization.closed`.
+- **Mes organisations** `GET /me/organizations` : `[{ organization: {…résumé}, membership: { id, role, status } }]`, toutes mes adhésions quel que soit leur statut, y compris mes organisations en attente.
+- **Adhésions** sous `/organizations/{id}/memberships` :
+  - `POST` : demande `Pending` (rôle `Member`) sur une organisation `Approved` → 201 `{ id, organizationId, user, role, status, createdAt }`. 409 `membership.duplicate` si une adhésion ou une demande est en cours (une demande refusée peut être refaite), 409 `organization.not_approved` pour un administrateur ou un membre sur une organisation non validée.
+  - `GET` (responsable et éducateurs) : `{ members: [...], requests: [...] }` ; 403 `organization.forbidden` pour les autres.
+  - `POST /{membershipId}/accept` et `/decline` (responsable ou éducateur, idempotents) : 409 `membership.not_pending` sur une adhésion déjà décidée dans l'autre sens.
+  - `PATCH /{membershipId}` `{ "role": "Member" | "Educator" }` (responsable seulement) : 400 si `Owner`, 409 `membership.owner_role` sur le responsable, 409 `membership.not_accepted` sur une demande.
+  - `DELETE /{membershipId}` → 204 : quitter ou retirer sa demande (quel que soit le statut de l'organisation) ; le responsable ou un éducateur retire un `Member` ; seul le responsable retire un `Educator` ; personne ne retire le responsable ; le seul responsable ne peut pas partir (409 `membership.sole_owner`).
+- **Balades professionnelles.** `POST /walks` accepte `"organizationId"` : seuls le responsable et les éducateurs d'une organisation `Approved` peuvent le donner (sinon 403 `walk.organization_forbidden`, y compris pour une organisation inconnue). La balade a alors `isProfessional: true` et `organization: { id, name }` partout. S'y inscrire demande une adhésion `Accepted` (tout rôle ; l'organisateur inscrit ses chiens librement) : sinon 403 `walk.members_only`. `PATCH /walks/{id}` ignore `organizationId` ; la balade suivante d'une série reprend l'organisation.
+
+#### Blocages
+
+- `POST /blocks` `{ "userId" }` → 200 `{ user, createdAt }`, idempotent ; 400 `block.self`, 404 `user.not_found`. `GET /me/blocks` → `[{ user, createdAt }]`, les plus récents d'abord. `DELETE /blocks/{userId}` → 204, idempotent.
+- Une personne bloquée ne peut plus s'inscrire aux balades de celle qui l'a bloquée : 403 `walk.not_allowed`, avec un message générique. Ses inscriptions existantes restent ; l'organisateur peut encore accepter une demande en attente.
+- `hasBlockedParticipant` (recherche, fiche, mes balades) vaut vrai quand l'organisateur ou le propriétaire d'un chien `Accepted` fait partie des personnes que **j'ai** bloquées ; calculé en SQL (sous-requête sur `blocks`).
+- La personne bloquée n'est pas prévenue et ne voit aucune différence : aucune réponse ne dépend des blocages des autres, sauf ce refus d'inscription.
+
+#### Signalements
+
+- `POST /reports` `{ "type": "IncidentNoInjury" | "Altercation" | "BiteOrInjury" | "HumanBehavior", "facts" (10 à 4 000), "targetUserId"?, "targetDogId"?, "walkId"? }` → 201 `{ id, createdAt }`. Au moins une cible (400 `validation.failed` sur `target`), chacune doit exister (404 `user.not_found`, `dog.not_found`, `walk.not_found`), pas soi-même (400 `report.self`).
+- Un signalement n'est lisible que par les administrateurs. À sa création, `IReportNotifier` prévient l'administration ; l'implémentation actuelle (`LoggingReportNotifier`) journalise seulement l'identifiant et le type, jamais les faits ni les personnes. L'adresse prévue est `Admin:ReportEmail` (aucun fournisseur d'e-mails n'est choisi).
+
+#### Administration
+
+Les administrateurs sont les comptes dont l'e-mail (vérifié par Apple ou Google) figure dans `Admin:Emails` (ADR 0020). Tout `/admin/*` répond 403 `admin.forbidden` aux autres. Pas d'écran : ces routes s'appellent avec curl.
+
+- `GET /admin/organizations?status&limit` (`Pending` par défaut, plus anciennes d'abord) → `[{ id, name, description, city, status, createdBy, memberCount, createdAt }]`.
+- `POST /admin/organizations/{id}/approve` (notifie le responsable) et `/reject` (aussi pour retirer une organisation validée), idempotents ; 409 `organization.closed`.
+- `GET /admin/reports?status&limit` (`Open` par défaut) → `[{ id, type, facts, status, adminNote, createdAt, reporter, targetUser, targetDog: { id, name, ownerId }, walk: { id, title, startsAt } }]` (références nulles si absentes ou supprimées). `PATCH /admin/reports/{id}` `{ "status"?, "adminNote"? }` (chaîne vide pour effacer la note) ; 404 `report.not_found`.
+- `POST /admin/users/{id}/suspend` (révoque ses jetons de rafraîchissement ; ses écritures sont refusées aussitôt) et `/unsuspend` → `{ id, displayName, status }` ; 409 `admin.self_suspension`, 404 `user.not_found`.
+
+#### Agir en administrateur en local
+
+`appsettings.Development.json` déclare `admin@dogo.local` dans `Admin:Emails`. La connexion de test accepte un champ `email` facultatif (seulement sur `/auth/dev`, tenu pour vérifié) :
+
+```bash
+ADMIN=$(curl -s -X POST http://localhost:5080/api/v1/auth/dev -H 'Content-Type: application/json' \
+  -d '{"subject":"admin","displayName":"Admin","email":"admin@dogo.local"}' | jq -r .accessToken)
+curl -s http://localhost:5080/api/v1/admin/organizations -H "Authorization: Bearer $ADMIN"
+curl -s -X POST http://localhost:5080/api/v1/admin/organizations/<id>/approve -H "Authorization: Bearer $ADMIN"
+```
+
+#### Suppression de compte
+
+`DELETE /me` → 204, en une transaction (spécification §4.8, ADR 0023) : ses balades à venir passent à `Cancelled` (inscrits `Accepted` et `Pending` prévenus après la validation) et toutes ses balades restent, avec `organizer: null` ; ses séries s'arrêtent ; ses chiens, inscriptions, appareils, préférences, adhésions, blocages (dans les deux sens) et jetons sont supprimés, ainsi que ses fichiers de photos ; les organisations dont il était le seul responsable passent à `Closed` ; ses messages et ses signalements restent sans auteur, et les signalements qui le visaient perdent cette cible. Ensuite, son jeton d'accès encore valide reçoit 401 `auth.invalid_token` partout. Un compte suspendu ne peut pas se supprimer (403 `account.suspended`).
+
+Essai rapide (comptes de test, `$ADMIN` comme ci-dessus) :
+
+```bash
+OWNER=$(curl -s -X POST http://localhost:5080/api/v1/auth/dev -H 'Content-Type: application/json' -d '{"subject":"olga","displayName":"Olga"}' | jq -r .accessToken)
+ORG=$(curl -s -X POST http://localhost:5080/api/v1/organizations -H "Authorization: Bearer $OWNER" -H 'Content-Type: application/json' \
+  -d '{"name":"Club canin du lac","city":"Annecy"}' | jq -r .id)
+curl -s -X POST http://localhost:5080/api/v1/admin/organizations/$ORG/approve -H "Authorization: Bearer $ADMIN"
+curl -s -X POST http://localhost:5080/api/v1/organizations/$ORG/memberships -H "Authorization: Bearer $BOB"   # puis accept par $OWNER
+curl -s -X POST http://localhost:5080/api/v1/walks -H "Authorization: Bearer $OWNER" -H 'Content-Type: application/json' \
+  -d '{"title":"Cours collectif","startsAt":"2030-05-01T09:00:00Z","location":{"latitude":45.9,"longitude":6.13},
+       "locationLabel":"Pâquier","maxDogs":8,"allowedSizes":["Small","Medium","Large"],"leashRule":"LeashRequired","access":"Open","organizationId":"'$ORG'"}'
+curl -s -X POST http://localhost:5080/api/v1/blocks -H "Authorization: Bearer $OWNER" -H 'Content-Type: application/json' -d '{"userId":"<id>"}'
+curl -s -X DELETE http://localhost:5080/api/v1/me -H "Authorization: Bearer $BOB"
 ```
 
 ## Migrations
@@ -171,7 +242,8 @@ dotnet ef migrations script --idempotent --project src/Dogo.Api --output migrate
 | `Auth:AllowDevLogin` | `Auth__AllowDevLogin` | `false` (Development : `true`) | Active `POST /auth/dev` ; démarrage refusé si vrai en Production |
 | `Auth:Apple:Audiences` | `Auth__Apple__Audiences__0`, … | vide | Identifiants acceptés comme audience des jetons Apple (bundle id) |
 | `Auth:Google:Audiences` | `Auth__Google__Audiences__0`, … | vide | Identifiants client OAuth acceptés pour Google |
-| `Admin:Emails` | `Admin__Emails__0`, … | vide | E-mails des administrateurs (`isAdmin`) |
+| `Admin:Emails` | `Admin__Emails__0`, … | vide (Development : `admin@dogo.local`) | E-mails des administrateurs (`isAdmin`, routes `/admin`), ADR 0020 |
+| `Admin:ReportEmail` | `Admin__ReportEmail` | vide | Adresse à prévenir de chaque signalement ; pas encore utilisée (signalements journalisés seulement) |
 | `Storage:Local:Path` | `Storage__Local__Path` | `./data/photos` | Dossier des photos |
 | `Notifications:Provider` | `Notifications__Provider` | `Log` | `Log` (journal seulement) ou `Expo` (envoi réel) |
 | `Notifications:Expo:AccessToken` | `Notifications__Expo__AccessToken` | vide | Jeton d'accès Expo, seulement si la sécurité renforcée des notifications est activée |
