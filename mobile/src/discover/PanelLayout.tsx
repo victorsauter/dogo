@@ -3,7 +3,7 @@ import BottomSheet, {
   type BottomSheetFlatListMethods,
 } from '@gorhom/bottom-sheet';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Pressable, View, type LayoutChangeEvent } from 'react-native';
+import { ActivityIndicator, Pressable, View, type LayoutChangeEvent } from 'react-native';
 import type MapView from 'react-native-maps';
 
 import type { WalkSearchResult } from '@/api/types';
@@ -61,7 +61,7 @@ export function PanelLayout({ location }: { location: UserLocation }) {
     () => regionAround(location.coords ?? DEFAULT_CENTER),
     [location.coords],
   );
-  const { search, walks, searching, onRegionChange } = useMapAreaSearch({
+  const { search, walks, searching, refresh, onRegionChange } = useMapAreaSearch({
     located,
     startRegion,
     filters,
@@ -179,69 +179,81 @@ export function PanelLayout({ location }: { location: UserLocation }) {
             elevation: 12,
           }}
         >
-          <Pressable
-            testID="panel-handle"
-            accessibilityRole="button"
-            accessibilityLabel={`${count}. ${action}`}
-            accessibilityHint={t.discover.panelA11yHint}
-            accessibilityValue={{ min: 0, max: 2, now: position }}
-            onPress={() => moveTo(NEXT_POSITION[position])}
+          <View
+            // The handle's real height (with its refresh button) sets the low position.
             onLayout={(event: LayoutChangeEvent) => {
               const height = Math.ceil(event.nativeEvent.layout.height);
               if (Math.abs(height - handleHeight) > 1) setHandleHeight(height);
             }}
-            style={({ pressed }) => ({
-              paddingHorizontal: spacing.lg,
-              paddingTop: spacing.sm,
-              paddingBottom: spacing.md,
-              gap: spacing.sm,
-              borderTopLeftRadius: radii.lg,
-              borderTopRightRadius: radii.lg,
-              backgroundColor: pressed ? colors.surfaceMuted : 'transparent',
-            })}
+            style={{ flexDirection: 'row', alignItems: 'flex-end' }}
           >
-            <View
-              style={{
-                alignSelf: 'center',
-                width: 44,
-                height: 5,
-                borderRadius: radii.pill,
-                backgroundColor: colors.border,
-              }}
-            />
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                justifyContent: 'space-between',
-                columnGap: spacing.md,
-                rowGap: spacing.xs,
-              }}
+            <Pressable
+              testID="panel-handle"
+              accessibilityRole="button"
+              accessibilityLabel={`${count}. ${action}`}
+              accessibilityHint={t.discover.panelA11yHint}
+              accessibilityValue={{ min: 0, max: 2, now: position }}
+              onPress={() => moveTo(NEXT_POSITION[position])}
+              style={({ pressed }) => ({
+                flex: 1,
+                paddingLeft: spacing.lg,
+                paddingRight: spacing.xs,
+                paddingTop: spacing.sm,
+                paddingBottom: spacing.md,
+                gap: spacing.sm,
+                borderTopLeftRadius: radii.lg,
+                backgroundColor: pressed ? colors.surfaceMuted : 'transparent',
+              })}
             >
-              <Text variant="subheading">{count}</Text>
+              <View
+                style={{
+                  alignSelf: 'center',
+                  width: 44,
+                  height: 5,
+                  borderRadius: radii.pill,
+                  backgroundColor: colors.border,
+                }}
+              />
               <View
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: spacing.xs,
-                  minHeight: 36,
-                  paddingHorizontal: spacing.md,
-                  borderRadius: radii.pill,
-                  borderWidth: 1.5,
-                  borderColor: colors.primary,
-                  backgroundColor: colors.surface,
+                  flexWrap: 'wrap',
+                  justifyContent: 'space-between',
+                  columnGap: spacing.md,
+                  rowGap: spacing.xs,
                 }}
               >
-                <Text variant="label" color="primary">
-                  {action}
-                </Text>
-                <Icon name={HANDLE_ICON[position]} color="primary" size={18} />
+                <Text variant="subheading">{count}</Text>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.xs,
+                    minHeight: 36,
+                    paddingHorizontal: spacing.md,
+                    borderRadius: radii.pill,
+                    borderWidth: 1.5,
+                    borderColor: colors.primary,
+                    backgroundColor: colors.surface,
+                  }}
+                >
+                  <Text variant="label" color="primary">
+                    {action}
+                  </Text>
+                  <Icon name={HANDLE_ICON[position]} color="primary" size={18} />
+                </View>
               </View>
+            </Pressable>
+            {/* Beside the handle, not inside it (a button cannot nest in a button), at the
+                height of its second row. */}
+            <View style={{ paddingRight: spacing.sm, paddingBottom: spacing.xs }}>
+              <RefreshButton busy={search.isFetching} onPress={() => void refresh()} />
             </View>
-          </Pressable>
+          </View>
           {/* No pull-to-refresh here: at the high position it captures the downward
-              drag meant to lower the panel. Moving the map or a filter searches again. */}
+              drag meant to lower the panel. The refresh button next to the handle, coming
+              back to the tab, moving the map or a filter search again. */}
           <BottomSheetFlatList
             ref={list}
             testID="walks-panel-list"
@@ -267,6 +279,35 @@ export function PanelLayout({ location }: { location: UserLocation }) {
         </BottomSheet>
       </View>
     </View>
+  );
+}
+
+/** Discreet icon button of the panel header: spinner while the walks are being fetched. */
+function RefreshButton({ busy, onPress }: { busy: boolean; onPress: () => void }) {
+  const { colors, radii, minTouchSize } = useTheme();
+  return (
+    <Pressable
+      testID="panel-refresh"
+      accessibilityRole="button"
+      accessibilityLabel={t.discover.refresh}
+      accessibilityState={{ busy, disabled: busy }}
+      disabled={busy}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: minTouchSize,
+        height: minTouchSize,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: radii.pill,
+        backgroundColor: pressed ? colors.surfaceMuted : 'transparent',
+      })}
+    >
+      {busy ? (
+        <ActivityIndicator size="small" color={colors.primary} />
+      ) : (
+        <Icon name="refresh" color="primary" size={20} />
+      )}
+    </Pressable>
   );
 }
 

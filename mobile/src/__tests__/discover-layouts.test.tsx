@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import * as SecureStore from 'expo-secure-store';
 
@@ -5,7 +6,7 @@ import { sessionStore } from '@/auth/sessionStore';
 import { DISCOVER_LAYOUT_STORAGE_KEY, resetDiscoverLayout } from '@/discover/layoutPreference';
 import { config } from '@/lib/config';
 import { t } from '@/strings';
-import { authResponse, walkResult } from '@/test/fixtures';
+import { authResponse, testUser, walkResult } from '@/test/fixtures';
 import { mockApi, ok } from '@/test/mockApi';
 
 const APP_DIR = './src/app';
@@ -187,5 +188,138 @@ describe('« Panneau » view — map and sliding panel', () => {
     expect(
       screen.queryByRole('button', { name: new RegExp(`^${t.walk.selected}, ${lake.title}`) }),
     ).toBeNull();
+  });
+});
+
+describe('refreshing the walks', () => {
+  const profileRoutes = {
+    'GET /api/v1/me/organizations': () => ok([]),
+    'GET /api/v1/me': () => ok(testUser),
+    'GET /api/v1/me/dogs': () => ok([]),
+  };
+  // Lets pending promises (a request started by a focus) run: timers do not advance here.
+  const settle = async () => {
+    for (let i = 0; i < 20; i += 1) await act(async () => {});
+  };
+  const refreshButton = () => screen.getByRole('button', { name: t.discover.refresh });
+
+  /** Leaves the tab and comes back to it, `secondsAway` later. */
+  async function leaveAndReturn(secondsAway: number, clock: { offsetMs: number }) {
+    await act(() => router.navigate('/profile'));
+    await screen.findByLabelText(t.discoverLayout.title);
+    clock.offsetMs += secondsAway * 1000;
+    await act(() => router.navigate('/'));
+    await settle();
+  }
+
+  function fakeClock() {
+    const real = Date.now.bind(Date);
+    const clock = { offsetMs: 0 };
+    jest.spyOn(Date, 'now').mockImplementation(() => real() + clock.offsetMs);
+    return clock;
+  }
+
+  describe.each(['panel', 'list'] as const)('« %s » view, on regaining focus', (view) => {
+    it('does not search twice on the first display', async () => {
+      const { calls } = mockApi({
+        ...profileRoutes,
+        'GET /api/v1/walks': () => ok([lake]),
+      });
+      await open(view);
+      await screen.findByText(lake.title);
+      await settle();
+
+      expect(searchCalls(calls)).toHaveLength(1);
+    });
+
+    it('does not search again when coming back within 30 seconds', async () => {
+      const { calls } = mockApi({
+        ...profileRoutes,
+        'GET /api/v1/walks': () => ok([lake]),
+      });
+      await open(view);
+      await screen.findByText(lake.title);
+      // After rendering: the router's test helper swaps the global clock when it starts.
+      const clock = fakeClock();
+
+      await leaveAndReturn(20, clock);
+
+      expect(searchCalls(calls)).toHaveLength(1);
+    });
+
+    it('searches again when coming back after 30 seconds or more', async () => {
+      const { calls } = mockApi({
+        ...profileRoutes,
+        'GET /api/v1/walks': () => ok([lake]),
+      });
+      await open(view);
+      await screen.findByText(lake.title);
+      // After rendering: the router's test helper swaps the global clock when it starts.
+      const clock = fakeClock();
+
+      await leaveAndReturn(31, clock);
+
+      await waitFor(() => expect(searchCalls(calls)).toHaveLength(2));
+      expect(lastSearch(calls)).toMatchObject({ lat: '47.6234', lng: '7.2376' });
+    });
+  });
+
+  it('has a discreet « Actualiser les balades » button in the panel header', async () => {
+    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('panel');
+    await screen.findByText(lake.title);
+    await waitFor(() => expect(refreshButton()).not.toBeDisabled());
+    expect(searchCalls(calls)).toHaveLength(1);
+
+    await fireEvent.press(refreshButton());
+
+    await waitFor(() => expect(searchCalls(calls)).toHaveLength(2));
+    expect(lastSearch(calls)).toMatchObject({ lat: '47.6234', lng: '7.2376' });
+  });
+
+  it('shows that the walks are being fetched, and ignores presses meanwhile', async () => {
+    let release: (() => void) | undefined;
+    let count = 0;
+    mockApi({
+      'GET /api/v1/walks': async () => {
+        count += 1;
+        if (count === 2) await new Promise<void>((resolve) => (release = resolve));
+        return ok([lake]);
+      },
+    });
+    await open('panel');
+    await screen.findByText(lake.title);
+    await waitFor(() => expect(refreshButton()).not.toBeDisabled());
+
+    await fireEvent.press(refreshButton());
+    await waitFor(() => expect(refreshButton()).toBeBusy());
+    expect(refreshButton()).toBeDisabled();
+    await fireEvent.press(refreshButton());
+    expect(count).toBe(2);
+
+    await act(async () => release?.());
+    await waitFor(() => expect(refreshButton()).not.toBeBusy());
+  });
+
+  it('keeps the button out of the handle: two separate buttons', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('panel');
+    await screen.findByText(lake.title);
+
+    const handle = screen.getByTestId('panel-handle');
+    expect(within(handle).queryByRole('button', { name: t.discover.refresh })).toBeNull();
+    expect(handle).toHaveAccessibleName(`1 balade. ${t.discover.panelExpand}`);
+  });
+
+  it('keeps the pull-to-refresh of the « Liste » view', async () => {
+    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('list');
+    await screen.findByText(lake.title);
+
+    const list = screen.getByTestId('walks-list');
+    await act(async () => list.props.refreshControl.props.onRefresh());
+
+    await waitFor(() => expect(searchCalls(calls)).toHaveLength(2));
+    expect(screen.queryByRole('button', { name: t.discover.refresh })).toBeNull();
   });
 });

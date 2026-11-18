@@ -17,7 +17,7 @@ import {
 } from '@/api/walks';
 import { Button, ChoiceGroup, Icon, Text, type IconName } from '@/components';
 import type { MapRegion } from '@/lib/geo';
-import { useDebouncedValue, useDelayedFlag } from '@/lib/hooks';
+import { useDebouncedValue, useDelayedFlag, useRefetchOnFocusIfStale } from '@/lib/hooks';
 import type { UserLocation } from '@/lib/location';
 import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
@@ -132,9 +132,18 @@ export function byStartDate(walks: readonly WalkSearchResult[]): WalkSearchResul
   return [...walks].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
 }
 
-/** A walk search with pull-to-refresh state. */
+/**
+ * A walk search with a manual refresh (pull-to-refresh, refresh button) and an
+ * automatic one when the tab regains focus, if the data is older than 30 s.
+ */
 export function useRefreshableSearch(params: WalkSearchParams | null) {
   const search = useWalkSearch(params);
+  useRefetchOnFocusIfStale({
+    refetch: search.refetch,
+    dataUpdatedAt: search.dataUpdatedAt,
+    enabled: params !== null,
+    busy: search.isFetching,
+  });
   const [refreshing, setRefreshing] = useState(false);
   async function refresh() {
     setRefreshing(true);
