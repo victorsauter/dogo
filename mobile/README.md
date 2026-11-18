@@ -10,7 +10,12 @@ Application iOS et Android de dogo, en React Native avec Expo (SDK 58, React Nat
 - Pour un téléphone : l'application Expo Go (App Store ou Play Store).
 - L'API dogo lancée en local (voir `api/README.md`), sur `http://localhost:5080` par défaut.
 
-Tous les modules natifs utilisés aujourd'hui sont inclus dans Expo Go : aucune version de développement n'est nécessaire pour l'instant. Ce sera le cas quand la connexion Apple et Google ou les notifications arriveront (lots 1 et 3).
+L'application se lance et s'utilise entièrement dans **Expo Go et le simulateur iOS** avec la connexion de test. Ce qui demande une **version de développement** (`expo prebuild` ou EAS, pas encore faits) :
+
+- la **connexion Google** (`@react-native-google-signin/google-signin`, code natif absent d'Expo Go) ; sans elle, ou sans identifiants, le bouton est masqué ;
+- plus tard, les notifications (lot 3).
+
+La **connexion Apple** (`expo-apple-authentication`) fonctionne dans Expo Go sur iOS (le bouton est masqué sur Android) ; elle ne réussira pourtant qu'une fois l'API configurée avec un identifiant d'audience Apple (`Auth:Apple:Audiences`). Appareil photo, photothèque et sélecteur de date fonctionnent dans Expo Go. Voir l'[ADR 0018](../docs/adr/0018-connexion-native-chargee-a-la-demande.md).
 
 ## Installation
 
@@ -40,10 +45,12 @@ Après un changement de `.env`, relancer Metro avec `npx expo start --clear`.
 
 Lues une seule fois dans `src/lib/config.ts` (objet `config` typé). Expo intègre les variables `EXPO_PUBLIC_*` au moment de la construction : elles ne sont pas secrètes et ne doivent jamais contenir de secret.
 
-| Variable                | Défaut                  | Rôle                                                                             |
-| ----------------------- | ----------------------- | -------------------------------------------------------------------------------- |
-| `EXPO_PUBLIC_API_URL`   | `http://localhost:5080` | Adresse de l'API, sans `/api/v1`                                                 |
-| `EXPO_PUBLIC_DEV_LOGIN` | absente                 | `true` affiche la connexion de test (l'API doit avoir `Auth:AllowDevLogin=true`) |
+| Variable                           | Défaut                  | Rôle                                                                                                       |
+| ---------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `EXPO_PUBLIC_API_URL`              | `http://localhost:5080` | Adresse de l'API, sans `/api/v1`                                                                           |
+| `EXPO_PUBLIC_DEV_LOGIN`            | absente                 | `true` affiche la connexion de test (l'API doit avoir `Auth:AllowDevLogin=true`)                           |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | absente                 | Identifiant client OAuth web de Google ; sans lui, bouton Google masqué (version de développement requise) |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | absente                 | Identifiant client OAuth iOS, requis en plus sur iOS ; il sert aussi au plugin natif (`app.config.ts`)     |
 
 ## Scripts
 
@@ -64,7 +71,7 @@ npm run api:generate
 npm run typecheck
 ```
 
-Le script lit `../api/openapi.json` et échoue avec un message clair s'il n'existe pas. Le fichier `src/api/schema.d.ts` actuellement versionné est un **substitut vide** : il doit être régénéré dès que l'API publie `api/openapi.json`. À chaque changement de `api/openapi.json`, régénérer et versionner `schema.d.ts` dans la même demande de fusion.
+Le script lit `../api/openapi.json` et échoue avec un message clair s'il n'existe pas. `src/api/schema.d.ts` est généré depuis `api/openapi.json` (lot 1 de l'API). À chaque changement de `api/openapi.json`, régénérer et versionner `schema.d.ts` dans la même demande de fusion.
 
 ## Structure
 
@@ -76,13 +83,14 @@ mobile/
     ├── app/               écrans (Expo Router) — uniquement des routes et des dispositions
     │   ├── _layout.tsx    fournisseurs + garde d'authentification
     │   ├── (auth)/        écrans accessibles déconnecté (sign-in)
-    │   └── (app)/         onglets : index (Balades), my-walks, profile
-    ├── api/               client typé, erreurs, cache, photos, énumérations
-    ├── auth/              session (magasin sécurisé, SessionProvider, useSession)
+    │   └── (app)/         pile : (tabs)/ (Balades, Mes balades, Profil) et écrans poussés
+    │       ├── edit-profile, users/[id], dogs/new, dogs/[id]/{index,edit}
+    ├── api/               client typé, erreurs, cache, photos, énumérations, hooks (profile, dogs)
+    ├── auth/              session (magasin sécurisé, SessionProvider, useSession), signIn, providers/ (Apple, Google)
     ├── components/        composants de base (Screen, Text, Button, TextField…)
     ├── theme/             couleurs claires et sombres, espacements, rayons, typographie
     ├── strings/           tous les textes français (fr.ts)
-    ├── lib/               configuration, fournisseurs de l'application
+    ├── lib/               configuration, fournisseurs, âge, validation des formulaires, sélecteur de photo
     └── test/              utilitaires de test (pas de tests ici)
 ```
 
@@ -92,7 +100,7 @@ Les tests vivent dans des dossiers `__tests__/` à côté du code testé, jamais
 
 ### Ajouter un écran
 
-1. Créer le fichier dans `src/app/(app)/` (connecté) ou `src/app/(auth)/` (déconnecté). Exemple : `src/app/(app)/walks/[id].tsx` donne `/walks/123` et `dogo://walks/123`.
+1. Créer le fichier dans `src/app/(app)/` (connecté ; un écran de détail ou de formulaire va là, un onglet dans `(app)/(tabs)/`, voir l'[ADR 0017](../docs/adr/0017-ecrans-empiles-sur-les-onglets.md)) ou `src/app/(auth)/` (déconnecté). Exemple : `src/app/(app)/walks/[id].tsx` donne `/walks/123` et `dogo://walks/123`.
 2. L'envelopper dans `<Screen>` ; `scroll={false}` pour une liste (`FlatList`) ou un état centré, `edges={['top', 'left', 'right']}` dans un onglet.
 3. Pour les états : `<LoadingState />`, `<ErrorState error={error} onRetry={refetch} />`, `<EmptyState title=… />`.
 4. Utiliser `Text`, `Button`, `TextField`, `Card`, `ListItem`, `Avatar`, `ChoiceGroup` et les jetons de `useTheme()` ; aucune couleur ni taille en dur.
@@ -131,10 +139,16 @@ export function useCreateDog() {
 
 ### Session
 
-- `useSession()` donne `status` (`loading`, `signedOut`, `signedIn`), `user`, `setSession(réponse)` et `signOut()`.
+- `useSession()` donne `status` (`loading`, `signedOut`, `signedIn`), `user`, `setSession(réponse)`, `updateUser(user)` (après une modification du profil : met à jour la session et son stockage) et `signOut()`.
 - Après un appel de connexion (`/auth/apple`, `/auth/google`, `/auth/dev`), appeler `setSession(réponse)` : la garde affiche alors les onglets.
 - La session est conservée dans `expo-secure-store`. Le cache des données est vidé à la déconnexion.
 
 ### Permissions
 
 Les textes iOS et Android (position, photos, appareil photo) sont dans `app.config.ts`. Le module qui en a besoin (`expo-location`, `expo-image-picker`…) doit reprendre les mêmes textes dans les options de son plugin. Le texte d'explication avant la demande d'autorisation des notifications est `t.permissions.notifications`.
+
+### Photos, formulaires et tests des écrans
+
+- Choisir une photo : `PhotoPicker` (photothèque ou appareil photo, via `pickPhoto()` de `src/lib/photoPicker.ts`, qui recadre en carré, réduit à 1280 px et réencode en JPEG). L'envoi se fait par `useUploadMyPhoto()` / `useUploadDogPhoto()` (multipart, champ `file`). Les erreurs `photo.too_large` et `photo.unsupported_type` ont leur message français.
+- Formulaires : limites de l'API dans `src/lib/forms.ts` (`limits`, `validateDog`, `validateProfile`) ; les erreurs de champ du serveur s'affichent sur le bon champ par `serverFieldErrors()`.
+- Tests d'écran : `renderRouter('./src/app', …)` avec `mockApi({ 'GET /api/v1/me': () => ok(…) })` (`src/test/mockApi.ts`, qui remplace `fetch`) ; les modules natifs (`expo-apple-authentication`, `photoPicker`, sélecteur de date) sont simulés avec `jest.mock`.

@@ -1,9 +1,9 @@
-import type { AuthResponse, SessionUser } from '@/api/types';
+import type { AuthResponse, Dog, SessionUser } from '@/api/types';
 
 export const testUser: SessionUser = {
   id: '6f1d3c1e-0000-4000-8000-000000000001',
   displayName: 'Léa Martin',
-  bio: null,
+  bio: '',
   photoUrl: null,
   email: 'lea@example.test',
   status: 'Active',
@@ -38,3 +38,18 @@ export function problemResponse(status: number, code?: string, extra: object = {
     'application/problem+json',
   );
 }
+
+export const testDog: Dog = {
+  id: 'd0d0c1e0-0000-4000-8000-000000000001',
+  ownerId: testUser.id,
+  name: 'Biscotte',
+  photoUrl: null,
+  size: 'Medium',
+  birthDate: '2022-03-15',
+  breed: 'Border collie',
+  sociability: 'Easygoing',
+  reactivity: 'Mild',
+  leashHabit: 'LongLine',
+  description: 'Adore les balades en forêt.',
+  createdAt: '2026-11-02T10:00:00Z',
+};

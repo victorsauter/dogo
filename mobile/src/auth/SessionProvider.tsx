@@ -20,6 +20,8 @@ export interface SessionContextValue {
   user: SessionUser | null;
   /** Stores the response of a sign-in endpoint (`/auth/apple`, `/auth/google`, `/auth/dev`). */
   setSession(response: AuthResponse): Promise<void>;
+  /** Updates the user kept in the session after a profile change (tokens untouched). */
+  updateUser(user: SessionUser): Promise<void>;
   /** Forgets the session on the device, then revokes the refresh token on the API. */
   signOut(): Promise<void>;
 }
@@ -57,6 +59,9 @@ export function SessionProvider({
       user: snapshot.session?.user ?? null,
       async setSession(response) {
         await store.set(response);
+      },
+      async updateUser(user) {
+        await store.updateUser(user);
       },
       async signOut() {
         const session = store.getSession();

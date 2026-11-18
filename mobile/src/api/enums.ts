@@ -1,10 +1,12 @@
 /**
  * Enumerations of the API (spec §2), serialized as strings.
  *
- * Hand-written because `api/openapi.json` does not exist yet. Once the schema
- * is generated, prefer the generated types (`components['schemas']['DogSize']`)
- * and keep these arrays only to iterate over values (chips, filters).
+ * The types of the enumerations covered by `api/openapi.json` come from the
+ * generated schema; the arrays below only serve to iterate over values (chips,
+ * filters) and for the enumerations the API does not expose yet.
  */
+import type { components } from './schema';
+
 export const enumValues = {
   DogSize: ['Small', 'Medium', 'Large'],
   Sociability: ['Easygoing', 'Selective', 'Reserved'],
@@ -25,10 +27,10 @@ export const enumValues = {
 export type EnumName = keyof typeof enumValues;
 export type EnumValue<E extends EnumName> = (typeof enumValues)[E][number];
 
-export type DogSize = EnumValue<'DogSize'>;
-export type Sociability = EnumValue<'Sociability'>;
-export type Reactivity = EnumValue<'Reactivity'>;
-export type LeashHabit = EnumValue<'LeashHabit'>;
+export type DogSize = components['schemas']['DogSize'];
+export type Sociability = components['schemas']['Sociability'];
+export type Reactivity = components['schemas']['Reactivity'];
+export type LeashHabit = components['schemas']['LeashHabit'];
 export type LeashRule = EnumValue<'LeashRule'>;
 export type WalkAccess = EnumValue<'WalkAccess'>;
 export type WalkStatus = EnumValue<'WalkStatus'>;
@@ -38,4 +40,4 @@ export type MembershipRole = EnumValue<'MembershipRole'>;
 export type MembershipStatus = EnumValue<'MembershipStatus'>;
 export type ReportType = EnumValue<'ReportType'>;
 export type ReportStatus = EnumValue<'ReportStatus'>;
-export type UserStatus = EnumValue<'UserStatus'>;
+export type UserStatus = components['schemas']['UserStatus'];

@@ -51,6 +51,13 @@ describe('error messages', () => {
     'walk.capacity_below_registered',
     'account.suspended',
     'validation.failed',
+    'photo.too_large',
+    'photo.unsupported_type',
+    'photo.missing',
+    'dog.not_found',
+    'dog.forbidden',
+    'user.not_found',
+    'auth.invalid_token',
     'generic',
     'network',
   ])('has a French message for %s', (code) => {

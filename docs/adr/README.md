@@ -18,6 +18,8 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0012](0012-navigation-expo-router.md) | Navigation par fichiers avec Expo Router | Accepté |
 | [0013](0013-client-api-et-donnees.md) | Client d'API typé et cache des données avec TanStack Query | Accepté |
 | [0014](0014-session-mobile.md) | Session mobile : stockage sécurisé et renouvellement unique du jeton | Accepté |
+| [0017](0017-ecrans-empiles-sur-les-onglets.md) | Écrans empilés au-dessus des onglets | Accepté |
+| [0018](0018-connexion-native-chargee-a-la-demande.md) | Connexion Apple et Google : modules natifs chargés à la demande | Accepté |
 
 ## Statuts
 
