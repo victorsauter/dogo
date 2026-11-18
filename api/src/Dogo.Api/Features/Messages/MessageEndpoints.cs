@@ -107,7 +107,7 @@ public static class MessageEndpoints
 
         // Spec §4.4: the organizer and accepted participants, except the author (dropped by the service).
         var recipients = await AcceptedOwnerIds(db, id).ToListAsync(cancellationToken);
-        recipients.Add(walk.OrganizerId);
+        recipients.AddRange(walk.OrganizerRecipients());
         notifications.Enqueue(new NotificationRequest(
             NotificationType.MessagePosted, NotificationSubject.ForWalk(walk), userId, recipients, message.Text));
 

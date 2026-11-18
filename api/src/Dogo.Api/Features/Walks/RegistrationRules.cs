@@ -1,4 +1,5 @@
 using Dogo.Api.Common;
+using Dogo.Api.Features.Organizations;
 using Dogo.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -53,9 +54,22 @@ internal static class RegistrationRules
             return Duplicate();
         }
 
-        // Lot 4 adds its rules here, before capacity: walk.not_allowed when the organizer
-        // blocked the user (without revealing the block, spec §4.7) and walk.members_only
-        // for a professional walk when the user is not an accepted member (spec §4.6).
+        // Spec §4.7: the organizer blocked the user. The answer must not reveal the block.
+        if (await db.Blocks.AnyAsync(b => b.BlockerId == walk.OrganizerId && b.BlockedId == attempt.UserId, cancellationToken))
+        {
+            return NotAllowed();
+        }
+
+        // Spec §4.6: a professional walk is reserved to accepted members of its organisation
+        // (any role). The organizer, an owner or educator, registers their own dogs freely.
+        if (walk.OrganizationId is { } organizationId
+            && walk.OrganizerId != attempt.UserId
+            && !await db.Memberships.AnyAsync(
+                m => m.OrganizationId == organizationId && m.UserId == attempt.UserId && m.Status == MembershipStatus.Accepted,
+                cancellationToken))
+        {
+            return Problems.Forbidden(ErrorCodes.WalkMembersOnly, "This walk is reserved to the members of its organisation.");
+        }
 
         // Only accepted dogs take a place. A pending request does not, but it is refused when
         // the walk could not take these dogs right now; acceptance checks again.
@@ -75,6 +89,10 @@ internal static class RegistrationRules
 
     public static ProblemHttpResult Duplicate() =>
         Problems.Conflict(ErrorCodes.RegistrationDuplicate, "A dog is already registered to this walk.");
+
+    /// <summary>Deliberately generic: a blocked user must not learn that they are blocked (spec §4.7).</summary>
+    public static ProblemHttpResult NotAllowed() =>
+        Problems.Forbidden(ErrorCodes.WalkNotAllowed, "Registration to this walk is not possible.");
 
     public static ProblemHttpResult Full() =>
         Problems.Conflict(ErrorCodes.WalkFull, "There are not enough places left on this walk.");

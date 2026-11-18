@@ -1,7 +1,10 @@
 using Dogo.Api.Features.Auth;
+using Dogo.Api.Features.Blocks;
 using Dogo.Api.Features.Dogs;
 using Dogo.Api.Features.Messages;
 using Dogo.Api.Features.Notifications;
+using Dogo.Api.Features.Organizations;
+using Dogo.Api.Features.Reports;
 using Dogo.Api.Features.Users;
 using Dogo.Api.Features.Walks;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +34,14 @@ public sealed class DogoDbContext(DbContextOptions<DogoDbContext> options, TimeP
     public DbSet<Device> Devices => Set<Device>();
 
     public DbSet<NotificationPreferences> NotificationPreferences => Set<NotificationPreferences>();
+
+    public DbSet<Organization> Organizations => Set<Organization>();
+
+    public DbSet<Membership> Memberships => Set<Membership>();
+
+    public DbSet<Block> Blocks => Set<Block>();
+
+    public DbSet<Report> Reports => Set<Report>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

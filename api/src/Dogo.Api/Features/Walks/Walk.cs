@@ -1,4 +1,5 @@
 using Dogo.Api.Features.Dogs;
+using Dogo.Api.Features.Organizations;
 using Dogo.Api.Features.Users;
 using Dogo.Api.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -43,9 +44,13 @@ public sealed class Walk : IHasCreatedAt
 
     public Guid Id { get; init; } = Guid.CreateVersion7();
 
-    public Guid OrganizerId { get; init; }
+    /// <summary>
+    /// Null once the organizer's account has been deleted (spec §4.8): their upcoming walks are
+    /// cancelled first, and every walk is kept for its participants' history and threads.
+    /// </summary>
+    public Guid? OrganizerId { get; init; }
 
-    public User Organizer { get; init; } = null!;
+    public User? Organizer { get; init; }
 
     public required string Title { get; set; }
 
@@ -85,7 +90,13 @@ public sealed class Walk : IHasCreatedAt
     /// </summary>
     public DateTimeOffset? ReminderSentAt { get; set; }
 
-    // Lot 4 adds OrganizationId (professional walks).
+    /// <summary>
+    /// Organisation carrying a professional walk (spec §4.6): registration is reserved to its
+    /// accepted members. Set at creation, never changed afterwards.
+    /// </summary>
+    public Guid? OrganizationId { get; init; }
+
+    public Organization? Organization { get; init; }
 
     public DateTimeOffset CreatedAt { get; set; }
 
@@ -98,6 +109,9 @@ public sealed class Walk : IHasCreatedAt
     public bool IsOpen(DateTimeOffset now) => Status == WalkStatus.Scheduled && StartsAt > now;
 
     public bool HasStarted(DateTimeOffset now) => StartsAt <= now;
+
+    /// <summary>The organizer as notification recipients: none once their account has been deleted.</summary>
+    public IReadOnlyCollection<Guid> OrganizerRecipients() => OrganizerId is { } organizerId ? [organizerId] : [];
 
     public static Point CreatePoint(double latitude, double longitude) => new(longitude, latitude) { SRID = Srid };
 }
@@ -120,7 +134,9 @@ internal sealed class WalkConfiguration : IEntityTypeConfiguration<Walk>
 
         builder.HasIndex(w => w.StartsAt);
         builder.HasIndex(w => w.OrganizerId);
-        builder.HasOne(w => w.Organizer).WithMany().HasForeignKey(w => w.OrganizerId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(w => w.Organizer).WithMany().HasForeignKey(w => w.OrganizerId).OnDelete(DeleteBehavior.SetNull);
+        builder.HasIndex(w => new { w.OrganizationId, w.StartsAt });
+        builder.HasOne(w => w.Organization).WithMany().HasForeignKey(w => w.OrganizationId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(w => new { w.SeriesId, w.StartsAt });
         builder.HasOne(w => w.Series).WithMany().HasForeignKey(w => w.SeriesId).OnDelete(DeleteBehavior.SetNull);
     }

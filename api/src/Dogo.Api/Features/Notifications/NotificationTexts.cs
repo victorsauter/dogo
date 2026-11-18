@@ -39,6 +39,9 @@ internal static class NotificationTexts
         [NotificationType.MessagePosted] = (NotificationCategory.Messages, c => new(c.Subject.Name, $"{c.ActorName} : {Excerpt(c.Detail)}")),
         [NotificationType.WalkReminder] = (NotificationCategory.Reminders, c => new("Balade bientôt", $"« {c.Subject.Name} » commence à {c.Time}.")),
         [NotificationType.SeriesWalkCreated] = (NotificationCategory.WalkChanges, c => new("Nouvelle date", $"« {c.Subject.Name} » revient le {c.When}. Inscris-toi à nouveau pour y participer.")),
+        [NotificationType.MembershipRequested] = (NotificationCategory.Registrations, c => new("Nouvelle demande d'adhésion", $"{c.ActorName} demande à rejoindre « {c.Subject.Name} ».")),
+        [NotificationType.MembershipAccepted] = (NotificationCategory.Registrations, c => new("Adhésion acceptée", $"Tu fais maintenant partie de « {c.Subject.Name} ».")),
+        [NotificationType.OrganizationApproved] = (NotificationCategory.Registrations, c => new("Organisation validée", $"« {c.Subject.Name} » est validée : tu peux y proposer des balades.")),
     };
 
     /// <summary>Shown when the actor's account no longer exists.</summary>

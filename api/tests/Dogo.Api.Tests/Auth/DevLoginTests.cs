@@ -64,6 +64,26 @@ public sealed class DevLoginTests(ApiFixture fixture) : ApiTestBase(fixture)
     }
 
     [Fact]
+    public async Task Dev_login_with_an_email_stores_it_and_an_admin_email_makes_an_administrator()
+    {
+        var tester = await SignInDevAsync("tester", "Tester", "tester@dogo.test");
+        var admin = await SignInDevAsync("admin", "Admin", " Admin@Dogo.Test ");
+        var again = await SignInDevAsync("tester", "Tester");
+
+        Assert.Equal(("tester@dogo.test", false), (tester.User.Email, tester.User.IsAdmin));
+        Assert.Equal(("Admin@Dogo.Test", true), (admin.User.Email, admin.User.IsAdmin));
+        Assert.Equal("tester@dogo.test", again.User.Email);
+    }
+
+    [Fact]
+    public async Task Dev_login_validates_the_email()
+    {
+        var response = await CreateClient().PostAsJsonAsync("/api/v1/auth/dev", new { subject = "alice", displayName = "Alice", email = "not-an-email" }, Ct);
+
+        await AssertValidationProblemAsync(response, "email");
+    }
+
+    [Fact]
     public async Task Dev_login_returns_404_when_disabled()
     {
         await using var factory = new DogoApiFactory(Fixture.ConnectionString, new Dictionary<string, string?> { ["Auth:AllowDevLogin"] = "false" });

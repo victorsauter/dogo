@@ -66,6 +66,38 @@ namespace Dogo.Api.Infrastructure.Persistence.Migrations
                     b.ToTable("refresh_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Dogo.Api.Features.Blocks.Block", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BlockedId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("blocked_id");
+
+                    b.Property<Guid>("BlockerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("blocker_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_blocks");
+
+                    b.HasIndex("BlockedId")
+                        .HasDatabaseName("ix_blocks_blocked_id");
+
+                    b.HasIndex("BlockerId", "BlockedId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_blocks_blocker_id_blocked_id");
+
+                    b.ToTable("blocks", (string)null);
+                });
+
             modelBuilder.Entity("Dogo.Api.Features.Dogs.Dog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -245,6 +277,175 @@ namespace Dogo.Api.Infrastructure.Persistence.Migrations
                     b.ToTable("notification_preferences", (string)null);
                 });
 
+            modelBuilder.Entity("Dogo.Api.Features.Organizations.Membership", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("role");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_memberships");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_memberships_user_id");
+
+                    b.HasIndex("OrganizationId", "Status")
+                        .HasDatabaseName("ix_memberships_organization_id_status");
+
+                    b.HasIndex("OrganizationId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_memberships_organization_id_user_id_active")
+                        .HasFilter("status IN ('Pending', 'Accepted')");
+
+                    b.ToTable("memberships", (string)null);
+                });
+
+            modelBuilder.Entity("Dogo.Api.Features.Organizations.Organization", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("city");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organizations");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_organizations_status");
+
+                    b.HasIndex("CreatedById", "Status")
+                        .HasDatabaseName("ix_organizations_created_by_id_status");
+
+                    b.ToTable("organizations", (string)null);
+                });
+
+            modelBuilder.Entity("Dogo.Api.Features.Reports.Report", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdminNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("admin_note");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Facts")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("facts");
+
+                    b.Property<Guid?>("ReporterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reporter_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("TargetDogId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_dog_id");
+
+                    b.Property<Guid?>("TargetUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_user_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("type");
+
+                    b.Property<Guid?>("WalkId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("walk_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_reports");
+
+                    b.HasIndex("ReporterId")
+                        .HasDatabaseName("ix_reports_reporter_id");
+
+                    b.HasIndex("TargetDogId")
+                        .HasDatabaseName("ix_reports_target_dog_id");
+
+                    b.HasIndex("TargetUserId")
+                        .HasDatabaseName("ix_reports_target_user_id");
+
+                    b.HasIndex("WalkId")
+                        .HasDatabaseName("ix_reports_walk_id");
+
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("ix_reports_status_created_at");
+
+                    b.ToTable("reports", (string)null);
+                });
+
             modelBuilder.Entity("Dogo.Api.Features.Users.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -408,7 +609,11 @@ namespace Dogo.Api.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("max_dogs");
 
-                    b.Property<Guid>("OrganizerId")
+                    b.Property<Guid?>("OrganizationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organization_id");
+
+                    b.Property<Guid?>("OrganizerId")
                         .HasColumnType("uuid")
                         .HasColumnName("organizer_id");
 
@@ -455,6 +660,9 @@ namespace Dogo.Api.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("StartsAt")
                         .HasDatabaseName("ix_walks_starts_at");
+
+                    b.HasIndex("OrganizationId", "StartsAt")
+                        .HasDatabaseName("ix_walks_organization_id_starts_at");
 
                     b.HasIndex("SeriesId", "StartsAt")
                         .HasDatabaseName("ix_walks_series_id_starts_at");
@@ -506,6 +714,25 @@ namespace Dogo.Api.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_refresh_tokens_users_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Dogo.Api.Features.Blocks.Block", b =>
+                {
+                    b.HasOne("Dogo.Api.Features.Users.User", "Blocked")
+                        .WithMany()
+                        .HasForeignKey("BlockedId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_blocks_users_blocked_id");
+
+                    b.HasOne("Dogo.Api.Features.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("BlockerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_blocks_users_blocker_id");
+
+                    b.Navigation("Blocked");
                 });
 
             modelBuilder.Entity("Dogo.Api.Features.Dogs.Dog", b =>
@@ -560,6 +787,73 @@ namespace Dogo.Api.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_notification_preferences_users_user_id");
                 });
 
+            modelBuilder.Entity("Dogo.Api.Features.Organizations.Membership", b =>
+                {
+                    b.HasOne("Dogo.Api.Features.Organizations.Organization", "Organization")
+                        .WithMany("Memberships")
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_memberships_organizations_organization_id");
+
+                    b.HasOne("Dogo.Api.Features.Users.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_memberships_users_user_id");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Dogo.Api.Features.Organizations.Organization", b =>
+                {
+                    b.HasOne("Dogo.Api.Features.Users.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_organizations_users_created_by_id");
+
+                    b.Navigation("CreatedBy");
+                });
+
+            modelBuilder.Entity("Dogo.Api.Features.Reports.Report", b =>
+                {
+                    b.HasOne("Dogo.Api.Features.Users.User", "Reporter")
+                        .WithMany()
+                        .HasForeignKey("ReporterId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_reports_users_reporter_id");
+
+                    b.HasOne("Dogo.Api.Features.Dogs.Dog", "TargetDog")
+                        .WithMany()
+                        .HasForeignKey("TargetDogId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_reports_dogs_target_dog_id");
+
+                    b.HasOne("Dogo.Api.Features.Users.User", "TargetUser")
+                        .WithMany()
+                        .HasForeignKey("TargetUserId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_reports_users_target_user_id");
+
+                    b.HasOne("Dogo.Api.Features.Walks.Walk", "Walk")
+                        .WithMany()
+                        .HasForeignKey("WalkId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_reports_walks_walk_id");
+
+                    b.Navigation("Reporter");
+
+                    b.Navigation("TargetDog");
+
+                    b.Navigation("TargetUser");
+
+                    b.Navigation("Walk");
+                });
+
             modelBuilder.Entity("Dogo.Api.Features.Walks.Registration", b =>
                 {
                     b.HasOne("Dogo.Api.Features.Dogs.Dog", "Dog")
@@ -591,11 +885,16 @@ namespace Dogo.Api.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Dogo.Api.Features.Walks.Walk", b =>
                 {
+                    b.HasOne("Dogo.Api.Features.Organizations.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_walks_organizations_organization_id");
+
                     b.HasOne("Dogo.Api.Features.Users.User", "Organizer")
                         .WithMany()
                         .HasForeignKey("OrganizerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_walks_users_organizer_id");
 
                     b.HasOne("Dogo.Api.Features.Walks.WalkSeries", "Series")
@@ -603,6 +902,8 @@ namespace Dogo.Api.Infrastructure.Persistence.Migrations
                         .HasForeignKey("SeriesId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_walks_walk_series_series_id");
+
+                    b.Navigation("Organization");
 
                     b.Navigation("Organizer");
 
@@ -617,6 +918,11 @@ namespace Dogo.Api.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_walk_series_users_organizer_id");
+                });
+
+            modelBuilder.Entity("Dogo.Api.Features.Organizations.Organization", b =>
+                {
+                    b.Navigation("Memberships");
                 });
 
             modelBuilder.Entity("Dogo.Api.Features.Users.User", b =>

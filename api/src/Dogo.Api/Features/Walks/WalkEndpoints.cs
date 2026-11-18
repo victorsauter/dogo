@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Dogo.Api.Common;
 using Dogo.Api.Features.Dogs;
 using Dogo.Api.Features.Notifications;
+using Dogo.Api.Features.Organizations;
 using Dogo.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +23,7 @@ public static class WalkEndpoints
 
         group.MapPost("/walks", CreateWalk)
             .WithName("createWalk")
-            .WithSummary("Create a walk organised by the signed-in user.")
+            .WithSummary("Create a walk organised by the signed-in user; with organizationId, a professional walk of that organisation.")
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
@@ -68,10 +69,25 @@ public static class WalkEndpoints
         return routes;
     }
 
-    private static async Task<Created<WalkDetailResponse>> CreateWalk(
+    private static async Task<Results<Created<WalkDetailResponse>, ProblemHttpResult>> CreateWalk(
         CreateWalkRequest request, ClaimsPrincipal principal, DogoDbContext db, CancellationToken cancellationToken)
     {
         var userId = principal.GetUserId();
+
+        // Spec §4.6: only the owner and educators of an approved organisation create its walks.
+        // An unknown organisation gets the same answer, so that ids cannot be probed.
+        if (request.OrganizationId is { } organizationId
+            && !await db.Memberships.AnyAsync(
+                m => m.OrganizationId == organizationId
+                    && m.UserId == userId
+                    && m.Status == MembershipStatus.Accepted
+                    && (m.Role == MembershipRole.Owner || m.Role == MembershipRole.Educator)
+                    && m.Organization.Status == OrganizationStatus.Approved,
+                cancellationToken))
+        {
+            return Problems.Forbidden(ErrorCodes.WalkOrganizationForbidden, "Only the owner and educators of an approved organisation can create its walks.");
+        }
+
         var series = request.RepeatWeekly ? new WalkSeries { OrganizerId = userId } : null;
         if (series is not null)
         {
@@ -81,6 +97,7 @@ public static class WalkEndpoints
         var walk = new Walk
         {
             OrganizerId = userId,
+            OrganizationId = request.OrganizationId,
             SeriesId = series?.Id,
             Title = request.Title.Trim(),
             Description = request.Description?.Trim() ?? "",
@@ -160,6 +177,8 @@ public static class WalkEndpoints
             walks = walks.Where(w => w.AllowedSizes.Contains(dogSize));
         }
 
+        // Same projection as WalkQueries.ToRows, plus the distance (EF cannot compose on a projected record).
+        var viewerId = principal.GetUserId();
         var results = await walks
             .OrderBy(w => w.StartsAt).ThenBy(w => w.Location.Distance(point)).ThenBy(w => w.Id)
             .Take(limit)
@@ -169,14 +188,17 @@ public static class WalkEndpoints
                     w,
                     w.Organizer,
                     w.Registrations.Count(r => r.Status == RegistrationStatus.Accepted),
-                    w.Series != null && w.Series.Active),
+                    w.Series != null && w.Series.Active,
+                    w.Organization != null ? w.Organization.Name : null,
+                    db.Blocks.Any(b => b.BlockerId == viewerId
+                        && (b.BlockedId == w.OrganizerId
+                            || w.Registrations.Any(r => r.Status == RegistrationStatus.Accepted && r.UserId == b.BlockedId)))),
                 Distance = w.Location.Distance(point),
             })
             .ToListAsync(cancellationToken);
 
-        var viewerId = principal.GetUserId();
         return TypedResults.Ok(results
-            .Select(r => WalkSearchResult.From(r.Row, r.Distance, LaterLotFields.For(r.Row, viewerId)))
+            .Select(r => WalkSearchResult.From(r.Row, r.Distance, LaterLotFields.For(r.Row)))
             .ToList());
     }
 
@@ -398,7 +420,7 @@ public static class WalkEndpoints
             ? walks.Where(w => w.StartsAt > now).OrderBy(w => w.StartsAt).ThenBy(w => w.Id)
             : walks.Where(w => w.StartsAt <= now).OrderByDescending(w => w.StartsAt).ThenBy(w => w.Id);
 
-        var rows = await walks.Take(limit).ToRows().ToListAsync(cancellationToken);
+        var rows = await walks.Take(limit).ToRows(db, userId).ToListAsync(cancellationToken);
 
         var walkIds = rows.Select(r => r.Walk.Id).ToList();
         var myRegistrations = (await db.Registrations.AsNoTracking()
@@ -408,7 +430,7 @@ public static class WalkEndpoints
             .ToLookup(r => r.WalkId, MyRegistrationResponse.From);
 
         return TypedResults.Ok(rows
-            .Select(r => MyWalkResponse.From(r, LaterLotFields.For(r, userId), myRegistrations[r.Walk.Id].ToList()))
+            .Select(r => MyWalkResponse.From(r, LaterLotFields.For(r), myRegistrations[r.Walk.Id].ToList()))
             .ToList());
     }
 

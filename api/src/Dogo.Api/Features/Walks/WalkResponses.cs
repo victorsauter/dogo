@@ -3,10 +3,10 @@ using Dogo.Api.Features.Users;
 
 namespace Dogo.Api.Features.Walks;
 
-/// <summary>Organisation carrying a professional walk (filled from Lot 4).</summary>
+/// <summary>Organisation carrying a professional walk.</summary>
 public sealed record WalkOrganizationResponse(Guid Id, string Name);
 
-/// <summary>A walk in the search results (<c>GET /walks</c>).</summary>
+/// <summary>A walk in the search results (<c>GET /walks</c>). <c>organizer</c> is null once their account has been deleted.</summary>
 public sealed record WalkSearchResult(
     Guid Id,
     string Title,
@@ -21,7 +21,7 @@ public sealed record WalkSearchResult(
     LeashRule LeashRule,
     WalkAccess Access,
     WalkStatus Status,
-    UserSummaryResponse Organizer,
+    UserSummaryResponse? Organizer,
     bool IsProfessional,
     WalkOrganizationResponse? Organization,
     bool RepeatsWeekly,
@@ -41,14 +41,54 @@ public sealed record WalkSearchResult(
         row.Walk.LeashRule,
         row.Walk.Access,
         row.Walk.Status,
-        UserSummaryResponse.From(row.Organizer),
+        row.Organizer is null ? null : UserSummaryResponse.From(row.Organizer),
         later.IsProfessional,
         later.Organization,
         later.RepeatsWeekly,
         later.HasBlockedParticipant);
 }
 
-/// <summary>A walk in <c>GET /me/walks</c>, with the signed-in user's registrations on it.</summary>
+/// <summary>A walk in a list without distance, e.g. the upcoming walks of an organisation. Same fields as a search result otherwise.</summary>
+public sealed record WalkListItemResponse(
+    Guid Id,
+    string Title,
+    DateTimeOffset StartsAt,
+    int DurationMinutes,
+    GeoPoint Location,
+    string LocationLabel,
+    int MaxDogs,
+    int AcceptedDogsCount,
+    IReadOnlyList<DogSize> AllowedSizes,
+    LeashRule LeashRule,
+    WalkAccess Access,
+    WalkStatus Status,
+    UserSummaryResponse? Organizer,
+    bool IsProfessional,
+    WalkOrganizationResponse? Organization,
+    bool RepeatsWeekly,
+    bool HasBlockedParticipant)
+{
+    internal static WalkListItemResponse From(WalkRow row, LaterLotFields later) => new(
+        row.Walk.Id,
+        row.Walk.Title,
+        row.Walk.StartsAt,
+        row.Walk.DurationMinutes,
+        row.Location,
+        row.Walk.LocationLabel,
+        row.Walk.MaxDogs,
+        row.AcceptedDogsCount,
+        row.Walk.AllowedSizes,
+        row.Walk.LeashRule,
+        row.Walk.Access,
+        row.Walk.Status,
+        row.Organizer is null ? null : UserSummaryResponse.From(row.Organizer),
+        later.IsProfessional,
+        later.Organization,
+        later.RepeatsWeekly,
+        later.HasBlockedParticipant);
+}
+
+/// <summary>A walk in <c>GET /me/walks</c>, with the signed-in user's registrations on it. <c>organizer</c> is null once their account has been deleted.</summary>
 public sealed record MyWalkResponse(
     Guid Id,
     string Title,
@@ -62,7 +102,7 @@ public sealed record MyWalkResponse(
     LeashRule LeashRule,
     WalkAccess Access,
     WalkStatus Status,
-    UserSummaryResponse Organizer,
+    UserSummaryResponse? Organizer,
     bool IsProfessional,
     WalkOrganizationResponse? Organization,
     bool RepeatsWeekly,
@@ -82,7 +122,7 @@ public sealed record MyWalkResponse(
         row.Walk.LeashRule,
         row.Walk.Access,
         row.Walk.Status,
-        UserSummaryResponse.From(row.Organizer),
+        row.Organizer is null ? null : UserSummaryResponse.From(row.Organizer),
         later.IsProfessional,
         later.Organization,
         later.RepeatsWeekly,
@@ -90,7 +130,7 @@ public sealed record MyWalkResponse(
         myRegistrations);
 }
 
-/// <summary>Full walk page (<c>GET /walks/{id}</c>), as seen by the signed-in user.</summary>
+/// <summary>Full walk page (<c>GET /walks/{id}</c>), as seen by the signed-in user. <c>organizer</c> is null once their account has been deleted.</summary>
 public sealed record WalkDetailResponse(
     Guid Id,
     string Title,
@@ -106,7 +146,7 @@ public sealed record WalkDetailResponse(
     string Rules,
     WalkAccess Access,
     WalkStatus Status,
-    UserSummaryResponse Organizer,
+    UserSummaryResponse? Organizer,
     bool IsProfessional,
     WalkOrganizationResponse? Organization,
     bool RepeatsWeekly,
@@ -138,7 +178,7 @@ public sealed record WalkDetailResponse(
         row.Walk.Rules,
         row.Walk.Access,
         row.Walk.Status,
-        UserSummaryResponse.From(row.Organizer),
+        row.Organizer is null ? null : UserSummaryResponse.From(row.Organizer),
         later.IsProfessional,
         later.Organization,
         later.RepeatsWeekly,

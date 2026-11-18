@@ -126,13 +126,14 @@ Une inscription concerne un chien. On peut inscrire plusieurs de ses chiens en u
 - Un utilisateur demande à rejoindre ; un `Owner` ou un `Educator` accepte ou refuse. L'`Owner` peut nommer un membre `Educator`.
 - Une balade professionnelle porte un `organizationId`. Seuls l'`Owner` et les `Educator` d'une organisation `Approved` en créent. Elle est visible de tous et marquée comme professionnelle, mais l'inscription est réservée aux membres acceptés.
 - La liste des membres n'est visible que de l'`Owner` et des `Educator`.
+- Un utilisateur ne peut pas avoir plus de trois organisations `Pending` à la fois. Le seul `Owner` ne peut pas quitter son organisation.
 
 ### 4.7 Blocage, signalement, administration
 
 - Bloquer une personne l'empêche de s'inscrire aux balades que j'organise. Elle n'est pas prévenue et l'erreur renvoyée ne révèle pas le blocage.
 - La fiche et la liste des balades indiquent `hasBlockedParticipant` quand l'organisateur ou un inscrit `Accepted` fait partie des personnes que j'ai bloquées.
 - Un signalement vise une personne, un chien ou une balade. Il n'est visible que des administrateurs. À sa création, une interface d'envoi prévient l'adresse d'administration ; en V1 son implémentation se contente de journaliser, faute de fournisseur d'e-mails choisi.
-- Les administrateurs sont les comptes dont l'e-mail figure dans la configuration `Admin:Emails`. Ils valident ou refusent les organisations, lisent et classent les signalements, suspendent ou rétablissent un compte.
+- Les administrateurs sont les comptes dont l'e-mail vérifié figure dans la configuration `Admin:Emails` (ADR 0020). En développement, la connexion de test accepte un e-mail pour créer un compte administrateur. Ils valident ou refusent les organisations, lisent et classent les signalements, suspendent ou rétablissent un compte.
 
 ### 4.8 Suppression de compte
 
@@ -141,7 +142,10 @@ Supprimer son compte :
 - annule ses balades à venir et prévient les inscrits ;
 - supprime ses chiens, inscriptions, appareils, adhésions, blocages et jetons ;
 - ferme (`Closed`) les organisations dont il était le seul `Owner` ;
-- conserve ses messages et ses signalements, sans auteur.
+- conserve ses messages et ses signalements, sans auteur ;
+- conserve les balades qu'il a organisées, sans organisateur : `organizer` peut donc être nul dans les réponses (ADR 0023).
+
+Après une suppression ou une suspension, le jeton d'accès encore valide cesse de fonctionner immédiatement : le compte est relu à chaque requête.
 
 ## 5. Points d'entrée
 

@@ -1,11 +1,15 @@
 using System.Text.Json.Serialization;
 using Dogo.Api.Common;
+using Dogo.Api.Features.Admin;
 using Dogo.Api.Features.Auth;
+using Dogo.Api.Features.Blocks;
 using Dogo.Api.Features.Dogs;
 using Dogo.Api.Features.Health;
 using Dogo.Api.Features.Messages;
 using Dogo.Api.Features.Notifications;
+using Dogo.Api.Features.Organizations;
 using Dogo.Api.Features.Photos;
+using Dogo.Api.Features.Reports;
 using Dogo.Api.Features.Users;
 using Dogo.Api.Features.Walks;
 using Dogo.Api.Infrastructure.Auth;
@@ -36,6 +40,10 @@ builder.Services.AddDogoPush();
 
 // Feature services.
 builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<AccountDeletion>();
+
+// Reports tell the administration through an interface; V1 only logs (spec §4.7, §7).
+builder.Services.AddSingleton<IReportNotifier, LoggingReportNotifier>();
 
 // Notifications: in-process queue read by a background dispatcher (ADR 0019).
 builder.Services.AddSingleton<NotificationQueue>();
@@ -54,7 +62,7 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseMiddleware<SuspendedAccountMiddleware>();
+app.UseMiddleware<AccountStatusMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -75,6 +83,11 @@ authenticated.MapWalkEndpoints();
 authenticated.MapRegistrationEndpoints();
 authenticated.MapMessageEndpoints();
 authenticated.MapNotificationEndpoints();
+authenticated.MapOrganizationEndpoints();
+authenticated.MapMembershipEndpoints();
+authenticated.MapBlockEndpoints();
+authenticated.MapReportEndpoints();
+authenticated.MapAdminEndpoints();
 
 app.MapPhotoFiles();
 

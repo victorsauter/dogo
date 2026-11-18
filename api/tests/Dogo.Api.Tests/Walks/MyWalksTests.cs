@@ -76,7 +76,7 @@ public sealed class MyWalksTests(ApiFixture fixture) : WalkTestBase(fixture)
         Assert.Equal(1, walks[0].AcceptedDogsCount);
         Assert.Equal(0, walks[1].AcceptedDogsCount);
         Assert.Equal(WalkStatus.Cancelled, walks[2].Status);
-        Assert.Equal("Organizer", walks[0].Organizer.DisplayName);
+        Assert.Equal("Organizer", walks[0].Organizer!.DisplayName);
         Assert.False(walks[0].IsProfessional);
         Assert.Null(walks[0].Organization);
         Assert.False(walks[0].RepeatsWeekly);
