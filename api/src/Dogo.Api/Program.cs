@@ -54,8 +54,8 @@ builder.Services.AddScoped<AccountSuspension>();
 // Demo data, development only (DemoData:Enabled, refused in Production, ADR 0027).
 builder.Services.AddDogoDemoData();
 
-// Reports tell the administration through an interface; V1 only logs (spec §4.7, §7).
-builder.Services.AddSingleton<IReportNotifier, LoggingReportNotifier>();
+// Reports tell the administration through an interface: a log line and a push to the administrators (ADR 0036).
+builder.Services.AddScoped<IReportNotifier, AdminReportNotifier>();
 
 // Notifications: in-process queue read by a background dispatcher (ADR 0019).
 builder.Services.AddSingleton<NotificationQueue>();

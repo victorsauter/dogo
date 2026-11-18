@@ -62,8 +62,8 @@ public sealed class AdminOptions
     public string[] Emails { get; set; } = [];
 
     /// <summary>
-    /// Address told about every new report (spec §4.7). Not used yet: no e-mail provider is chosen,
-    /// reports are only logged (<c>LoggingReportNotifier</c>).
+    /// Address told about every new report (spec §4.7). Not used yet: no e-mail provider is chosen;
+    /// reports are logged and pushed to the administrators (<c>AdminReportNotifier</c>, ADR 0036).
     /// </summary>
     public string? ReportEmail { get; set; }
 

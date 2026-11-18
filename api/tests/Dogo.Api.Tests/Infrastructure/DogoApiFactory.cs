@@ -15,7 +15,7 @@ namespace Dogo.Api.Tests.Infrastructure;
 /// <summary>
 /// In-memory API host for tests: "Testing" environment, fake identity token validator,
 /// photos in a temporary directory, push notifications recorded (never sent) and scheduled
-/// jobs disabled (tests call them directly with a controlled clock), reports recorded instead of logged,
+/// jobs disabled (tests call them directly with a controlled clock), reports recorded (and still notified),
 /// demo data enabled with its photo sources faked. <paramref name="overrides"/> replaces configuration values.
 /// </summary>
 public sealed class DogoApiFactory(
@@ -68,7 +68,8 @@ public sealed class DogoApiFactory(
             services.RemoveAll<IPushSender>();
             services.AddSingleton<IPushSender>(PushSender);
             services.RemoveAll<IReportNotifier>();
-            services.AddSingleton<IReportNotifier>(ReportNotifier);
+            services.AddScoped<AdminReportNotifier>();
+            services.AddScoped(provider => ReportNotifier.Around(provider.GetRequiredService<AdminReportNotifier>()));
             services.AddHttpClient(DemoPhotoFetcher.HttpClientName).ConfigurePrimaryHttpMessageHandler(DemoPhotos.CreateHandler);
         });
     }

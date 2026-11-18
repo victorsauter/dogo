@@ -1,3 +1,5 @@
+using Dogo.Api.Features.Reports;
+
 namespace Dogo.Api.Features.Notifications;
 
 /// <summary>Preference that governs a notification type (spec §3, §4.4, third column).</summary>
@@ -7,6 +9,9 @@ public enum NotificationCategory
     WalkChanges,
     Messages,
     Reminders,
+
+    /// <summary>Notifications to administrators; not a user preference, always sent.</summary>
+    Administration,
 }
 
 /// <summary>What the texts of a notification can use.</summary>
@@ -42,7 +47,20 @@ internal static class NotificationTexts
         [NotificationType.MembershipRequested] = (NotificationCategory.Registrations, c => new("Nouvelle demande d'adhésion", $"{c.ActorName} demande à rejoindre « {c.Subject.Name} ».")),
         [NotificationType.MembershipAccepted] = (NotificationCategory.Registrations, c => new("Adhésion acceptée", $"Tu fais maintenant partie de « {c.Subject.Name} ».")),
         [NotificationType.OrganizationApproved] = (NotificationCategory.Registrations, c => new("Organisation validée", $"« {c.Subject.Name} » est validée : tu peux y proposer des balades.")),
+        // Shown on the lock screen: the category only, never the facts nor who is involved.
+        [NotificationType.ReportCreated] = (NotificationCategory.Administration, c => new("Nouveau signalement", $"Un signalement « {c.Subject.Name} » attend d'être examiné.")),
     };
+
+    /// <summary>French labels of the report categories (spec §2).</summary>
+    private static readonly Dictionary<ReportType, string> ReportTypeLabels = new()
+    {
+        [ReportType.IncidentNoInjury] = "Incident sans blessure",
+        [ReportType.Altercation] = "Altercation",
+        [ReportType.BiteOrInjury] = "Morsure ou blessure",
+        [ReportType.HumanBehavior] = "Comportement d'un humain",
+    };
+
+    public static string ReportTypeLabel(ReportType type) => ReportTypeLabels.GetValueOrDefault(type, "Autre");
 
     /// <summary>Shown when the actor's account no longer exists.</summary>
     public const string UnknownActor = "Quelqu'un";

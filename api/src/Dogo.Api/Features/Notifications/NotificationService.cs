@@ -47,8 +47,12 @@ public sealed partial class NotificationService(DogoDbContext db, IPushSender se
         {
             ["type"] = request.Type.WireName(),
             [request.Subject.IdKey] = request.Subject.Id.ToString(),
-            ["url"] = $"dogo://{request.Subject.Path}",
         };
+        if (request.Subject.Path is { } path)
+        {
+            // Without url the app shows the notification and ignores a tap (mobile routing.ts).
+            data["url"] = $"dogo://{path}";
+        }
 
         var messages = devices.Select(d => new PushMessage(d.UserId, d.ExpoPushToken, text.Title, text.Body, data)).ToList();
         var result = await sender.SendAsync(messages, cancellationToken);
