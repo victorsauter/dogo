@@ -126,6 +126,15 @@ export const fr = {
     panelShowMap: 'Voir la carte',
     panelA11yHint: 'Change la hauteur du panneau des balades.',
     panelLoading: 'Recherche des balades…',
+    refresh: 'Actualiser les balades',
+  },
+  /** Setting « Affichage des balades » of the profile. */
+  discoverLayout: {
+    title: 'Affichage des balades',
+    panel: 'Carte et panneau',
+    panelHint: 'La carte en grand, avec les balades dans un panneau que tu fais glisser.',
+    list: 'Liste',
+    listHint: 'Les balades en liste, la carte s’ouvre quand tu en as besoin.',
   },
   myWalks: {
     title: 'Mes balades',

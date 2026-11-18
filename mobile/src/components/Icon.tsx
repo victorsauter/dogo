@@ -25,6 +25,8 @@ const icons = {
   chevronDown: { ios: 'chevron.down', android: 'expand_more', web: 'expand_more' },
   list: { ios: 'list.bullet', android: 'list', web: 'list' },
   close: { ios: 'xmark', android: 'close', web: 'close' },
+  check: { ios: 'checkmark', android: 'check', web: 'check' },
+  refresh: { ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' },
 } as const;
 
 export type IconName = keyof typeof icons;
