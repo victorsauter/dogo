@@ -89,6 +89,8 @@ export function WalkForm({
   const set = <K extends keyof WalkFormValues>(key: K, value: WalkFormValues[K]) => {
     setValues((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
+    // The message of the last refusal no longer applies once the form changes.
+    setFormError(null);
   };
 
   // Until the person moves the pin, a new walk's meeting point follows their position.

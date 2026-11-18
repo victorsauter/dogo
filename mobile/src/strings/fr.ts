@@ -152,7 +152,7 @@ export const fr = {
     deletedDog: 'Chien supprimé',
     membersOnlyTitle: 'Balade réservée aux membres',
     membersOnlyMessage:
-      'Cette balade est réservée aux membres de l’organisation {name}. Demande à la rejoindre pour pouvoir y inscrire ton chien.',
+      'Seuls les membres de son organisation peuvent y inscrire leur chien. Demande à la rejoindre pour pouvoir t’inscrire.',
     membersOnlyAction: 'Voir l’organisation',
     organizeFor: 'Organiser pour',
     organizeForHint: 'Une balade d’organisation est marquée « Pro » et réservée à ses membres.',
@@ -418,7 +418,7 @@ export const fr = {
     removeMessage: 'Cette personne ne fera plus partie de l’organisation.',
     promote: 'Nommer éducateur',
     promoteA11y: 'Nommer {name} éducateur',
-    demote: 'Redevenir membre',
+    demote: 'Retirer le rôle d’éducateur',
     demoteA11y: 'Rendre {name} simple membre',
     membersForbidden: 'Seuls le responsable et les éducateurs voient la liste des membres.',
   },

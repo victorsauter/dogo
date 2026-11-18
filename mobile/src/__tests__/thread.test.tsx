@@ -1,4 +1,5 @@
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { FlatList } from 'react-native';
 
 import { sessionStore } from '@/auth/sessionStore';
 import { withDayHeaders } from '@/lib/thread';
@@ -118,6 +119,54 @@ describe('thread rendering', () => {
       new Date(),
     );
     expect(rows.map((row) => row.kind)).toEqual(['day', 'message', 'message', 'day', 'message']);
+  });
+});
+
+describe('staying on the newest message', () => {
+  const farFromBottom = {
+    nativeEvent: {
+      contentOffset: { x: 0, y: 0 },
+      contentSize: { width: 400, height: 3000 },
+      layoutMeasurement: { width: 400, height: 600 },
+      zoomScale: 1,
+    },
+  };
+
+  async function openLongThread() {
+    const scrollToEnd = jest.fn();
+    jest
+      .spyOn(FlatList.prototype, 'getNativeScrollRef')
+      .mockReturnValue({ scrollToEnd } as unknown as ReturnType<FlatList['getNativeScrollRef']>);
+    mockApi({
+      [`GET ${walkPath}`]: () => ok(participantWalk()),
+      [`GET ${messagesPath}`]: () =>
+        ok({
+          hasMore: false,
+          items: Array.from({ length: 30 }, (_, i) =>
+            message(`m${i}`, `Message ${i}`, at(0, 8, i)),
+          ),
+        }),
+    });
+    await openThread();
+    await screen.findByText('Message 0');
+    return { scrollToEnd, list: screen.getByTestId('thread-list') };
+  }
+
+  it('keeps following the newest message while the pages lay out', async () => {
+    const { scrollToEnd, list } = await openLongThread();
+    // Scroll events not made by the person (layout, kept position), far from the bottom.
+    await fireEvent.scroll(list, farFromBottom);
+    scrollToEnd.mockClear();
+    await fireEvent(list, 'contentSizeChange', 400, 3400);
+    expect(scrollToEnd).toHaveBeenCalled();
+  });
+
+  it('stops following once the person scrolls up to read', async () => {
+    const { scrollToEnd, list } = await openLongThread();
+    await fireEvent(list, 'scrollEndDrag', farFromBottom);
+    scrollToEnd.mockClear();
+    await fireEvent(list, 'contentSizeChange', 400, 3400);
+    expect(scrollToEnd).not.toHaveBeenCalled();
   });
 });
 

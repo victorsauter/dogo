@@ -199,6 +199,28 @@ describe('walk detail and registration', () => {
     expect(await screen.findByText(t.walk.registeredApproval)).toBeTruthy();
   });
 
+  it('shows the organizer’s decision when I pull the page', async () => {
+    let detail = walkDetail({
+      access: 'Approval',
+      myRegistrations: [{ id: 'reg-1', dogId: testDog.id, status: 'Pending' }],
+    });
+    mockApi({ ...routes(), [`GET ${walkPath}`]: () => ok(detail) });
+    await openWalk();
+    expect(await screen.findByText('En attente')).toBeTruthy();
+
+    // Accepted by the organizer, elsewhere.
+    detail = {
+      ...detail,
+      myRegistrations: [{ ...detail.myRegistrations[0]!, status: 'Accepted' }],
+    };
+    const { refreshControl } = screen.getByTestId('walk-detail').props as {
+      refreshControl: { props: { onRefresh: () => Promise<void> } };
+    };
+    await act(() => refreshControl.props.onRefresh());
+    expect(await screen.findByText('Acceptée')).toBeTruthy();
+    expect(screen.queryByText('En attente')).toBeNull();
+  });
+
   it('disables dogs whose size is not allowed, with the reason', async () => {
     mockApi(routes(walkDetail({ allowedSizes: ['Small'] })));
     await openWalk();
