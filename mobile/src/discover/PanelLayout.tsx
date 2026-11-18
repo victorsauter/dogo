@@ -3,26 +3,37 @@ import BottomSheet, {
   type BottomSheetFlatListMethods,
 } from '@gorhom/bottom-sheet';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, View, type LayoutChangeEvent } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import type MapView from 'react-native-maps';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 
 import type { WalkSearchResult } from '@/api/types';
-import { defaultWalkFilters, type WalkFilters } from '@/api/walks';
 import { EmptyState, ErrorState, Icon, LoadingState, Text, WalkCard, WalksMap } from '@/components';
 import { DEFAULT_CENTER, regionAround } from '@/lib/geo';
+import { haptics } from '@/lib/haptics';
 import type { UserLocation } from '@/lib/location';
 import { plural, t } from '@/strings';
 import { useTheme } from '@/theme';
 
-import { FiltersSheet } from './FiltersSheet';
 import {
-  ActiveFilterTags,
   byStartDate,
-  DiscoverHeader,
+  FloatingHeader,
   LocateButton,
   locationUnknown,
   useDiscoverNavigation,
   useMapAreaSearch,
+  type DiscoverFilterState,
 } from './shared';
 
 /** Panel positions: 0 low (handle and the top of the first card), 1 middle, 2 high. */
@@ -39,33 +50,44 @@ const HANDLE_ICON = { 0: 'chevronUp', 1: 'chevronUp', 2: 'chevronDown' } as cons
 
 /** Height of the top of the first card shown under the handle at the low position. */
 const PEEK_HEIGHT = 72;
+/** Size of the grabber at the top of the panel (as on iOS sheets). */
+const GRABBER = { width: 36, height: 5 };
 
 /**
- * « Panneau » view (the default): the map fills the tab, the walks of the
- * visible area live in a bottom panel with three positions. Filters stay above
- * the map (the high position stops under them). The panel's handle is a real
- * button that moves it (low → middle → high → low), so dragging is optional.
- * Tapping a pin brings its card to the top of the panel, highlighted.
+ * « Panneau » view (the default): the map fills the tab up to the top of the
+ * screen, under a floating translucent header (title, « Créer », filters); the
+ * walks of the visible area live in a bottom panel with three positions, the
+ * high one stopping under the header. The panel's handle is a real button that
+ * moves it (low → middle → high → low), so dragging is optional. Tapping a pin
+ * brings its card to the top of the panel, highlighted.
  */
-export function PanelLayout({ location }: { location: UserLocation }) {
-  const { colors, radii, spacing } = useTheme();
+export function PanelLayout({
+  location,
+  filterState,
+}: {
+  location: UserLocation;
+  filterState: DiscoverFilterState;
+}) {
+  const { colors, radii, spacing, shadows, minTouchSize } = useTheme();
   const { openWalk, createWalk } = useDiscoverNavigation();
+  const { filters, setFilters } = filterState;
   const map = useRef<MapView>(null);
   const sheet = useRef<BottomSheet>(null);
   const list = useRef<BottomSheetFlatListMethods>(null);
-  const [filters, setFilters] = useState<WalkFilters>(defaultWalkFilters);
   const [position, setPosition] = useState<PanelPosition>(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [handleHeight, setHandleHeight] = useState(64);
-  const [mapHeight, setMapHeight] = useState(0);
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [containerHeight, setContainerHeight] = useState(0);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  // Top of the panel in the view, followed frame by frame (drag or snap).
+  const sheetTop = useSharedValue(0);
 
   const located = location.status !== 'pending';
   const startRegion = useMemo(
     () => regionAround(location.coords ?? DEFAULT_CENTER),
     [location.coords],
   );
-  const { search, walks, searching, refresh, onRegionChange, resultCount } = useMapAreaSearch({
+  const { search, walks, searching, refresh, onRegionChange } = useMapAreaSearch({
     located,
     startRegion,
     filters,
@@ -74,16 +96,15 @@ export function PanelLayout({ location }: { location: UserLocation }) {
   const sorted = useMemo(() => byStartDate(walks), [walks]);
 
   // The low position follows the handle's real height (larger text makes it taller).
-  // On a small screen with large text, half the area would barely differ from the
-  // low position: the middle one then shows at least one more card's worth.
-  const { snapPoints, heights } = useMemo(() => {
+  // On a small screen with large text, half the visible map would barely differ from
+  // the low position: the middle one then shows at least one more card's worth.
+  const { snapPoints, middleHeight } = useMemo(() => {
     const low = handleHeight + PEEK_HEIGHT;
-    if (mapHeight === 0) {
-      return { snapPoints: [low, '50%', '100%'], heights: [low, low + 140] as const };
-    }
-    const middle = Math.max(Math.min(Math.max(mapHeight / 2, low + 140), mapHeight - 80), low + 1);
-    return { snapPoints: [low, middle, '100%'], heights: [low, middle] as const };
-  }, [handleHeight, mapHeight]);
+    const visible = containerHeight - headerHeight;
+    if (visible <= 0) return { snapPoints: [low, '50%', '100%'], middleHeight: low + 140 };
+    const middle = Math.max(Math.min(Math.max(visible / 2, low + 140), visible - 80), low + 1);
+    return { snapPoints: [low, middle, '100%'], middleHeight: middle };
+  }, [handleHeight, containerHeight, headerHeight]);
 
   const moveTo = useCallback((next: PanelPosition) => {
     sheet.current?.snapToIndex(next);
@@ -99,9 +120,25 @@ export function PanelLayout({ location }: { location: UserLocation }) {
   function selectWalk(id: string | null) {
     setSelectedId(id);
     if (!id) return;
+    haptics.selection();
     if (position === 0) moveTo(1);
     list.current?.scrollToOffset({ offset: 0, animated: true });
   }
+
+  // « Ma position » rides on the panel's top edge, and fades out as the panel
+  // nears the header (at the high position the list covers the map).
+  const locateStyle = useAnimatedStyle(() => {
+    const fadeStart = headerHeight + minTouchSize;
+    return {
+      transform: [{ translateY: sheetTop.value - minTouchSize - spacing.md }],
+      opacity: interpolate(
+        sheetTop.value,
+        [fadeStart, fadeStart + minTouchSize * 2],
+        [0, 1],
+        Extrapolation.CLAMP,
+      ),
+    };
+  });
 
   const count = !located || search.isPending ? t.discover.panelLoading : searchCountLabel(sorted);
   const action = HANDLE_ACTION[position];
@@ -121,198 +158,159 @@ export function PanelLayout({ location }: { location: UserLocation }) {
     );
 
   return (
-    <View style={{ flex: 1 }}>
-      <DiscoverHeader
-        filters={filters}
-        onFiltersChange={setFilters}
-        onOpenFilters={() => setFiltersOpen(true)}
-        notice={locationUnknown(location) ? t.discover.locationDenied : null}
-        style={{
-          paddingHorizontal: spacing.lg,
-          paddingTop: spacing.sm,
-          paddingBottom: spacing.sm,
-          borderBottomWidth: 1,
+    <View
+      style={{ flex: 1 }}
+      onLayout={(event) => setContainerHeight(Math.round(event.nativeEvent.layout.height))}
+    >
+      <WalksMap
+        ref={map}
+        initialRegion={startRegion}
+        walks={walks}
+        onRegionChange={onRegionChange}
+        onOpenWalk={openWalk}
+        onSelectWalk={selectWalk}
+        selectedId={selectedId}
+        // The panel opens at mid-height: centre the user in the part that stays visible.
+        topInset={headerHeight}
+        bottomInset={middleHeight}
+        searching={searching}
+        showsUserLocation={location.status === 'granted'}
+      />
+      {/* At the high position the list covers the map: the button gives way. */}
+      <Animated.View
+        testID="locate-anchor"
+        pointerEvents={position === 2 ? 'none' : 'box-none'}
+        accessibilityElementsHidden={position === 2}
+        importantForAccessibility={position === 2 ? 'no-hide-descendants' : 'auto'}
+        style={[{ position: 'absolute', top: 0, right: spacing.lg }, locateStyle]}
+      >
+        <LocateButton location={location} map={map} />
+      </Animated.View>
+      <BottomSheet
+        ref={sheet}
+        index={1}
+        snapPoints={snapPoints}
+        topInset={headerHeight}
+        animatedPosition={sheetTop}
+        enableDynamicSizing={false}
+        enablePanDownToClose={false}
+        // Follow the target position as soon as a drag or a button starts the move.
+        onAnimate={(from, to) => {
+          if (to < 0) return;
+          if (from >= 0 && to !== from) haptics.selection();
+          setPosition(to as PanelPosition);
+        }}
+        onChange={(index) => {
+          if (index < 0) return;
+          setPosition(index as PanelPosition);
+          // Low shows the top of the first card, whatever was scrolled before.
+          if (index === 0) list.current?.scrollToOffset({ offset: 0, animated: false });
+        }}
+        handleComponent={null}
+        // The panel itself is not one accessible element: its handle and cards are.
+        accessible={false}
+        backgroundStyle={{
+          backgroundColor: colors.background,
+          borderTopLeftRadius: radii.lg,
+          borderTopRightRadius: radii.lg,
+          borderWidth: StyleSheet.hairlineWidth,
           borderColor: colors.border,
         }}
-      />
-      <View
-        style={{ flex: 1 }}
-        onLayout={(event) => setMapHeight(Math.round(event.nativeEvent.layout.height))}
+        style={shadows.panel}
       >
-        <WalksMap
-          ref={map}
-          initialRegion={startRegion}
-          walks={walks}
-          onRegionChange={onRegionChange}
-          onOpenWalk={openWalk}
-          onSelectWalk={selectWalk}
-          selectedId={selectedId}
-          // The panel opens at mid-height: centre the user in the half that stays visible.
-          bottomInset={mapHeight / 2}
-          searching={searching}
-          showsUserLocation={location.status === 'granted'}
-        />
-        <BottomSheet
-          ref={sheet}
-          index={1}
-          snapPoints={snapPoints}
-          enableDynamicSizing={false}
-          enablePanDownToClose={false}
-          // Follow the target position as soon as a drag or a button starts the move.
-          onAnimate={(_from, to) => {
-            if (to >= 0) setPosition(to as PanelPosition);
+        <View
+          // The handle's real height (with its refresh button) sets the low position.
+          onLayout={(event: LayoutChangeEvent) => {
+            const height = Math.ceil(event.nativeEvent.layout.height);
+            if (Math.abs(height - handleHeight) > 1) setHandleHeight(height);
           }}
-          onChange={(index) => {
-            if (index < 0) return;
-            setPosition(index as PanelPosition);
-            // Low shows the top of the first card, whatever was scrolled before.
-            if (index === 0) list.current?.scrollToOffset({ offset: 0, animated: false });
-          }}
-          handleComponent={null}
-          // The panel itself is not one accessible element: its handle and cards are.
-          accessible={false}
-          backgroundStyle={{
-            backgroundColor: colors.background,
-            borderTopLeftRadius: radii.lg,
-            borderTopRightRadius: radii.lg,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-          style={{
-            shadowColor: '#000',
-            shadowOpacity: 0.2,
-            shadowRadius: 10,
-            shadowOffset: { width: 0, height: -2 },
-            elevation: 12,
-          }}
+          style={{ paddingTop: spacing.sm }}
         >
           <View
-            // The handle's real height (with its refresh button) sets the low position.
-            onLayout={(event: LayoutChangeEvent) => {
-              const height = Math.ceil(event.nativeEvent.layout.height);
-              if (Math.abs(height - handleHeight) > 1) setHandleHeight(height);
+            pointerEvents="none"
+            style={{
+              alignSelf: 'center',
+              width: GRABBER.width,
+              height: GRABBER.height,
+              borderRadius: radii.pill,
+              backgroundColor: colors.border,
             }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-              <Pressable
-                testID="panel-handle"
-                accessibilityRole="button"
-                accessibilityLabel={`${count}. ${action}`}
-                accessibilityHint={t.discover.panelA11yHint}
-                accessibilityValue={{ min: 0, max: 2, now: position }}
-                onPress={() => moveTo(NEXT_POSITION[position])}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  paddingLeft: spacing.lg,
-                  paddingRight: spacing.xs,
-                  paddingTop: spacing.sm,
-                  paddingBottom: spacing.md,
-                  gap: spacing.sm,
-                  borderTopLeftRadius: radii.lg,
-                  backgroundColor: pressed ? colors.surfaceMuted : 'transparent',
-                })}
-              >
-                <View
-                  style={{
-                    alignSelf: 'center',
-                    width: 44,
-                    height: 5,
-                    borderRadius: radii.pill,
-                    backgroundColor: colors.border,
-                  }}
-                />
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    justifyContent: 'space-between',
-                    columnGap: spacing.md,
-                    rowGap: spacing.xs,
-                  }}
-                >
-                  {/* Own line when the buttons leave no room; shrinks rather than being cut. */}
-                  <Text variant="subheading" style={{ flexShrink: 1 }}>
+          />
+          {/* One line: the count on the left, the panel's actions on the right. */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingRight: spacing.xs }}>
+            <Pressable
+              testID="panel-handle"
+              accessibilityRole="button"
+              accessibilityLabel={`${count}. ${action}`}
+              accessibilityHint={t.discover.panelA11yHint}
+              accessibilityValue={{ min: 0, max: 2, now: position }}
+              onPress={() => moveTo(NEXT_POSITION[position])}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.sm,
+                minHeight: minTouchSize,
+                paddingLeft: spacing.lg,
+              }}
+            >
+              {({ pressed }) => (
+                <>
+                  {/* Wraps with large text rather than being cut. */}
+                  <Text variant="subheading" style={{ flex: 1 }}>
                     {count}
                   </Text>
                   <View
                     style={{
-                      flexDirection: 'row',
+                      width: minTouchSize - spacing.lg,
+                      height: minTouchSize - spacing.lg,
                       alignItems: 'center',
-                      gap: spacing.xs,
-                      minHeight: 36,
-                      paddingHorizontal: spacing.md,
+                      justifyContent: 'center',
                       borderRadius: radii.pill,
-                      borderWidth: 1.5,
-                      borderColor: colors.primary,
-                      backgroundColor: colors.surface,
+                      backgroundColor: pressed ? colors.border : colors.surfaceMuted,
                     }}
                   >
-                    <Text variant="label" color="primary">
-                      {action}
-                    </Text>
-                    <Icon name={HANDLE_ICON[position]} color="primary" size={18} />
+                    <Icon name={HANDLE_ICON[position]} color="textMuted" size={14} />
                   </View>
-                </View>
-              </Pressable>
-              {/* Beside the handle, not inside it (a button cannot nest in a button), at the
-                height of its second row. */}
-              <View style={{ paddingRight: spacing.sm, paddingBottom: spacing.xs }}>
-                <RefreshButton busy={search.isFetching} onPress={() => void refresh()} />
-              </View>
-            </View>
-            {/* Inside the measured block: the low position leaves room for the label. */}
-            <ActiveFilterTags
-              filters={filters}
-              onFiltersChange={setFilters}
-              style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}
-            />
+                </>
+              )}
+            </Pressable>
+            {/* Beside the handle, not inside it: a button cannot nest in a button. */}
+            <RefreshButton busy={search.isFetching} onPress={() => void refresh()} />
           </View>
-          {/* No pull-to-refresh here: at the high position it captures the downward
-              drag meant to lower the panel. The refresh button next to the handle, coming
-              back to the tab, moving the map or a filter search again. */}
-          <BottomSheetFlatList
-            ref={list}
-            testID="walks-panel-list"
-            data={shown}
-            extraData={selectedId}
-            keyExtractor={(walk: WalkSearchResult) => walk.id}
-            contentContainerStyle={{
-              paddingHorizontal: spacing.lg,
-              paddingBottom: spacing.xl,
-              gap: spacing.md,
-              flexGrow: 1,
-            }}
-            renderItem={({ item }: { item: WalkSearchResult }) => (
-              <WalkCard
-                walk={item}
-                origin={location.coords}
-                selected={item.id === selectedId}
-                onPress={() => openWalk(item.id)}
-              />
-            )}
-            ListEmptyComponent={listEmpty}
-          />
-        </BottomSheet>
-        {/* Drawn after the panel so it stays on top while the panel moves; above the panel at its low and middle positions; at the high one it covers the map. */}
-        {position !== 2 ? (
-          <LocateButton
-            location={location}
-            map={map}
-            style={{
-              position: 'absolute',
-              right: spacing.lg,
-              bottom: heights[position] + spacing.md,
-            }}
-          />
-        ) : null}
-      </View>
-      <FiltersSheet
-        visible={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
+        </View>
+        {/* No pull-to-refresh here: at the high position it captures the downward
+            drag meant to lower the panel. The refresh button next to the handle, coming
+            back to the tab, moving the map or a filter search again. */}
+        <BottomSheetFlatList
+          ref={list}
+          testID="walks-panel-list"
+          data={shown}
+          extraData={selectedId}
+          keyExtractor={(walk: WalkSearchResult) => walk.id}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.lg,
+            paddingTop: spacing.xs,
+            paddingBottom: spacing.xl,
+            gap: spacing.md,
+            flexGrow: 1,
+          }}
+          renderItem={({ item }: { item: WalkSearchResult }) => (
+            <WalkCard
+              walk={item}
+              origin={location.coords}
+              selected={item.id === selectedId}
+              onPress={() => openWalk(item.id)}
+            />
+          )}
+          ListEmptyComponent={listEmpty}
+        />
+      </BottomSheet>
+      <FloatingHeader
         filters={filters}
         onFiltersChange={setFilters}
-        resultCount={resultCount}
+        notice={locationUnknown(location) ? t.discover.locationDenied : null}
+        onHeightChange={setHeaderHeight}
       />
     </View>
   );
@@ -341,7 +339,7 @@ function RefreshButton({ busy, onPress }: { busy: boolean; onPress: () => void }
       {busy ? (
         <ActivityIndicator size="small" color={colors.primary} />
       ) : (
-        <Icon name="refresh" color="primary" size={20} />
+        <Icon name="refresh" color="primary" size={18} />
       )}
     </Pressable>
   );

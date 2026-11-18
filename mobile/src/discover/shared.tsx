@@ -1,37 +1,65 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState, type RefObject } from 'react';
-import { ActivityIndicator, Pressable, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import type MapView from 'react-native-maps';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { enumValues, type DogSize } from '@/api/enums';
 import type { WalkSearchResult } from '@/api/types';
 import {
+  DEFAULT_SEARCH_RADIUS_KM,
   defaultWalkFilters,
+  SEARCH_RADII_KM,
   searchParamsFor,
   useWalkSearch,
   type PeriodFilter,
+  type SearchRadiusKm,
+  type SizeFilter,
   type WalkFilters,
   type WalkSearchParams,
 } from '@/api/walks';
-import { Button, Icon, SegmentedControl, Text, type IconName } from '@/components';
+import {
+  Button,
+  Icon,
+  Material,
+  MenuPill,
+  PressableScale,
+  Text,
+  type ChoiceOption,
+  type IconName,
+} from '@/components';
 import { regionAround, type MapRegion } from '@/lib/geo';
 import { useDebouncedValue, useDelayedFlag, useRefetchOnFocusIfStale } from '@/lib/hooks';
 import type { UserLocation } from '@/lib/location';
-import { format, plural, t } from '@/strings';
+import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
 
 /**
  * Pieces shared by the two views of the « Balades » tab: filters, header, the
- * search that follows a map, refresh, navigation and the floating button.
+ * search that follows a map, refresh, navigation and the floating buttons.
  */
 
 export const SEARCH_DEBOUNCE_MS = 400;
 export const LOADING_DELAY_MS = 300;
 
-export const periodOptions: { value: PeriodFilter; label: string }[] = [
+const periodOptions: ChoiceOption<PeriodFilter>[] = [
   { value: 'today', label: t.discover.periodToday },
   { value: 'week', label: t.discover.periodWeek },
   { value: 'all', label: t.discover.periodAll },
 ];
+
+const sizeOptions: ChoiceOption<SizeFilter>[] = [
+  { value: 'all', label: t.discover.sizeAll },
+  ...enumValues.DogSize.map((size) => ({
+    value: size as DogSize,
+    label: enumLabel('DogSize', size),
+  })),
+];
+
+const radiusOptions = SEARCH_RADII_KM.map((km) => ({
+  value: String(km) as `${SearchRadiusKm}`,
+  label: format(t.discover.radiusOption, { km }),
+}));
 
 export function useDiscoverNavigation() {
   const router = useRouter();
@@ -41,16 +69,82 @@ export function useDiscoverNavigation() {
   };
 }
 
-/** Number of filters that differ from their default (the radius and the period do not count). */
-export function activeFilterCount(filters: WalkFilters): number {
-  return filters.size === defaultWalkFilters.size ? 0 : 1;
+export type FiltersUpdate = (update: (current: WalkFilters) => WalkFilters) => void;
+
+/**
+ * The filters of the tab, shared by its two views: owned by the tab's screen,
+ * which stays mounted for the whole session, so switching between « Panneau »
+ * and « Liste » in the profile keeps them. The radius only applies to « Liste ».
+ */
+export interface DiscoverFilterState {
+  filters: WalkFilters;
+  setFilters: FiltersUpdate;
+  radiusKm: SearchRadiusKm;
+  setRadiusKm: (km: SearchRadiusKm) => void;
 }
 
-export interface DiscoverHeaderProps {
+export function useDiscoverFilterState(): DiscoverFilterState {
+  const [filters, setFilters] = useState<WalkFilters>(defaultWalkFilters);
+  const [radiusKm, setRadiusKm] = useState<SearchRadiusKm>(DEFAULT_SEARCH_RADIUS_KM);
+  return { filters, setFilters, radiusKm, setRadiusKm };
+}
+
+export interface FilterBarProps {
   filters: WalkFilters;
-  onFiltersChange: (update: (current: WalkFilters) => WalkFilters) => void;
-  /** Opens the « Filtres » sheet. */
-  onOpenFilters: () => void;
+  onFiltersChange: FiltersUpdate;
+  /** The radius pill, only for the « Liste » view (a map follows its visible area). */
+  radius?: { value: SearchRadiusKm; onChange: (km: SearchRadiusKm) => void };
+}
+
+/**
+ * One row of pills, each opening its menu under itself: period, dog size and,
+ * in the list, distance. A pill shows its current value and is filled when it
+ * differs from the default. With large text the row scrolls sideways.
+ */
+export function FilterBar({ filters, onFiltersChange, radius }: FilterBarProps) {
+  const { spacing } = useTheme();
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      // The pills start at the screen's margin and scroll to its edges.
+      style={{ marginHorizontal: -spacing.lg, flexGrow: 0 }}
+      contentContainerStyle={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}
+    >
+      <MenuPill
+        testID="filter-period"
+        label={t.discover.period}
+        text={periodOptions.find((option) => option.value === filters.period)!.label}
+        options={periodOptions}
+        value={filters.period}
+        active={filters.period !== defaultWalkFilters.period}
+        onChange={(period) => onFiltersChange((current) => ({ ...current, period }))}
+      />
+      <MenuPill
+        testID="filter-size"
+        label={t.discover.size}
+        text={filters.size === 'all' ? t.discover.size : enumLabel('DogSize', filters.size)}
+        options={sizeOptions}
+        value={filters.size}
+        active={filters.size !== defaultWalkFilters.size}
+        onChange={(size) => onFiltersChange((current) => ({ ...current, size }))}
+      />
+      {radius ? (
+        <MenuPill
+          testID="filter-radius"
+          label={t.discover.radius}
+          text={format(t.discover.radiusOption, { km: radius.value })}
+          options={radiusOptions}
+          value={String(radius.value) as `${SearchRadiusKm}`}
+          active={radius.value !== DEFAULT_SEARCH_RADIUS_KM}
+          onChange={(km) => radius.onChange(Number(km) as SearchRadiusKm)}
+        />
+      ) : null}
+    </ScrollView>
+  );
+}
+
+export interface DiscoverHeaderProps extends FilterBarProps {
   /** Sentence under the filters (position unknown). */
   notice?: string | null;
   /** Hides the title row (the full-screen map has its own bottom buttons). */
@@ -58,11 +152,11 @@ export interface DiscoverHeaderProps {
   style?: ViewStyle;
 }
 
-/** Title with « Créer », then one row: the period and the « Filtres » button. */
+/** Title with « Créer », then the row of filter pills. */
 export function DiscoverHeader({
   filters,
   onFiltersChange,
-  onOpenFilters,
+  radius,
   notice,
   showTitle = true,
   style,
@@ -70,30 +164,16 @@ export function DiscoverHeader({
   const { spacing } = useTheme();
   const { createWalk } = useDiscoverNavigation();
   return (
-    <View style={[{ gap: spacing.sm }, style]}>
+    <View style={[{ gap: spacing.xs }, style]}>
       {showTitle ? (
         <View
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
         >
           <Text variant="title">{t.discover.title}</Text>
-          <Button
-            label={t.discover.create}
-            accessibilityLabel={t.discover.createA11y}
-            onPress={createWalk}
-          />
+          <CreateButton onPress={createWalk} />
         </View>
       ) : null}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-        <View style={{ flex: 1 }}>
-          <SegmentedControl
-            accessibilityLabel={t.discover.period}
-            options={periodOptions}
-            value={filters.period}
-            onChange={(period) => onFiltersChange((current) => ({ ...current, period }))}
-          />
-        </View>
-        <FiltersButton count={activeFilterCount(filters)} onPress={onOpenFilters} />
-      </View>
+      <FilterBar filters={filters} onFiltersChange={onFiltersChange} radius={radius} />
       {notice ? (
         <Text variant="caption" color="textMuted">
           {notice}
@@ -103,98 +183,71 @@ export function DiscoverHeader({
   );
 }
 
-/** Round « Filtres » button with the number of active filters in a badge. */
-function FiltersButton({ count, onPress }: { count: number; onPress: () => void }) {
-  const { colors, radii, minTouchSize } = useTheme();
+/** « Créer » of the header: a compact filled pill with a plus. */
+function CreateButton({ onPress }: { onPress: () => void }) {
+  const { colors, radii, spacing, minTouchSize, pillHeight } = useTheme();
   return (
-    <View style={{ width: minTouchSize, height: minTouchSize }}>
-      <Pressable
-        testID="filters-button"
-        accessibilityRole="button"
-        accessibilityLabel={
-          count > 0 ? plural(t.discover.filtersActive, count) : t.discover.filters
-        }
-        onPress={onPress}
-        style={({ pressed }) => ({
-          width: minTouchSize,
-          height: minTouchSize,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: radii.pill,
-          borderWidth: 1,
-          borderColor: count > 0 ? colors.primary : colors.border,
-          backgroundColor:
-            count > 0 ? colors.primarySoft : pressed ? colors.surfaceMuted : colors.surface,
-        })}
-      >
-        <Icon name="sliders" color={count > 0 ? 'primary' : 'text'} size={22} />
-      </Pressable>
-      {count > 0 ? (
-        <View
-          pointerEvents="none"
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          style={{
-            position: 'absolute',
-            top: -4,
-            right: -4,
-            minWidth: 20,
-            height: 20,
-            paddingHorizontal: 5,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: radii.pill,
-            backgroundColor: colors.primary,
-          }}
-        >
-          <Text variant="caption" style={{ color: colors.onPrimary, fontWeight: '700' }}>
-            {count}
-          </Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-/** Removable labels of the active filters (the size), above the list of walks. */
-export function ActiveFilterTags({
-  filters,
-  onFiltersChange,
-  style,
-}: {
-  filters: WalkFilters;
-  onFiltersChange: (update: (current: WalkFilters) => WalkFilters) => void;
-  style?: ViewStyle;
-}) {
-  const { colors, radii, spacing } = useTheme();
-  if (filters.size === 'all') return null;
-  const label = t.discover.sizeTag[filters.size];
-  return (
-    <View style={[{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }, style]}>
-      <Pressable
-        testID="filter-tag-size"
-        accessibilityRole="button"
-        accessibilityLabel={format(t.discover.removeFilter, { label })}
-        onPress={() => onFiltersChange((current) => ({ ...current, size: 'all' }))}
-        // 32 pt tall to look like a label, 44 pt to touch.
-        hitSlop={6}
-        style={({ pressed }) => ({
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel={t.discover.createA11y}
+      onPress={onPress}
+      style={{ minHeight: minTouchSize, justifyContent: 'center' }}
+    >
+      <View
+        style={{
           flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.xs,
-          minHeight: 32,
+          minHeight: pillHeight,
           paddingLeft: spacing.md,
-          paddingRight: spacing.sm,
+          paddingRight: spacing.lg,
           borderRadius: radii.pill,
-          backgroundColor: pressed ? colors.surfaceMuted : colors.primarySoft,
-        })}
+          backgroundColor: colors.primary,
+        }}
       >
-        <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>
-          {label}
+        <Icon name="plus" size={15} color="onPrimary" />
+        <Text variant="label" style={{ color: colors.onPrimary }}>
+          {t.discover.create}
         </Text>
-        <Icon name="close" color="primary" size={14} />
-      </Pressable>
-    </View>
+      </View>
+    </PressableScale>
+  );
+}
+
+/**
+ * The header floating over a full-screen map, on a translucent material (the
+ * map shows through, blurred), from the very top of the screen. Reports its
+ * height so the map and the panel keep clear of it.
+ */
+export function FloatingHeader({
+  onHeightChange,
+  ...props
+}: DiscoverHeaderProps & { onHeightChange: (height: number) => void }) {
+  const { colors, spacing } = useTheme();
+  const insets = useSafeAreaInsets();
+  return (
+    <Material
+      testID="floating-header"
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: colors.separator,
+      }}
+    >
+      <View
+        onLayout={(event) => onHeightChange(Math.round(event.nativeEvent.layout.height))}
+        style={{
+          paddingTop: insets.top + (props.showTitle === false ? spacing.xs : 0),
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing.xs,
+        }}
+      >
+        <DiscoverHeader {...props} />
+      </View>
+    </Material>
   );
 }
 
@@ -233,8 +286,6 @@ export function useRefreshableSearch(params: WalkSearchParams | null) {
     walks: search.data ?? [],
     refreshing,
     refresh,
-    /** Number of walks found, `null` while loading or when the search failed. */
-    resultCount: search.isSuccess && !search.isFetching ? (search.data?.length ?? 0) : null,
   };
 }
 
@@ -273,8 +324,6 @@ export function useMapAreaSearch({
   );
   return {
     ...result,
-    // The area is still being debounced: the count would be the previous area's.
-    resultCount: region === searchRegion ? result.resultCount : null,
     searching,
     /** Where the map should open: the last area seen, else the start region. */
     mapRegion: pannedRegion ?? startRegion,
@@ -300,46 +349,43 @@ export function FloatingButton({
   onPress,
   testID,
 }: FloatingButtonProps) {
-  const { colors, radii, spacing, minTouchSize } = useTheme();
+  const { colors, radii, spacing, minTouchSize, shadows } = useTheme();
   return (
-    <Pressable
+    <PressableScale
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      style={({ pressed }) => ({
-        alignSelf: 'center',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-        minHeight: FLOATING_BUTTON_HEIGHT,
-        minWidth: minTouchSize * 2.5,
-        justifyContent: 'center',
-        paddingHorizontal: spacing.xl,
-        borderRadius: radii.pill,
-        backgroundColor: colors.primary,
-        opacity: pressed ? 0.85 : 1,
-        shadowColor: '#000',
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 3 },
-        elevation: 6,
-      })}
+      style={[
+        {
+          alignSelf: 'center',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+          minHeight: FLOATING_BUTTON_HEIGHT,
+          minWidth: minTouchSize * 2.5,
+          justifyContent: 'center',
+          paddingHorizontal: spacing.xl,
+          borderRadius: radii.pill,
+          backgroundColor: colors.primary,
+        },
+        shadows.floating,
+      ]}
     >
-      <Icon name={icon} color="onPrimary" size={22} />
+      <Icon name={icon} color="onPrimary" size={20} />
       <Text variant="subheading" style={{ color: colors.onPrimary }}>
         {label}
       </Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
 export const FLOATING_BUTTON_HEIGHT = 52;
 
 /**
- * Round « Ma position » button over a map: recentres it on the user. Not shown
- * without a position (permission refused or services off: the screen already
- * says so in a sentence, and there is nothing to centre on).
+ * Round « Ma position » button over a map, on the floating material: recentres
+ * the map on the user. Not shown without a position (permission refused or
+ * services off: the screen already says so, and there is nothing to centre on).
  */
 export function LocateButton({
   location,
@@ -350,36 +396,35 @@ export function LocateButton({
   map: RefObject<MapView | null>;
   style?: ViewStyle;
 }) {
-  const { colors, radii, minTouchSize } = useTheme();
+  const { colors, radii, minTouchSize, shadows } = useTheme();
   const { coords } = location;
   if (location.status !== 'granted' || !coords) return null;
   return (
-    <Pressable
+    <PressableScale
       testID="locate-button"
       accessibilityRole="button"
       accessibilityLabel={t.discover.locate}
       onPress={() => map.current?.animateToRegion(regionAround(coords), 400)}
-      style={({ pressed }) => [
-        {
-          width: minTouchSize,
-          height: minTouchSize,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: radii.pill,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: pressed ? colors.surfaceMuted : colors.surface,
-          shadowColor: '#000',
-          shadowOpacity: 0.2,
-          shadowRadius: 5,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 4,
-        },
+      style={[
+        { width: minTouchSize, height: minTouchSize, borderRadius: radii.pill },
+        shadows.floating,
         style,
       ]}
     >
-      <Icon name="locate" color="primary" size={22} />
-    </Pressable>
+      <Material
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: radii.pill,
+          overflow: 'hidden',
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.separator,
+        }}
+      >
+        <Icon name="locate" color="primary" size={20} />
+      </Material>
+    </PressableScale>
   );
 }
 
@@ -393,31 +438,35 @@ export function MapNotice({
   busy?: boolean;
   action?: { label: string; onPress: () => void };
 }) {
-  const { colors, radii, spacing } = useTheme();
+  const { colors, radii, spacing, shadows } = useTheme();
   return (
     <View
       accessibilityLiveRegion="polite"
-      style={{
-        alignSelf: 'center',
-        flexDirection: 'row',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: spacing.sm,
-        maxWidth: '100%',
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
-        borderRadius: radii.md,
-        backgroundColor: colors.surface,
-        borderWidth: 1,
-        borderColor: colors.border,
-      }}
+      style={[{ alignSelf: 'center', maxWidth: '100%', borderRadius: radii.md }, shadows.floating]}
     >
-      {busy ? <ActivityIndicator size="small" color={colors.primary} /> : null}
-      <Text variant="caption" style={{ flexShrink: 1, textAlign: 'center' }}>
-        {message}
-      </Text>
-      {action ? <Button variant="secondary" label={action.label} onPress={action.onPress} /> : null}
+      <Material
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: spacing.sm,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          borderRadius: radii.md,
+          overflow: 'hidden',
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: colors.separator,
+        }}
+      >
+        {busy ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+        <Text variant="caption" style={{ flexShrink: 1, textAlign: 'center' }}>
+          {message}
+        </Text>
+        {action ? (
+          <Button variant="secondary" label={action.label} onPress={action.onPress} />
+        ) : null}
+      </Material>
     </View>
   );
 }

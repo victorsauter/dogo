@@ -1,42 +1,47 @@
 import { useMemo, useRef, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 import type MapView from 'react-native-maps';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { WalkSearchResult } from '@/api/types';
-import {
-  DEFAULT_SEARCH_RADIUS_KM,
-  defaultWalkFilters,
-  searchParamsAround,
-  type SearchRadiusKm,
-  type WalkFilters,
-} from '@/api/walks';
+import { searchParamsAround } from '@/api/walks';
 import {
   Button,
   EmptyState,
   ErrorState,
   LoadingState,
+  Material,
   Text,
   WalkCard,
   WalksMap,
 } from '@/components';
 import { DEFAULT_CENTER, regionForRadius, type MapRegion } from '@/lib/geo';
+import { haptics } from '@/lib/haptics';
 import type { UserLocation } from '@/lib/location';
 import { plural, t } from '@/strings';
 import { useTheme } from '@/theme';
 
-import { FiltersSheet } from './FiltersSheet';
 import {
-  ActiveFilterTags,
   byStartDate,
   DiscoverHeader,
   FLOATING_BUTTON_HEIGHT,
   FloatingButton,
+  FloatingHeader,
   LocateButton,
   locationUnknown,
   MapNotice,
   useDiscoverNavigation,
   useMapAreaSearch,
   useRefreshableSearch,
+  type DiscoverFilterState,
+  type FiltersUpdate,
 } from './shared';
 
 /**
@@ -46,13 +51,18 @@ import {
  * where the search follows the visible area and a tapped pin shows its walk.
  * The list stays mounted under the map, so its scroll position survives.
  */
-export function ListLayout({ location }: { location: UserLocation }) {
+export function ListLayout({
+  location,
+  filterState,
+}: {
+  location: UserLocation;
+  filterState: DiscoverFilterState;
+}) {
   const { colors, spacing } = useTheme();
+  const insets = useSafeAreaInsets();
   const { openWalk, createWalk } = useDiscoverNavigation();
-  const [filters, setFilters] = useState<WalkFilters>(defaultWalkFilters);
-  const [radiusKm, setRadiusKm] = useState<SearchRadiusKm>(DEFAULT_SEARCH_RADIUS_KM);
+  const { filters, setFilters, radiusKm, setRadiusKm } = filterState;
   const [mapOpen, setMapOpen] = useState(false);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   // Last area seen on the map: reopening the map shows it again.
   const [mapArea, setMapArea] = useState<MapRegion | null>(null);
 
@@ -62,8 +72,16 @@ export function ListLayout({ location }: { location: UserLocation }) {
     () => (located ? searchParamsAround(center, radiusKm, filters) : null),
     [located, center, radiusKm, filters],
   );
-  const { search, walks, refreshing, refresh, resultCount } = useRefreshableSearch(params);
+  const { search, walks, refreshing, refresh } = useRefreshableSearch(params);
   const sorted = useMemo(() => byStartDate(walks), [walks]);
+  // The status bar gets its material only once the list scrolls under it, as on iOS.
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+  const statusBarStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, spacing.lg], [0, 1], Extrapolation.CLAMP),
+  }));
 
   const listEmpty =
     !located || search.isPending ? (
@@ -86,28 +104,31 @@ export function ListLayout({ location }: { location: UserLocation }) {
         accessibilityElementsHidden={mapOpen}
         importantForAccessibility={mapOpen ? 'no-hide-descendants' : 'auto'}
       >
-        <FlatList
+        <Animated.FlatList
           testID="walks-list"
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           style={{ flex: 1 }}
           data={sorted}
           keyExtractor={(walk) => walk.id}
+          // The list scrolls under the status bar, which keeps a translucent strip.
           contentContainerStyle={{
             padding: spacing.lg,
-            paddingTop: spacing.sm,
+            paddingTop: insets.top + spacing.sm,
             // Room for the floating « Carte » button below the last card.
             paddingBottom: FLOATING_BUTTON_HEIGHT + spacing.lg * 2,
             gap: spacing.md,
             flexGrow: 1,
           }}
+          scrollIndicatorInsets={{ top: insets.top }}
           ListHeaderComponent={
-            <View style={{ gap: spacing.md }}>
+            <View style={{ gap: spacing.sm }}>
               <DiscoverHeader
                 filters={filters}
                 onFiltersChange={setFilters}
-                onOpenFilters={() => setFiltersOpen(true)}
+                radius={{ value: radiusKm, onChange: setRadiusKm }}
                 notice={locationUnknown(location) ? t.discover.listLocationDenied : null}
               />
-              <ActiveFilterTags filters={filters} onFiltersChange={setFilters} />
               {sorted.length > 0 ? (
                 <Text variant="caption" color="textMuted">
                   {plural(t.discover.resultCount, sorted.length)}
@@ -125,9 +146,25 @@ export function ListLayout({ location }: { location: UserLocation }) {
               onRefresh={refresh}
               tintColor={colors.primary}
               colors={[colors.primary]}
+              progressViewOffset={insets.top}
             />
           }
         />
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            { position: 'absolute', top: 0, left: 0, right: 0, height: insets.top },
+            statusBarStyle,
+          ]}
+        >
+          <Material
+            style={{
+              flex: 1,
+              borderBottomWidth: StyleSheet.hairlineWidth,
+              borderBottomColor: colors.separator,
+            }}
+          />
+        </Animated.View>
         <View
           pointerEvents="box-none"
           style={{ position: 'absolute', left: 0, right: 0, bottom: spacing.lg }}
@@ -140,14 +177,6 @@ export function ListLayout({ location }: { location: UserLocation }) {
           />
         </View>
       </View>
-      <FiltersSheet
-        visible={filtersOpen && !mapOpen}
-        onClose={() => setFiltersOpen(false)}
-        filters={filters}
-        onFiltersChange={setFilters}
-        radius={{ value: radiusKm, onChange: setRadiusKm }}
-        resultCount={resultCount}
-      />
       {mapOpen ? (
         <FullScreenMap
           location={location}
@@ -164,8 +193,9 @@ export function ListLayout({ location }: { location: UserLocation }) {
 }
 
 /**
- * The full-screen map of the « Liste » view: same filters as the list, search on the
- * visible area, its last area reported to the parent (`onAreaChange`).
+ * The full-screen map of the « Liste » view, up to the top of the screen under
+ * a floating header with the same filters as the list (no distance: the search
+ * follows the visible area). Its last area is reported to the parent.
  */
 function FullScreenMap({
   location,
@@ -177,26 +207,26 @@ function FullScreenMap({
   onOpenWalk,
 }: {
   location: UserLocation;
-  filters: WalkFilters;
-  onFiltersChange: (update: (current: WalkFilters) => WalkFilters) => void;
+  filters: DiscoverFilterState['filters'];
+  onFiltersChange: FiltersUpdate;
   startRegion: MapRegion;
   onAreaChange: (region: MapRegion) => void;
   onClose: () => void;
   onOpenWalk: (id: string) => void;
 }) {
-  const { colors, radii, spacing, minTouchSize } = useTheme();
+  const { colors, radii, spacing, minTouchSize, shadows } = useTheme();
   const map = useRef<MapView>(null);
   const located = location.status !== 'pending';
   // Fixed for this opening: the map must not jump when the reported area comes back as a prop.
   const [initialRegion] = useState(startRegion);
-  const { search, walks, searching, onRegionChange, resultCount } = useMapAreaSearch({
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const { search, walks, searching, onRegionChange } = useMapAreaSearch({
     located,
     startRegion: initialRegion,
     filters,
     map,
   });
   const [selected, setSelected] = useState<WalkSearchResult | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const notice = search.isError ? (
     <MapNotice
@@ -211,57 +241,47 @@ function FullScreenMap({
 
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]}>
-      <DiscoverHeader
-        filters={filters}
-        onFiltersChange={onFiltersChange}
-        onOpenFilters={() => setFiltersOpen(true)}
-        showTitle={false}
-        style={{
-          paddingHorizontal: spacing.lg,
-          paddingTop: spacing.sm,
-          paddingBottom: spacing.sm,
-          borderBottomWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.background,
+      <WalksMap
+        ref={map}
+        initialRegion={initialRegion}
+        walks={walks}
+        onRegionChange={(region) => {
+          onRegionChange(region);
+          onAreaChange(region);
         }}
+        onOpenWalk={onOpenWalk}
+        onSelectWalk={(id) => {
+          if (id) haptics.selection();
+          setSelected(id ? (walks.find((w) => w.id === id) ?? null) : null);
+        }}
+        selectedId={selected?.id}
+        searching={searching}
+        topInset={headerHeight}
+        showsUserLocation={location.status === 'granted'}
       />
-      <View style={{ flex: 1 }}>
-        <WalksMap
-          ref={map}
-          initialRegion={initialRegion}
-          walks={walks}
-          onRegionChange={(region) => {
-            onRegionChange(region);
-            onAreaChange(region);
-          }}
-          onOpenWalk={onOpenWalk}
-          onSelectWalk={(id) => setSelected(id ? (walks.find((w) => w.id === id) ?? null) : null)}
-          selectedId={selected?.id}
-          searching={searching}
-          showsUserLocation={location.status === 'granted'}
-        />
-        <View
-          pointerEvents="box-none"
-          style={{
-            position: 'absolute',
-            left: spacing.lg,
-            right: spacing.lg,
-            bottom: spacing.lg,
-            gap: spacing.md,
-          }}
-        >
-          <LocateButton location={location} map={map} style={{ alignSelf: 'flex-end' }} />
-          {notice}
-          {selected ? (
-            <View
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: 'absolute',
+          left: spacing.lg,
+          right: spacing.lg,
+          bottom: spacing.lg,
+          gap: spacing.md,
+        }}
+      >
+        <LocateButton location={location} map={map} style={{ alignSelf: 'flex-end' }} />
+        {notice}
+        {selected ? (
+          <View style={[{ borderRadius: radii.lg }, shadows.floating]}>
+            <Material
               testID="selected-walk"
               style={{
                 gap: spacing.xs,
                 padding: spacing.sm,
                 borderRadius: radii.lg,
-                backgroundColor: colors.surfaceMuted,
-                borderWidth: 1,
-                borderColor: colors.border,
+                overflow: 'hidden',
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: colors.separator,
               }}
             >
               <View
@@ -271,6 +291,7 @@ function FullScreenMap({
                   justifyContent: 'space-between',
                   gap: spacing.sm,
                   minHeight: minTouchSize,
+                  paddingLeft: spacing.sm,
                 }}
               >
                 <Text variant="caption" color="textMuted" style={{ flexShrink: 1 }}>
@@ -289,22 +310,21 @@ function FullScreenMap({
                 origin={location.coords}
                 onPress={() => onOpenWalk(selected.id)}
               />
-            </View>
-          ) : null}
-          <FloatingButton
-            label={t.discover.showList}
-            accessibilityLabel={t.discover.showListA11y}
-            icon="list"
-            onPress={onClose}
-          />
-        </View>
+            </Material>
+          </View>
+        ) : null}
+        <FloatingButton
+          label={t.discover.showList}
+          accessibilityLabel={t.discover.showListA11y}
+          icon="list"
+          onPress={onClose}
+        />
       </View>
-      <FiltersSheet
-        visible={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
+      <FloatingHeader
         filters={filters}
         onFiltersChange={onFiltersChange}
-        resultCount={resultCount}
+        showTitle={false}
+        onHeightChange={setHeaderHeight}
       />
     </View>
   );

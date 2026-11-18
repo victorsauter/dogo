@@ -5,7 +5,11 @@ import * as SecureStore from 'expo-secure-store';
 import { StyleSheet } from 'react-native';
 
 import { sessionStore } from '@/auth/sessionStore';
-import { DISCOVER_LAYOUT_STORAGE_KEY, resetDiscoverLayout } from '@/discover/layoutPreference';
+import {
+  DISCOVER_LAYOUT_STORAGE_KEY,
+  resetDiscoverLayout,
+  setDiscoverLayout,
+} from '@/discover/layoutPreference';
 import { config } from '@/lib/config';
 import { t } from '@/strings';
 import { authResponse, testUser, walkResult } from '@/test/fixtures';
@@ -37,13 +41,19 @@ beforeEach(() => {
   resetDiscoverLayout();
 });
 
-const filtersButton = () => screen.getByRole('button', { name: /^Filtres/ });
-const sizeRadio = (name: string) =>
-  within(screen.getByLabelText(t.discover.sizeSection)).getByRole('radio', { name });
-const sheetOpen = () => screen.queryByText(t.discover.sizeSection) !== null;
-async function openFilters() {
-  await fireEvent.press(filtersButton());
-  expect(sheetOpen()).toBe(true);
+type FilterPill = 'filter-period' | 'filter-size' | 'filter-radius';
+/** The visible pill (the list's row is hidden under the full-screen map). */
+const pill = (testID: FilterPill) => screen.getAllByTestId(testID).at(-1)!;
+const menuOpen = () => screen.queryByTestId('menu') !== null;
+async function openMenu(testID: FilterPill) {
+  await fireEvent.press(pill(testID));
+  expect(menuOpen()).toBe(true);
+}
+/** Opens the pill's menu and picks an item: the menu closes. */
+async function choose(testID: FilterPill, item: string) {
+  await openMenu(testID);
+  await fireEvent.press(screen.getByRole('menuitem', { name: item }));
+  await waitFor(() => expect(menuOpen()).toBe(false));
 }
 
 afterEach(async () => {
@@ -105,20 +115,18 @@ describe('« Liste » view — list first, map on demand', () => {
       .map((node) => node.props.children);
     expect(titles).toEqual([lake.title, later.title]);
 
-    await openFilters();
-    await fireEvent.press(screen.getByRole('radio', { name: '25 km' }));
+    await choose('filter-radius', '25 km');
     await waitFor(() => expect(lastSearch(calls).radiusKm).toBe('25'));
     expect(lastSearch(calls)).toMatchObject({ lat: '47.6234', lng: '7.2376' });
+    expect(pill('filter-radius')).toHaveAccessibleName('Distance, 25 km');
   });
 
   it('switches to the full-screen map and back, keeping the filters', async () => {
     const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open('list');
     await screen.findByText(lake.title);
-    await openFilters();
-    await fireEvent.press(screen.getByRole('radio', { name: '5 km' }));
-    await fireEvent.press(screen.getByRole('button', { name: t.discover.filtersClose }));
-    await fireEvent.press(screen.getByRole('radio', { name: t.discover.periodAll }));
+    await choose('filter-radius', '5 km');
+    await choose('filter-period', t.discover.periodAll);
 
     await fireEvent.press(screen.getByRole('button', { name: t.discover.showMapA11y }));
     expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
@@ -127,18 +135,15 @@ describe('« Liste » view — list first, map on demand', () => {
     expect(lastSearch(calls).to).toBeUndefined();
 
     // A filter changed on the map is the list's filter too.
-    await openFilters();
-    await fireEvent.press(screen.getByRole('radio', { name: 'Grand' }));
+    await choose('filter-size', 'Grand');
     await waitFor(() => expect(lastSearch(calls).size).toBe('Large'));
-    await fireEvent.press(screen.getByRole('button', { name: t.discover.filtersClose }));
 
     await fireEvent.press(screen.getByRole('button', { name: t.discover.showListA11y }));
     await waitFor(() => expect(screen.queryByLabelText(t.discover.mapLabel)).toBeNull());
     await waitFor(() => expect(lastSearch(calls)).toMatchObject({ radiusKm: '5', size: 'Large' }));
-    expect(screen.getByRole('radio', { name: t.discover.periodAll })).toBeSelected();
-    await openFilters();
-    expect(screen.getByRole('radio', { name: '5 km' })).toBeSelected();
-    expect(screen.getByRole('radio', { name: 'Grand' })).toBeSelected();
+    expect(pill('filter-period')).toHaveAccessibleName(`Période, ${t.discover.periodAll}`);
+    expect(pill('filter-radius')).toHaveAccessibleName('Distance, 5 km');
+    expect(pill('filter-size')).toHaveAccessibleName('Taille, Grand');
   });
 
   it('shows the walk of a tapped pin at the bottom of the map, to open or dismiss', async () => {
@@ -365,193 +370,144 @@ describe('refreshing the walks', () => {
   });
 });
 
-describe.each(['panel', 'list'] as const)('« %s » view, filters row and sheet', (view) => {
-  const closeButton = () => screen.getByRole('button', { name: t.discover.filtersClose });
+describe.each(['panel', 'list'] as const)('« %s » view, row of filter pills', (view) => {
+  const sizeText = () => within(pill('filter-size')).getByText(/./);
 
-  it('has one row: the period, and a « Filtres » button without badge at first', async () => {
-    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
-    await open(view);
-    await screen.findByText(lake.title);
-
-    expect(screen.getByLabelText(t.discover.period)).toBeTruthy();
-    expect(screen.getByRole('radio', { name: t.discover.periodWeek })).toBeSelected();
-    expect(filtersButton()).toHaveAccessibleName(t.discover.filters);
-    // Size and radius chips live in the sheet only.
-    expect(screen.queryByRole('radio', { name: 'Grand' })).toBeNull();
-    expect(screen.queryByRole('radio', { name: '5 km' })).toBeNull();
-
-    await fireEvent.press(screen.getByRole('radio', { name: t.discover.periodToday }));
-    expect(screen.getByRole('radio', { name: t.discover.periodToday })).toBeSelected();
-    await waitFor(() => expect(lastSearch(calls).to).toBeDefined());
-    await fireEvent.press(screen.getByRole('radio', { name: t.discover.periodAll }));
-    await waitFor(() => expect(lastSearch(calls).to).toBeUndefined());
-    // The period is not counted as an active filter.
-    expect(filtersButton()).toHaveAccessibleName(t.discover.filters);
-  });
-
-  it('counts the size as an active filter, in the badge and the accessible name', async () => {
+  it('has one row of pills, each a button with its label and value', async () => {
     mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open(view);
     await screen.findByText(lake.title);
-    expect(
-      within(filtersButton().parent!).queryByText('1', { includeHiddenElements: true }),
-    ).toBeNull();
 
-    await openFilters();
-    await fireEvent.press(screen.getByRole('radio', { name: 'Petit' }));
-    await fireEvent.press(closeButton());
-
-    expect(filtersButton()).toHaveAccessibleName('Filtres, 1 actif');
-    expect(
-      within(filtersButton().parent!).getByText('1', { includeHiddenElements: true }),
-    ).toBeTruthy();
+    expect(pill('filter-period')).toHaveAccessibleName(`Période, ${t.discover.periodWeek}`);
+    expect(pill('filter-size')).toHaveAccessibleName(`Taille, ${t.discover.sizeAll}`);
+    expect(within(pill('filter-period')).getByText(t.discover.periodWeek)).toBeTruthy();
+    expect(within(pill('filter-size')).getByText(t.discover.size)).toBeTruthy();
+    // No sheet, no « Filtres » button any more; the choices live in the menus.
+    expect(screen.queryByRole('button', { name: /^Filtres/ })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Grand' })).toBeNull();
+    expect(menuOpen()).toBe(false);
   });
 
-  it('opens a sheet with title, size choices and close button; changes apply at once', async () => {
-    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
-    await open(view);
-    await screen.findByText(lake.title);
-    expect(sheetOpen()).toBe(false);
-
-    await openFilters();
-    expect(screen.getByLabelText(t.discover.sizeSection)).toBeTruthy();
-    for (const name of ['Toutes', 'Petit', 'Moyen', 'Grand']) {
-      expect(sizeRadio(name)).toBeTruthy();
-    }
-    expect(sizeRadio('Toutes')).toBeSelected();
-    // Later filters of the mock-up are not shown.
-    expect(within(screen.getByTestId('filters-sheet')).queryByText(/laisse|places/i)).toBeNull();
-
-    await fireEvent.press(screen.getByRole('radio', { name: 'Moyen' }));
-    await waitFor(() => expect(lastSearch(calls).size).toBe('Medium'));
-    expect(screen.getByRole('radio', { name: 'Moyen' })).toBeSelected();
-  });
-
-  it('shows the distance only in the « Liste » view', async () => {
+  it('shows the distance pill only in the « Liste » view', async () => {
     mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open(view);
     await screen.findByText(lake.title);
-    await openFilters();
 
     if (view === 'list') {
-      expect(screen.getByLabelText(t.discover.radius)).toBeTruthy();
-      expect(screen.getByRole('radio', { name: '10 km' })).toBeSelected();
+      expect(pill('filter-radius')).toHaveAccessibleName('Distance, 10 km');
+      await openMenu('filter-radius');
+      expect(screen.getByRole('menuitem', { name: '10 km' })).toBeSelected();
     } else {
-      expect(screen.queryByLabelText(t.discover.radius)).toBeNull();
-      expect(screen.queryByRole('radio', { name: '10 km' })).toBeNull();
+      expect(screen.queryByTestId('filter-radius')).toBeNull();
     }
   });
 
-  it('says how many walks it finds, and closes with that button', async () => {
-    mockApi({ 'GET /api/v1/walks': () => ok([lake, forest]) });
-    await open(view);
-    await screen.findByText(forest.title);
-
-    await openFilters();
-    await screen.findByRole('button', { name: 'Voir 2 balades' });
-    await fireEvent.press(screen.getByRole('button', { name: 'Voir 2 balades' }));
-    expect(sheetOpen()).toBe(false);
-  });
-
-  it('says « Voir les balades » while the search is loading', async () => {
-    let release: (() => void) | undefined;
-    let count = 0;
-    mockApi({
-      'GET /api/v1/walks': async () => {
-        count += 1;
-        if (count === 2) await new Promise<void>((resolve) => (release = resolve));
-        return ok([lake]);
-      },
-    });
+  it('opens a menu of choices from the pill, the current one checked', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open(view);
     await screen.findByText(lake.title);
 
-    await openFilters();
-    expect(await screen.findByRole('button', { name: 'Voir 1 balade' })).toBeTruthy();
-    await fireEvent.press(screen.getByRole('radio', { name: 'Grand' }));
-    expect(await screen.findByRole('button', { name: t.discover.seeWalksUnknown })).toBeTruthy();
-
-    await act(async () => release?.());
-    expect(await screen.findByRole('button', { name: 'Voir 1 balade' })).toBeTruthy();
+    await openMenu('filter-size');
+    expect(pill('filter-size')).toBeExpanded();
+    // The menu is named after what it chooses.
+    expect(screen.getByLabelText(t.discover.size).props.accessibilityRole).toBe('menu');
+    const items = screen.getAllByRole('menuitem').map((item) => item.props.accessibilityLabel);
+    expect(items).toEqual([t.discover.sizeAll, 'Petit', 'Moyen', 'Grand']);
+    expect(screen.getByRole('menuitem', { name: t.discover.sizeAll })).toBeSelected();
+    expect(screen.getByRole('menuitem', { name: 'Petit' })).not.toBeSelected();
   });
 
-  it('resets the filters of the sheet to their defaults', async () => {
+  it('applies a choice at once, closes the menu and shows the value on the pill', async () => {
     const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open(view);
     await screen.findByText(lake.title);
-    await openFilters();
-    const reset = () => screen.getByRole('button', { name: t.discover.filtersReset });
-    expect(reset()).toBeDisabled();
+    const haptics = jest.requireMock('expo-haptics') as { selectionAsync: jest.Mock };
+    haptics.selectionAsync.mockClear();
 
-    await fireEvent.press(screen.getByRole('radio', { name: 'Grand' }));
-    if (view === 'list') await fireEvent.press(screen.getByRole('radio', { name: '25 km' }));
-    await waitFor(() => expect(lastSearch(calls).size).toBe('Large'));
-    await fireEvent.press(reset());
+    await choose('filter-size', 'Moyen');
 
-    expect(sizeRadio('Toutes')).toBeSelected();
-    if (view === 'list') {
-      expect(screen.getByRole('radio', { name: '10 km' })).toBeSelected();
-    }
-    expect(reset()).toBeDisabled();
-    // The period is not part of the sheet: it stays.
-    expect(screen.getByRole('radio', { name: t.discover.periodWeek })).toBeSelected();
+    await waitFor(() => expect(lastSearch(calls).size).toBe('Medium'));
+    expect(pill('filter-size')).toHaveAccessibleName('Taille, Moyen');
+    expect(sizeText()).toHaveTextContent('Moyen');
+    expect(pill('filter-size')).toBeCollapsed();
+    expect(haptics.selectionAsync).toHaveBeenCalled();
   });
 
-  it('closes with the close button, the background and the Android back button', async () => {
-    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+  it('changes the period from its pill', async () => {
+    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open(view);
     await screen.findByText(lake.title);
 
-    await openFilters();
-    await fireEvent.press(closeButton());
-    expect(sheetOpen()).toBe(false);
-
-    await openFilters();
-    await fireEvent.press(screen.getByTestId('filters-backdrop', { includeHiddenElements: true }));
-    expect(sheetOpen()).toBe(false);
-
-    await openFilters();
-    await fireEvent(screen.getByTestId('filters-sheet'), 'requestClose');
-    expect(sheetOpen()).toBe(false);
+    await choose('filter-period', t.discover.periodToday);
+    await waitFor(() => expect(lastSearch(calls).to).toBeDefined());
+    expect(pill('filter-period')).toHaveAccessibleName(`Période, ${t.discover.periodToday}`);
+    await choose('filter-period', t.discover.periodAll);
+    await waitFor(() => expect(lastSearch(calls).to).toBeUndefined());
   });
 
-  it('shows a removable label for the size, above the walks', async () => {
+  it('closes on a touch outside and with the Android back button, changing nothing', async () => {
+    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open(view);
+    await screen.findByText(lake.title);
+    const searches = searchCalls(calls).length;
+
+    await openMenu('filter-size');
+    await fireEvent.press(screen.getByTestId('menu-backdrop', { includeHiddenElements: true }));
+    await waitFor(() => expect(menuOpen()).toBe(false));
+
+    await openMenu('filter-size');
+    await fireEvent(screen.getByTestId('menu'), 'requestClose');
+    await waitFor(() => expect(menuOpen()).toBe(false));
+
+    expect(pill('filter-size')).toHaveAccessibleName(`Taille, ${t.discover.sizeAll}`);
+    expect(searchCalls(calls)).toHaveLength(searches);
+  });
+
+  it('marks a pill whose value is not the default, in bold too (not by colour only)', async () => {
     mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open(view);
     await screen.findByText(lake.title);
-    expect(screen.queryByTestId('filter-tag-size')).toBeNull();
+    const weight = () => StyleSheet.flatten(sizeText().props.style).fontWeight;
+    expect(weight()).toBe('500');
 
-    await openFilters();
-    await fireEvent.press(screen.getByRole('radio', { name: 'Petit' }));
-    await fireEvent.press(closeButton());
-    const tag = screen.getByRole('button', { name: 'Retirer le filtre Petits chiens' });
-    expect(within(tag).getByText('Petits chiens')).toBeTruthy();
+    await choose('filter-size', 'Petit');
+    expect(weight()).toBe('700');
+    // The value is on the pill itself: no separate removable label any more.
+    expect(screen.queryByText('Petits chiens')).toBeNull();
 
-    await fireEvent.press(tag);
-
-    expect(screen.queryByTestId('filter-tag-size')).toBeNull();
-    expect(filtersButton()).toHaveAccessibleName(t.discover.filters);
+    await choose('filter-size', t.discover.sizeAll);
+    expect(weight()).toBe('500');
+    expect(sizeText()).toHaveTextContent(t.discover.size);
   });
+});
 
-  it.each([
-    ['Medium', 'Chiens moyens'],
-    ['Large', 'Grands chiens'],
-  ] as const)('labels the %s size « %s »', async (size, label) => {
-    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
-    await open(view);
+describe('the filters, when the view changes in the profile', () => {
+  it('are kept from the panel to the list and back', async () => {
+    const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('panel');
     await screen.findByText(lake.title);
-    await openFilters();
-    await fireEvent.press(
-      screen.getByRole('radio', { name: size === 'Medium' ? 'Moyen' : 'Grand' }),
-    );
-    await fireEvent.press(closeButton());
+    await choose('filter-size', 'Petit');
+    await choose('filter-period', t.discover.periodAll);
 
-    expect(screen.getByRole('button', { name: `Retirer le filtre ${label}` })).toBeTruthy();
+    await act(() => setDiscoverLayout('list'));
+    expect(await screen.findByRole('button', { name: t.discover.showMapA11y })).toBeTruthy();
+    expect(pill('filter-size')).toHaveAccessibleName('Taille, Petit');
+    expect(pill('filter-period')).toHaveAccessibleName(`Période, ${t.discover.periodAll}`);
+    await waitFor(() => expect(lastSearch(calls)).toMatchObject({ size: 'Small', radiusKm: '10' }));
+    expect(lastSearch(calls).to).toBeUndefined();
+    await choose('filter-radius', '25 km');
+
+    await act(() => setDiscoverLayout('panel'));
+    expect(await screen.findByTestId('bottom-sheet')).toBeTruthy();
+    expect(pill('filter-size')).toHaveAccessibleName('Taille, Petit');
+    await act(() => setDiscoverLayout('list'));
+    expect(await screen.findByRole('button', { name: t.discover.showMapA11y })).toBeTruthy();
+    expect(pill('filter-radius')).toHaveAccessibleName('Distance, 25 km');
   });
 });
 
 describe('« Liste » view, full-screen map', () => {
-  it('has the same row and sheet, without the distance (the map follows its area)', async () => {
+  it('has the same pills, without the distance (the map follows its area)', async () => {
     const { calls } = mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open('list');
     await screen.findByText(lake.title);
@@ -559,10 +515,9 @@ describe('« Liste » view, full-screen map', () => {
     await screen.findByLabelText(t.discover.mapLabel);
 
     // Only the map's row is shown: the list is hidden under it.
-    await fireEvent.press(screen.getAllByRole('button', { name: /^Filtres/ }).at(-1)!);
-    expect(screen.getByText(t.discover.sizeSection)).toBeTruthy();
-    expect(screen.queryByLabelText(t.discover.radius)).toBeNull();
-    await fireEvent.press(screen.getByRole('radio', { name: 'Petit' }));
+    expect(screen.queryAllByTestId('filter-radius')).toHaveLength(0);
+    expect(screen.getAllByTestId('filter-size')).toHaveLength(1);
+    await choose('filter-size', 'Petit');
     await waitFor(() => expect(lastSearch(calls).size).toBe('Small'));
   });
 });
@@ -617,22 +572,22 @@ describe.each(['panel', 'list'] as const)('« %s » view, « Ma position » butt
 });
 
 describe('« Panneau » view, « Ma position » button and the panel', () => {
-  it('stays above the panel at its low and middle positions, and gives way at the high one', async () => {
+  it('stays over the map at the low and middle positions, and gives way at the high one', async () => {
     mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open('panel');
     await screen.findByText(lake.title);
-    const bottom = () => {
-      const style = StyleSheet.flatten(
-        screen.getByRole('button', { name: t.discover.locate }).props.style,
-      );
-      return style.bottom as number;
-    };
-    const middle = bottom();
+    const locate = () => screen.queryByRole('button', { name: t.discover.locate });
+
+    expect(locate()).toBeTruthy(); // middle
     await fireEvent.press(screen.getByTestId('panel-handle')); // high
-    expect(screen.queryByRole('button', { name: t.discover.locate })).toBeNull();
+    expect(locate()).toBeNull();
+    expect(
+      screen.getByTestId('locate-anchor', { includeHiddenElements: true }).props.pointerEvents,
+    ).toBe('none');
     await fireEvent.press(screen.getByTestId('panel-handle')); // low
-    expect(bottom()).toBeLessThan(middle);
-    await fireEvent.press(screen.getByTestId('panel-handle')); // middle
-    expect(bottom()).toBe(middle);
+    expect(locate()).toBeTruthy();
+    expect(
+      screen.getByTestId('locate-anchor', { includeHiddenElements: true }).props.pointerEvents,
+    ).toBe('box-none');
   });
 });

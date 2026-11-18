@@ -24,6 +24,9 @@ export const fr = {
     back: 'Retour',
     fieldInvalid: 'Valeur invalide : vérifie ce champ.',
     tooLong: 'Maximum {max} caractères.',
+    /** Pill opening a menu of choices: what is chosen, then the current choice. */
+    menuPillA11y: '{label}, {value}',
+    menuPillHint: 'Ouvre la liste des choix.',
   },
   auth: {
     signInTitle: 'Connexion',
@@ -98,17 +101,9 @@ export const fr = {
     period: 'Période',
     periodToday: 'Aujourd’hui',
     periodWeek: '7 jours',
-    periodAll: 'Toutes',
-    sizeAll: 'Toutes',
-    filters: 'Filtres',
-    filtersActive: 'Filtres, {count} actif|Filtres, {count} actifs',
-    filtersClose: 'Fermer les filtres',
-    sizeSection: 'Taille de ton chien',
-    sizeTag: { Small: 'Petits chiens', Medium: 'Chiens moyens', Large: 'Grands chiens' },
-    removeFilter: 'Retirer le filtre {label}',
-    filtersReset: 'Réinitialiser',
-    seeWalks: 'Voir {count} balade|Voir {count} balades',
-    seeWalksUnknown: 'Voir les balades',
+    periodAll: 'Toutes les dates',
+    size: 'Taille',
+    sizeAll: 'Toutes les tailles',
     emptyTitle: 'Aucune balade dans cette zone',
     emptyMessage:
       'Déplace la carte ou dézoome pour chercher ailleurs : la liste suit la zone visible. Tu peux aussi organiser ta propre balade.',
@@ -117,7 +112,6 @@ export const fr = {
     zoneCount: '{count} balade dans cette zone|{count} balades dans cette zone',
     radius: 'Distance',
     radiusOption: '{km} km',
-    radiusA11y: 'Jusqu’à {km} km',
     listLocationDenied:
       'Position non disponible : la liste montre les balades autour d’un point par défaut. Ouvre la carte pour chercher ailleurs.',
     listEmptyTitle: 'Aucune balade à cette distance',

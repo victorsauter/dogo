@@ -194,6 +194,10 @@ jest.mock('@gorhom/bottom-sheet', () => {
   return { __esModule: true, default: BottomSheet, BottomSheetFlatList, BottomSheetView: View };
 });
 
+// The system menu of iOS (@expo/ui) is native: tests use the app's own menu
+// (`AnchoredMenu`), as on Android.
+jest.mock('@/components/nativeMenu', () => ({ NativeMenuView: null }));
+
 // Haptics do nothing in tests; tests may check they were asked for.
 jest.mock('expo-haptics', () => ({
   ImpactFeedbackStyle: { Light: 'light' },

@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import type { WalkSummary } from '@/api/types';
@@ -8,6 +8,7 @@ import type { MapRegion } from '@/lib/geo';
 import { t } from '@/strings';
 import { useTheme } from '@/theme';
 
+import { Material } from './Material';
 import { Text } from './Text';
 
 export interface WalksMapProps {
@@ -27,6 +28,8 @@ export interface WalksMapProps {
   showsUserLocation?: boolean;
   /** Height (pt) covered at the bottom by a panel: centring and the map's logo stay above it. */
   bottomInset?: number;
+  /** Height (pt) covered at the top by a floating header: centring and controls stay below it. */
+  topInset?: number;
 }
 
 /** Map of walks: one pin per walk (accent colour for professional walks), callout opens it. */
@@ -41,10 +44,11 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
     searching,
     showsUserLocation,
     bottomInset = 0,
+    topInset = 0,
   },
   ref,
 ) {
-  const { colors, radii, spacing } = useTheme();
+  const { colors, radii, spacing, shadows } = useTheme();
   return (
     <View style={{ flex: 1 }}>
       <MapView
@@ -57,7 +61,9 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
         showsUserLocation={showsUserLocation}
         toolbarEnabled={false}
         mapPadding={
-          bottomInset > 0 ? { top: 0, left: 0, right: 0, bottom: bottomInset } : undefined
+          bottomInset > 0 || topInset > 0
+            ? { top: topInset, left: 0, right: 0, bottom: bottomInset }
+            : undefined
         }
         onPress={
           onSelectWalk
@@ -103,23 +109,32 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
           accessible
           accessibilityRole="progressbar"
           accessibilityLabel={t.discover.searching}
-          style={{
-            position: 'absolute',
-            top: spacing.sm,
-            alignSelf: 'center',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.xs,
-            paddingHorizontal: spacing.md,
-            paddingVertical: spacing.xs,
-            borderRadius: radii.pill,
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
+          style={[
+            {
+              position: 'absolute',
+              top: topInset + spacing.sm,
+              alignSelf: 'center',
+              borderRadius: radii.pill,
+            },
+            shadows.floating,
+          ]}
         >
-          <ActivityIndicator size="small" color={colors.primary} />
-          <Text variant="caption">{t.discover.searching}</Text>
+          <Material
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.xs,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.xs,
+              borderRadius: radii.pill,
+              overflow: 'hidden',
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: colors.separator,
+            }}
+          >
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text variant="caption">{t.discover.searching}</Text>
+          </Material>
         </View>
       ) : null}
     </View>
