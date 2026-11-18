@@ -1,4 +1,5 @@
 import type { GeoPoint } from '@/api/types';
+import { config } from '@/lib/config';
 
 /** A visible map area, as `react-native-maps` describes it. */
 export interface MapRegion {
@@ -13,8 +14,11 @@ export const MAX_SEARCH_RADIUS_KM = 100;
 const MIN_SEARCH_RADIUS_KM = 0.5;
 const KM_PER_DEGREE = 111.32;
 
-/** Centre of Paris: the pilot runs in France (spec §7), used when the position is unknown. */
-export const DEFAULT_CENTER: GeoPoint = { latitude: 48.8566, longitude: 2.3522 };
+/**
+ * Where the map opens when the position is unknown: Seppois-le-Haut, where the
+ * pilot starts, unless `EXPO_PUBLIC_DEFAULT_LATITUDE`/`_LONGITUDE` say otherwise.
+ */
+export const DEFAULT_CENTER: GeoPoint = config.defaultCenter;
 
 /** About 8 km across: a neighbourhood and its surroundings. */
 export const NEIGHBOURHOOD_DELTA = 0.08;

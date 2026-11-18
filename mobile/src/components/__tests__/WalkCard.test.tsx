@@ -90,7 +90,7 @@ describe('WalkCard', () => {
 
   it('measures the distance from the user when the position is known', async () => {
     await renderWithTheme(
-      <WalkCard walk={walkResult()} origin={{ latitude: 48.86, longitude: 2.35 }} />,
+      <WalkCard walk={walkResult()} origin={{ latitude: 47.5324, longitude: 7.1858 }} />,
     );
     expect(screen.getByText('à 10 m · Entrée du parc')).toBeTruthy();
   });

@@ -11,7 +11,7 @@ Les tâches 16 à 18 demandent une carte des balades proches, une petite carte d
 ## Décision
 
 - Les cartes utilisent `react-native-maps` (version recommandée par Expo pour le SDK 58), avec le fournisseur par défaut : Apple Plans sur iOS, Google Maps sur Android.
-- La position vient d'`expo-location`, autorisation « pendant l'utilisation » seulement, demandée à l'ouverture de l'onglet « Balades » et du formulaire de balade (`src/lib/location.ts`). Un refus ou une absence de position centre la carte sur Paris (`DEFAULT_CENTER`) avec une phrase d'explication ; l'écran n'est jamais bloqué.
+- La position vient d'`expo-location`, autorisation « pendant l'utilisation » seulement, demandée à l'ouverture de l'onglet « Balades » et du formulaire de balade (`src/lib/location.ts`). Un refus ou une absence de position centre la carte sur un centre par défaut (`DEFAULT_CENTER` : Seppois-le-Haut, réglable par `EXPO_PUBLIC_DEFAULT_LATITUDE` et `EXPO_PUBLIC_DEFAULT_LONGITUDE`) avec une phrase d'explication ; l'écran n'est jamais bloqué.
 - La recherche suit la zone visible : centre de la région et rayon couvrant la région (demi-diagonale, plafonnée aux 100 km de l'API), avec un délai de 400 ms après le dernier déplacement et les résultats précédents gardés pendant le chargement.
 
 ## Conséquences

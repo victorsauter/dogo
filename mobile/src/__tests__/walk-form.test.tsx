@@ -28,7 +28,7 @@ async function openNewWalk() {
 describe('validateWalk', () => {
   const now = new Date('2026-11-18T08:00:00Z');
   const valid = {
-    ...emptyWalkForm({ latitude: 48.85, longitude: 2.35 }, new Date('2026-11-19T09:00:00Z')),
+    ...emptyWalkForm({ latitude: 47.5324, longitude: 7.1858 }, new Date('2026-11-19T09:00:00Z')),
     title: 'Tour du lac',
     locationLabel: 'Parvis',
   };
@@ -101,7 +101,7 @@ describe('create a walk', () => {
     await fireEvent.changeText(screen.getByLabelText(t.walk.title), ' Balade du soir ');
     await fireEvent.changeText(screen.getByLabelText(t.walk.locationLabel), 'Fontaine');
     await fireEvent(screen.getByTestId('meeting-point-map'), 'press', {
-      nativeEvent: { coordinate: { latitude: 48.87, longitude: 2.33 } },
+      nativeEvent: { coordinate: { latitude: 47.5287, longitude: 7.1912 } },
     });
     await fireEvent.press(
       screen.getByRole('button', { name: `Augmenter ${t.walk.maxDogs.toLowerCase()}` }),
@@ -115,7 +115,7 @@ describe('create a walk', () => {
     const body = calls.find((c) => c.method === 'POST')!.json;
     expect(body).toMatchObject({
       title: 'Balade du soir',
-      location: { latitude: 48.87, longitude: 2.33 },
+      location: { latitude: 47.5287, longitude: 7.1912 },
       locationLabel: 'Fontaine',
       maxDogs: 7,
       durationMinutes: 60,

@@ -50,7 +50,7 @@ describe('« Balades » tab', () => {
     expect(screen.getByLabelText(t.discover.mapLabel)).toBeTruthy();
     expect(screen.getAllByTestId('map-marker')).toHaveLength(1);
     const params = query(searchCalls(calls)[0]!.path);
-    expect(params).toMatchObject({ lat: '48.8566', lng: '2.3522', radiusKm: '5.4', limit: '100' });
+    expect(params).toMatchObject({ lat: '47.6234', lng: '7.2376', radiusKm: '5.4', limit: '100' });
     expect(params.to).toBeDefined();
     expect(params.size).toBeUndefined();
   });
@@ -105,7 +105,7 @@ describe('« Balades » tab', () => {
 
     expect(await screen.findByText(t.discover.locationDenied)).toBeTruthy();
     await waitFor(() => expect(searchCalls(calls)).toHaveLength(1));
-    expect(query(searchCalls(calls)[0]!.path)).toMatchObject({ lat: '48.8566', lng: '2.3522' });
+    expect(query(searchCalls(calls)[0]!.path)).toMatchObject({ lat: '47.5339', lng: '7.1844' });
   });
 });
 

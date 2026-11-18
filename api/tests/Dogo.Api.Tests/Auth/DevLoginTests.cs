@@ -86,7 +86,8 @@ public sealed class DevLoginTests(ApiFixture fixture) : ApiTestBase(fixture)
     [Fact]
     public async Task Dev_login_returns_404_when_disabled()
     {
-        await using var factory = new DogoApiFactory(Fixture.ConnectionString, new Dictionary<string, string?> { ["Auth:AllowDevLogin"] = "false" });
+        await using var factory = new DogoApiFactory(
+            Fixture.ConnectionString, new Dictionary<string, string?> { ["Auth:AllowDevLogin"] = "false", ["DemoData:Enabled"] = "false" });
 
         var response = await factory.CreateClient().PostAsJsonAsync("/api/v1/auth/dev", new { subject = "alice", displayName = "Alice" }, Ct);
 

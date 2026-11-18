@@ -18,8 +18,8 @@ La v0.3 ne garde qu'un produit, l'application canine, et qu'une promesse : des b
 La V1 tient en une phrase : trouver et rejoindre une balade tranquille près de chez soi, en sachant quels chiens seront là.
 
 - **Public :** les propriétaires de chiens d'une seule zone pilote, et 1 à 3 éducateurs ou clubs partenaires de cette zone.
-- **Zone pilote :** en France ; ville à choisir. Le meilleur candidat est l'endroit où tu connais déjà des éducateurs.
-- **Critère de réussite :** à fixer après les entretiens, une fois la ville et le nombre de partenaires connus. Point de départ : 10 balades par semaine pendant 4 semaines, dont la moitié créées par des particuliers.
+- **Zone pilote :** Seppois-le-Haut et ses environs (Haut-Rhin).
+- **Critère de réussite :** à fixer après les entretiens, une fois le nombre de partenaires connu. Point de départ : 10 balades par semaine pendant 4 semaines, dont la moitié créées par des particuliers.
 - **Gratuité :** toute la V1 est gratuite, pour les particuliers comme pour les éducateurs.
 
 ## Périmètre V1
@@ -61,7 +61,7 @@ Rien n'est abandonné : chaque sujet est rangé dans une étape ultérieure, ave
 
 La carte vide se règle en recrutant les éducateurs avant les particuliers : chacun amène ses clients et organise déjà des balades.
 
-1. **Choisir la zone pilote** : une ville ou une agglomération, pas un pays.
+1. **Zone pilote choisie** : Seppois-le-Haut et ses environs.
 2. **Convaincre 1 à 3 éducateurs ou clubs.** Ce qu'ils gagnent en V1 : remplacer leur groupe Facebook ou WhatsApp, voir la liste des inscrits par balade, fixer capacité et gabarits admis.
 3. **Faire entrer leurs membres.** Chaque membre crée son compte et le profil de ses chiens, ce qui constitue la première base locale.
 4. **Ouvrir les balades communautaires** dans la même zone, et en organiser quelques-unes soi-même les premières semaines.
@@ -86,11 +86,12 @@ Trois points sont à faire cadrer par un juriste avant le lancement :
 
 ## Décisions
 
-Onze décisions sont prises ; deux restent ouvertes et dépendent des éducateurs partenaires.
+Douze décisions sont prises ; une reste ouverte et dépend des éducateurs partenaires.
 
 | Décision prise | Choix |
 | --- | --- |
 | Nom et dépôt | L'application s'appelle dogo et vit dans le dépôt `dogo` ; `DogoMeet` est conservé à part |
+| Zone pilote | Seppois-le-Haut et ses environs (Haut-Rhin) |
 | Paiement des balades professionnelles | Hors application en V1 |
 | Pays du pilote | France |
 | Forme de l'application | Application native iOS et Android |
@@ -104,7 +105,6 @@ Onze décisions sont prises ; deux restent ouvertes et dépendent des éducateur
 
 | Décision ouverte | Piste | Ce qu'elle bloque |
 | --- | --- | --- |
-| Ville pilote | Celle des éducateurs que tu connais déjà ; à nommer | Amorçage |
 | Critère de réussite du pilote | À fixer avec les éducateurs partenaires | Décision de passer à la suite |
 
 Le natif impose une publication sur l'App Store et Google Play : comptes développeur et validation avant chaque sortie. Expo permet ensuite de corriger le code applicatif sans repasser par cette validation.
@@ -117,7 +117,7 @@ Le développement commence maintenant, en quatre lots courts ; les éducateurs q
 2. **Lot 2 — Balades.** Création, carte et liste, inscription ouverte ou sur approbation, participants visibles. Sortie : démonstration aux éducateurs que tu connais, dont les retours ajustent la suite.
 3. **Lot 3 — Vie de la balade.** Fil simple, notifications, récurrence hebdomadaire.
 4. **Lot 4 — Organisations et sécurité.** Fiche, membres, balades réservées, blocage et signalement. Sortie : publication sur les stores et ouverture du pilote.
-5. **Pilote.** Dans la ville retenue, avec le critère de réussite fixé avec les éducateurs.
+5. **Pilote.** À Seppois-le-Haut et dans ses environs, avec le critère de réussite fixé avec les éducateurs.
 6. **V1.1.** Mini-évaluation après-balade, badges communautaires, affinités entre chiens.
 7. **Lot pros 2.** Paiement par chien, catalogue de prestations, agenda et réservation. Il passe avant la V1.1 si les éducateurs en font une condition.
 8. **Ensuite.** Certification des éducateurs, accompagnement, services, santé.

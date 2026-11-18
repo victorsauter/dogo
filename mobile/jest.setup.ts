@@ -72,15 +72,15 @@ jest.mock('react-native-maps', () => {
   return { __esModule: true, default: MapView, Marker };
 });
 
-// Location: granted, in Paris, unless a test overrides these mocks.
+// Location: granted, in Altkirch (near the default centre, Seppois-le-Haut), unless a test overrides these mocks.
 jest.mock('expo-location', () => ({
   Accuracy: { Balanced: 3 },
   requestForegroundPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
   getLastKnownPositionAsync: jest.fn(async () => ({
-    coords: { latitude: 48.8566, longitude: 2.3522 },
+    coords: { latitude: 47.6234, longitude: 7.2376 },
   })),
   getCurrentPositionAsync: jest.fn(async () => ({
-    coords: { latitude: 48.8566, longitude: 2.3522 },
+    coords: { latitude: 47.6234, longitude: 7.2376 },
   })),
 }));
 

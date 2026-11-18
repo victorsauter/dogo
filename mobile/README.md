@@ -45,13 +45,25 @@ Après un changement de `.env`, relancer Metro avec `npx expo start --clear`.
 
 Lues une seule fois dans `src/lib/config.ts` (objet `config` typé). Expo intègre les variables `EXPO_PUBLIC_*` au moment de la construction : elles ne sont pas secrètes et ne doivent jamais contenir de secret.
 
-| Variable                           | Défaut                  | Rôle                                                                                                        |
-| ---------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `EXPO_PUBLIC_API_URL`              | `http://localhost:5080` | Adresse de l'API, sans `/api/v1`                                                                            |
-| `EXPO_PUBLIC_DEV_LOGIN`            | absente                 | `true` affiche la connexion de test (l'API doit avoir `Auth:AllowDevLogin=true`)                            |
-| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` | absente                 | Identifiant client OAuth web de Google ; sans lui, bouton Google masqué (version de développement requise)  |
-| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | absente                 | Identifiant client OAuth iOS, requis en plus sur iOS ; il sert aussi au plugin natif (`app.config.ts`)      |
-| `EXPO_PUBLIC_EAS_PROJECT_ID`       | absente                 | Identifiant du projet EAS (`eas init`) : sans lui, notifications push indisponibles (`extra.eas.projectId`) |
+| Variable                                                        | Défaut                                | Rôle                                                                                                               |
+| --------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `EXPO_PUBLIC_API_URL`                                           | `http://localhost:5080`               | Adresse de l'API, sans `/api/v1`                                                                                   |
+| `EXPO_PUBLIC_DEV_LOGIN`                                         | absente                               | `true` affiche la connexion de test (l'API doit avoir `Auth:AllowDevLogin=true`) et les données de démonstration   |
+| `EXPO_PUBLIC_DEFAULT_LATITUDE`, `EXPO_PUBLIC_DEFAULT_LONGITUDE` | Seppois-le-Haut (`47.5339`, `7.1844`) | Centre de la carte quand la position n'est pas connue ; les deux sont nécessaires, une valeur invalide est ignorée |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`                              | absente                               | Identifiant client OAuth web de Google ; sans lui, bouton Google masqué (version de développement requise)         |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`                              | absente                               | Identifiant client OAuth iOS, requis en plus sur iOS ; il sert aussi au plugin natif (`app.config.ts`)             |
+| `EXPO_PUBLIC_EAS_PROJECT_ID`                                    | absente                               | Identifiant du projet EAS (`eas init`) : sans lui, notifications push indisponibles (`extra.eas.projectId`)        |
+
+## Données de démonstration (développement)
+
+Avec `EXPO_PUBLIC_DEV_LOGIN=true`, l'écran de connexion montre, sous « Connexion de test », deux cartes réservées au développement (voir l'[ADR 0027](../docs/adr/0027-donnees-de-demonstration.md) et « Données de démonstration » dans `api/README.md`) :
+
+- **« Données de démonstration »** : l'état (aucune donnée, ou le nombre de comptes, chiens, balades, messages et photos), l'interrupteur « Télécharger des photos » (activé par défaut), « Générer les données de démonstration » (avec les photos, compter quelques secondes à une minute : le bouton tourne et une phrase l'explique, puis un résumé s'affiche) et « Supprimer les données de démonstration » après confirmation. Générer à nouveau remplace les données de démonstration ; le compte de test (`dev-user-1`) n'est jamais touché. Si l'API répond 404 (`DemoData:Enabled` à `false`), la carte le dit en une phrase.
+- **« Se connecter comme… »** : les comptes de démonstration avec leur avatar, leurs chiens, le badge « Éducateur » et leur organisation, et un champ de recherche (nom, chien ou organisation, sans tenir compte des accents). Toucher un compte ouvre une session par la connexion de test, avec son `subject`.
+
+Pour essayer : lancer l'API en Development (`DemoData:Enabled` y est vrai), ouvrir l'application déconnectée, générer, puis se connecter comme `demo-marie-schmitt` (balade complète, fils de discussion), `demo-thomas-haas` (avertissement « Participant bloqué ») ou `demo-sandrine-gutzwiller` (responsable d'organisation : membres et demandes). Se déconnecter ramène à l'écran de connexion pour changer de compte.
+
+Le code vit à part, dans `src/devtools/` (`demoData.ts` pour les appels typés depuis `schema.d.ts`, `DemoDataSection.tsx` pour l'interface) ; `loadDemoDataSection()` ne le charge que si `EXPO_PUBLIC_DEV_LOGIN` vaut `true` : sinon rien n'est rendu ni appelé. Les photos viennent de DiceBear (avatars dessinés, CC0) et de Wikimedia Commons (photos de races sous licence libre) ; elles restent sur l'API de développement.
 
 ## Scripts
 
@@ -97,6 +109,7 @@ mobile/
     ├── theme/             couleurs claires et sombres, espacements, rayons, typographie
     ├── strings/           tous les textes français (fr.ts)
     ├── lib/               configuration, fournisseurs, âge, dates, géographie, position, validation des formulaires, sélecteur de photo
+    ├── devtools/          outils de développement (données de démonstration), chargés seulement avec EXPO_PUBLIC_DEV_LOGIN=true
     └── test/              utilitaires de test (pas de tests ici)
 ```
 
@@ -191,4 +204,4 @@ Les textes iOS et Android (position, photos, appareil photo) sont dans `app.conf
 - Choisir une photo : `PhotoPicker` (photothèque ou appareil photo, via `pickPhoto()` de `src/lib/photoPicker.ts`, qui recadre en carré, réduit à 1280 px et réencode en JPEG). L'envoi se fait par `useUploadMyPhoto()` / `useUploadDogPhoto()` (multipart, champ `file`). La partie fichier est un `File` d'`expo-file-system` : depuis le SDK 58, le `fetch` global est celui d'`expo/fetch`, qui refuse l'objet `{ uri, name, type }` propre à React Native (voir `src/api/photoUpload.ts`). Une erreur levée dans l'application (et non par le réseau) donne une `ApiError` de type `client`, jamais « Impossible de joindre le serveur ». Les erreurs `photo.too_large` et `photo.unsupported_type` ont leur message français.
 - Formulaires : limites de l'API dans `src/lib/forms.ts` (`limits`, `validateDog`, `validateProfile`) ; les erreurs de champ du serveur s'affichent sur le bon champ par `serverFieldErrors()`.
 - Défilement vers la première erreur : un formulaire rendu dans un `Screen` qui défile appelle `useScrollToFirstError()(errors)` après un échec de validation (client ou serveur). Les champs se repèrent par leur nom : prop `name` de `TextField` et `DateField`, ou `<FieldAnchor name="…">` autour d'un autre champ (groupe de puces, carte). Le composant qui appelle le crochet doit être **à l'intérieur** du `Screen`.
-- Tests d'écran : `renderRouter('./src/app', …)` avec `mockApi({ 'GET /api/v1/me': () => ok(…) })` (`src/test/mockApi.ts`, qui remplace `fetch` ; `call.form` donne le corps multipart relu) ; les modules natifs (`expo-apple-authentication`, `photoPicker`, sélecteur de date) sont simulés avec `jest.mock`. `jest.setup.ts` simule pour tous les tests `expo-file-system` (`File` est un vrai `Blob`), `react-native-maps` (une vue qui transmet `regionChangeComplete` et `press`) et `expo-location` (autorisée, à Paris). Données de balade : `walkResult()`, `walkDetail()`, `participant()` dans `src/test/fixtures.ts`.
+- Tests d'écran : `renderRouter('./src/app', …)` avec `mockApi({ 'GET /api/v1/me': () => ok(…) })` (`src/test/mockApi.ts`, qui remplace `fetch` ; `call.form` donne le corps multipart relu) ; les modules natifs (`expo-apple-authentication`, `photoPicker`, sélecteur de date) sont simulés avec `jest.mock`. `jest.setup.ts` simule pour tous les tests `expo-file-system` (`File` est un vrai `Blob`), `react-native-maps` (une vue qui transmet `regionChangeComplete` et `press`) et `expo-location` (autorisée, à Altkirch ; le centre par défaut est Seppois-le-Haut). Données de balade : `walkResult()`, `walkDetail()`, `participant()` dans `src/test/fixtures.ts`.

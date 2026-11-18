@@ -6,10 +6,14 @@ import { Banner, Button, Card, Screen, Text, TextField } from '@/components';
 import { isAppleSignInAvailable } from '@/auth/providers/apple';
 import { isGoogleSignInAvailable } from '@/auth/providers/google';
 import { signInErrorMessage, useAppleSignIn, useDevSignIn, useGoogleSignIn } from '@/auth/signIn';
+import { loadDemoDataSection } from '@/devtools';
 import { config } from '@/lib/config';
 import { setSignInNotice, useSignInNotice } from '@/lib/signInNotice';
 import { t } from '@/strings';
 import { useTheme } from '@/theme';
+
+// Development only: null (and never loaded) unless EXPO_PUBLIC_DEV_LOGIN is true.
+const DemoDataSection = loadDemoDataSection();
 
 export default function SignInScreen() {
   const { spacing } = useTheme();
@@ -114,6 +118,17 @@ export default function SignInScreen() {
             }}
           />
         </Card>
+      ) : null}
+
+      {config.devLogin && DemoDataSection ? (
+        <DemoDataSection
+          busy={busy}
+          onSignInAs={(account) => {
+            apple.reset();
+            google.reset();
+            dev.mutate(account);
+          }}
+        />
       ) : null}
 
       {!hasMethod ? (

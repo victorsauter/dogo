@@ -93,7 +93,7 @@ export function walkResult(overrides: Partial<WalkSearchResult> = {}): WalkSearc
     title: 'Tour du lac',
     startsAt: inDays(2),
     durationMinutes: 90,
-    location: { latitude: 48.86, longitude: 2.35 },
+    location: { latitude: 47.5324, longitude: 7.1858 },
     locationLabel: 'Entrée du parc',
     distanceMeters: 1250,
     maxDogs: 6,

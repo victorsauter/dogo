@@ -50,6 +50,38 @@ export const fr = {
     legalEnd: '.',
     accountDeleted: 'Ton compte a été supprimé. À bientôt peut-être !',
   },
+  /** Development only (`EXPO_PUBLIC_DEV_LOGIN`): demo data on the sign-in screen. */
+  demoData: {
+    title: 'Données de démonstration',
+    hint: 'Réservées au développement : une communauté fictive autour de Seppois-le-Haut pour essayer l’application.',
+    disabled:
+      'Les données de démonstration sont désactivées sur cette API (DemoData:Enabled vaut false).',
+    none: 'Aucune donnée de démonstration pour l’instant.',
+    present:
+      '{owners} propriétaires, {educators} éducateurs, {dogs} chiens, {walks} balades dont {upcoming} à venir, {messages} messages et {photos} photos.',
+    photos: 'Télécharger des photos',
+    photosHint: 'Avatars dessinés et photos de races pour la moitié des profils.',
+    generate: 'Générer les données de démonstration',
+    generating: 'Génération en cours… Avec les photos, cela peut prendre une minute.',
+    replaceHint:
+      'Générer à nouveau remplace les données de démonstration. Ton compte de test n’est pas touché.',
+    generated: 'C’est prêt : {accounts} comptes, {walks} balades et {photos} photos.',
+    photosFailed:
+      '{count} photo n’a pas pu être téléchargée.|{count} photos n’ont pas pu être téléchargées.',
+    delete: 'Supprimer les données de démonstration',
+    deleteConfirmTitle: 'Supprimer les données de démonstration ?',
+    deleteConfirmMessage:
+      'Les comptes de démonstration, leurs chiens, balades, messages et photos seront supprimés. Ton compte de test n’est pas touché.',
+    deleted: 'Données de démonstration supprimées.',
+    signInAs: 'Se connecter comme…',
+    accountCount: '{count} compte de démonstration|{count} comptes de démonstration',
+    search: 'Rechercher un compte',
+    searchPlaceholder: 'Nom, chien ou organisation',
+    noMatch: 'Aucun compte ne correspond à cette recherche.',
+    educator: 'Éducateur',
+    noDog: 'Sans chien',
+    signInAsA11y: 'Se connecter comme {name}',
+  },
   tabs: {
     discover: 'Balades',
     myWalks: 'Mes balades',
@@ -62,7 +94,7 @@ export const fr = {
     mapLabel: 'Carte des balades proches',
     searching: 'Recherche…',
     locationDenied:
-      'Position non disponible : la carte est centrée sur Paris. Déplace-la pour chercher ailleurs.',
+      'Position non disponible : la carte affiche une zone par défaut. Déplace-la pour chercher ailleurs.',
     period: 'Période',
     size: 'Gabarit',
     periodToday: 'Aujourd’hui',
