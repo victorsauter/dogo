@@ -10,8 +10,9 @@ Les choix faits ici sans validation explicite sont listés à la fin, section «
 
 - **Base :** `/api/v1`. JSON en camelCase. Les énumérations sont sérialisées en chaînes.
 - **Identifiants :** GUID. **Dates :** ISO 8601 en UTC.
-- **Authentification :** jeton d'accès `Bearer` (JWT, 15 minutes) et jeton de rafraîchissement (30 jours, renouvelé à chaque usage, stocké haché). Tout exige une authentification, sauf `/auth/*` et `/health`.
+- **Authentification :** jeton d'accès `Bearer` (JWT, 15 minutes) et jeton de rafraîchissement (30 jours, renouvelé à chaque usage, stocké haché). Tout exige une authentification, sauf `/auth/*`, `/health` et les fichiers de photos.
 - **Erreurs :** `application/problem+json` (RFC 9457), avec une extension `code` stable, par exemple `walk.full`. Les erreurs de validation listent les champs fautifs.
+- **Photos :** `photoUrl` est un chemin relatif à l'origine du serveur (`/photos/...`), servi sans authentification sous un nom aléatoire ; voir l'ADR 0010.
 - **Listes :** paramètre `limit` (50 par défaut, 100 au plus). Le fil de messages se pagine avec `before`.
 - **Compte suspendu :** toute écriture renvoie 403 avec le code `account.suspended`.
 
