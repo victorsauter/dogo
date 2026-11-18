@@ -182,6 +182,14 @@ describe('edit a walk', () => {
     },
   );
 
+  it('drops the refusal message once the field is corrected', async () => {
+    await openEdit(() => problemResponse(409, 'walk.size_in_use'));
+    await fireEvent.press(screen.getByRole('button', { name: t.common.save }));
+    expect(await screen.findAllByText(t.errors['walk.size_in_use'])).toHaveLength(2);
+    await fireEvent.press(screen.getByRole('checkbox', { name: 'Petit' }));
+    expect(screen.queryByText(t.errors['walk.size_in_use'])).toBeNull();
+  });
+
   it('refuses to edit a walk I do not organise', async () => {
     mockApi({ [`GET ${path}`]: () => ok({ ...created, isOrganizer: false }) });
     await sessionStore.set(authResponse());
