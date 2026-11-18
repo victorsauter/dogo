@@ -73,7 +73,19 @@ public sealed class Walk : IHasCreatedAt
 
     public WalkStatus Status { get; set; } = WalkStatus.Scheduled;
 
-    // Lot 3 adds SeriesId (weekly recurrence), Lot 4 adds OrganizationId (professional walks).
+    /// <summary>Weekly series the walk belongs to (spec §4.5), if any.</summary>
+    public Guid? SeriesId { get; init; }
+
+    public WalkSeries? Series { get; init; }
+
+    /// <summary>
+    /// When the reminder (2 hours before the start, spec §4.4) was claimed for sending. Set
+    /// atomically by <see cref="WalkReminderJob"/> so that each reminder is sent at most once,
+    /// even with several instances or after a restart; cleared when the start time changes.
+    /// </summary>
+    public DateTimeOffset? ReminderSentAt { get; set; }
+
+    // Lot 4 adds OrganizationId (professional walks).
 
     public DateTimeOffset CreatedAt { get; set; }
 
@@ -109,5 +121,7 @@ internal sealed class WalkConfiguration : IEntityTypeConfiguration<Walk>
         builder.HasIndex(w => w.StartsAt);
         builder.HasIndex(w => w.OrganizerId);
         builder.HasOne(w => w.Organizer).WithMany().HasForeignKey(w => w.OrganizerId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(w => new { w.SeriesId, w.StartsAt });
+        builder.HasOne(w => w.Series).WithMany().HasForeignKey(w => w.SeriesId).OnDelete(DeleteBehavior.SetNull);
     }
 }

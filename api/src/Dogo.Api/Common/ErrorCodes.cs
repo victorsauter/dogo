@@ -44,6 +44,10 @@ public static class ErrorCodes
     public const string RegistrationDuplicate = "registration.duplicate";
     public const string RegistrationNotActive = "registration.not_active";
 
+    // Weekly series (spec §4.5) and walk threads (spec §4.4).
+    public const string WalkNotInSeries = "walk.not_in_series";
+    public const string MessageForbidden = "message.forbidden";
+
     // Lot 4 adds walk.not_allowed (blocked user) and walk.members_only (professional walk).
 
     // Photos.

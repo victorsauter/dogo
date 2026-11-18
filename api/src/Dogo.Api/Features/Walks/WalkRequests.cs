@@ -54,6 +54,12 @@ public sealed record CreateWalkRequest
     public string? Rules { get; init; }
 
     public required WalkAccess Access { get; init; }
+
+    /// <summary>
+    /// Repeat every week (spec §4.5): when this walk starts, the next one is created seven days
+    /// later at the same time (Europe/Paris), until the organizer stops the series.
+    /// </summary>
+    public bool RepeatWeekly { get; init; }
 }
 
 /// <summary>

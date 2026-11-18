@@ -5,6 +5,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Dogo.Api.Features.Auth;
 using Dogo.Api.Features.Dogs;
+using Dogo.Api.Features.Notifications;
+using Dogo.Api.Infrastructure.Push;
 using Dogo.Api.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,7 +26,36 @@ public abstract class ApiTestBase(ApiFixture fixture) : IAsyncLifetime
 
     protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 
-    public async ValueTask InitializeAsync() => await fixture.ResetAsync();
+    public async ValueTask InitializeAsync()
+    {
+        // Notifications of the previous test must not leak into this one.
+        await WaitForNotificationsAsync();
+        await fixture.ResetAsync();
+        Factory.PushSender.Clear();
+    }
+
+    /// <summary>Push notifications that would have been sent, in order.</summary>
+    protected IReadOnlyList<PushMessage> Pushes => Factory.PushSender.Sent;
+
+    /// <summary>Waits until the background dispatcher has processed every queued notification.</summary>
+    protected Task WaitForNotificationsAsync() =>
+        Factory.Services.GetRequiredService<NotificationQueue>().WaitUntilIdleAsync(TimeSpan.FromSeconds(10), Ct);
+
+    /// <summary>Notifications sent once the queue is drained.</summary>
+    protected async Task<IReadOnlyList<PushMessage>> SentPushesAsync()
+    {
+        await WaitForNotificationsAsync();
+        return Pushes;
+    }
+
+    /// <summary>Registers a push device for the client's user; the token defaults to one derived from <paramref name="name"/>.</summary>
+    protected static async Task<string> RegisterDeviceAsync(HttpClient client, string name, string platform = "Ios")
+    {
+        var token = $"ExponentPushToken[{name}]";
+        var response = await client.PutAsJsonAsync("/api/v1/me/devices", new { expoPushToken = token, platform }, Ct);
+        Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
+        return token;
+    }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 

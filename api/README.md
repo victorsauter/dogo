@@ -34,7 +34,7 @@ cd api
 dotnet test
 ```
 
-Les tests d'intégration démarrent un conteneur PostGIS avec Testcontainers (un seul pour toute la série ; chaque test repart d'une base vide). Seul Docker est nécessaire : les jetons Apple et Google sont validés par un faux validateur, aucun test n'appelle le réseau.
+Les tests d'intégration démarrent un conteneur PostGIS avec Testcontainers (un seul pour toute la série ; chaque test repart d'une base vide). Seul Docker est nécessaire : les jetons Apple et Google sont validés par un faux validateur, les notifications sont enregistrées par un faux expéditeur, aucun test n'appelle le réseau. Les tâches planifiées sont éteintes dans les tests, qui les appellent avec une horloge contrôlée.
 
 ## Organisation du code
 
@@ -45,7 +45,7 @@ api/
 ├── src/Dogo.Api/
 │   ├── Program.cs                    # composition : services, middlewares, groupes de routes
 │   ├── Common/                       # erreurs (Problems, ErrorCodes), validation, OpenAPI
-│   ├── Infrastructure/               # Persistence (DbContext, migrations), Auth, Storage
+│   ├── Infrastructure/               # Persistence (DbContext, migrations), Auth, Storage, Push, Jobs
 │   └── Features/<Fonctionnalité>/    # entités, points d'entrée, requêtes/réponses, règles
 └── tests/Dogo.Api.Tests/             # tests d'intégration, un dossier par fonctionnalité
 ```
@@ -72,7 +72,7 @@ Les photos sont servies sans authentification sur `/photos/{fichier}` (hors `/ap
 - **Recherche** `GET /walks?lat&lng` (obligatoires) `&radiusKm` (10 par défaut, 100 au plus) `&from&to` (ISO 8601, `+` encodé en `%2B`) `&size&limit` : balades `Scheduled` pas encore commencées, triées par début puis par distance, avec `distanceMeters` et `acceptedDogsCount`.
 - **Mes balades** `GET /me/walks?role=Organizer|Participant&when=Upcoming|Past` : valeurs d'énumération en PascalCase comme partout ; balades annulées comprises ; `myRegistrations` donne le statut de mes inscriptions sur chaque balade.
 - **Fiche** `GET /walks/{id}` : `participants` (inscriptions `Accepted`), `myRegistrations` (les miennes, tout statut), `pendingRegistrations` (rempli pour l'organisateur seulement). Une balade annulée ou passée reste lisible.
-- **Champs des lots suivants**, déjà dans le contrat : `isProfessional`, `organization`, `repeatsWeekly`, `hasBlockedParticipant` valent `false`/`null` (une seule méthode à compléter : `LaterLotFields.For`).
+- **Champs des lots suivants**, déjà dans le contrat : `isProfessional`, `organization`, `hasBlockedParticipant` valent `false`/`null` (une seule méthode à compléter : `LaterLotFields.For`) ; `repeatsWeekly` est rempli depuis le lot 3.
 - **Inscriptions** `POST /walks/{id}/registrations` `{ "dogIds": [...] }` (1 à 10) : tout ou rien, 201 avec les inscriptions créées. `DELETE …/registrations/{registrationId}` (propriétaire, 204), `…/accept` et `…/decline` (organisateur, 200).
 - **Concurrence.** Toute écriture qui dépend de la capacité verrouille la ligne de la balade (`SELECT … FOR UPDATE`, ADR 0015) ; un index unique partiel interdit deux inscriptions actives d'un même chien.
 - **Supprimer un chien** annule ses inscriptions à venir ; celles des balades passées sont gardées avec `dogId` à `null`.
@@ -87,6 +87,55 @@ curl -s -X POST http://localhost:5080/api/v1/walks -H "Authorization: Bearer $AL
 curl -s "http://localhost:5080/api/v1/walks?lat=48.85&lng=2.35&radiusKm=5" -H "Authorization: Bearer $BOB"
 curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/registrations -H "Authorization: Bearer $BOB" \
   -H 'Content-Type: application/json' -d '{"dogIds":["<dogId>"]}'
+```
+
+### Fil, notifications et séries (lot 3)
+
+- **Fil** `GET /walks/{id}/messages?before&limit` et `POST /walks/{id}/messages` `{ "text": "…" }` (1 à 1 000 caractères une fois les espaces de début et de fin retirés). Réservé à l'organisateur et aux propriétaires d'une inscription `Accepted` (une inscription dont le chien a été supprimé ne compte pas) : sinon 403 `message.forbidden`. Écrire sur une balade annulée : 409 `walk.not_open` ; la lecture reste permise, y compris après la balade.
+- **Pagination du fil.** Réponse `{ "items": [...], "hasMore": bool }` : les `limit` (50 par défaut, 100 au plus) messages les plus récents, ou ceux plus anciens que le message d'id `before`, rangés du plus ancien au plus récent. `hasMore` vaut vrai s'il en existe de plus anciens : rappeler avec `before=<id du premier élément>`. Un `before` inconnu ou d'une autre balade : 400 `validation.failed`. Chaque message : `id`, `text`, `createdAt`, `author` (`{ id, displayName, photoUrl }`, `null` si le compte n'existe plus), `isMine`.
+- **Appareils** `PUT /me/devices` `{ "expoPushToken": "ExponentPushToken[…]", "platform": "Ios" | "Android" }` → 200 `{ expoPushToken, platform, updatedAt }`. Un jeton appartient à un seul compte : l'enregistrer depuis un autre compte le déplace. `DELETE /me/devices/{token}` (jeton encodé dans l'URL) → 204, toujours, et ne retire que ses propres appareils.
+- **Préférences** `GET /me/notification-preferences` et `PUT` (les quatre champs obligatoires) : `{ "registrations", "walkChanges", "messages", "reminders" }`, tous vrais tant que l'utilisateur ne les a pas changés (aucune ligne en base avant).
+- **Séries.** `POST /walks` accepte `"repeatWeekly": true` (faux par défaut) : la balade appartient à une série (`Europe/Paris`) et `repeatsWeekly` vaut vrai dans les réponses tant que la série est active. `POST /walks/{id}/stop-series` (organisateur, depuis n'importe quelle balade de la série, idempotent) l'arrête : 403 `walk.forbidden`, 404 `walk.not_found`, 409 `walk.not_in_series`. Annuler une balade n'arrête pas la série.
+
+#### Notifications
+
+Chaque événement est déposé dans une file en mémoire **après** la validation de la transaction ; un service d'arrière-plan l'envoie (ADR 0019). La requête n'attend jamais l'envoi et n'échoue jamais à cause de lui ; les échecs sont journalisés. Le service retire l'auteur de l'action et les doublons, applique les préférences, puis envoie une notification par appareil. `data` vaut `{ "type": "<type>", "walkId": "<id>", "url": "dogo://walks/<id>" }`.
+
+| `type` | Destinataires | Préférence | Titre | Texte |
+| --- | --- | --- | --- | --- |
+| `registration_created` | Organisateur (balade `Open`) | `registrations` | Nouvelle inscription | « {nom} participera à « {titre} ». » |
+| `registration_requested` | Organisateur (balade `Approval`) | `registrations` | Nouvelle demande | « {nom} demande à participer à « {titre} ». » |
+| `registration_accepted` | Auteur de l'inscription | `registrations` | Inscription acceptée | « Ta participation à « {titre} » est confirmée. » |
+| `registration_declined` | Auteur (refus ou retrait) | `registrations` | Inscription refusée | « Ton inscription à « {titre} » n'a pas été retenue. » |
+| `walk_updated` | Inscrits `Accepted` et `Pending` | `walkChanges` | Balade modifiée | « « {titre} » a changé : prévue le {jour date à HH:MM}. » |
+| `walk_cancelled` | Inscrits `Accepted` et `Pending` | `walkChanges` | Balade annulée | « « {titre} », prévue le {…}, est annulée. » |
+| `message_posted` | Organisateur et inscrits `Accepted`, sauf l'auteur | `messages` | {titre} | « {nom} : {début du message, 120 caractères} » |
+| `walk_reminder` | Organisateur et inscrits `Accepted` | `reminders` | Balade bientôt | « « {titre} » commence à {HH:MM}. » |
+| `series_walk_created` | Inscrits `Accepted` de la balade précédente | `walkChanges` | Nouvelle date | « « {titre} » revient le {…}. Inscris-toi à nouveau pour y participer. » |
+
+Les heures sont données dans le fuseau `Europe/Paris`. Les textes sont tous dans `Features/Notifications/NotificationTexts.cs` : ajouter un type, c'est une valeur de `NotificationType` et une ligne dans ce fichier. Une modification (`PATCH`) ne notifie que si une valeur change réellement.
+
+**Envoi.** `Notifications:Provider` vaut `Log` (par défaut : la notification est seulement écrite dans le journal, sans le jeton) ou `Expo` (envoi par `https://exp.host/--/api/v2/push/send`, par lots de 100, un message par appareil ; un appareil signalé `DeviceNotRegistered` est supprimé). Pour activer l'envoi réel : `Notifications__Provider=Expo`, et `Notifications__Expo__AccessToken=<jeton>` seulement si la « sécurité renforcée des notifications » est activée dans le projet Expo. Les accusés de réception d'Expo ne sont pas consultés ; un échec HTTP (429, 5xx) est journalisé sans nouvel essai. Les tests remplacent l'envoi par un faux qui enregistre les messages : aucun test n'envoie de notification.
+
+#### Tâches planifiées
+
+`BackgroundJobsService` appelle toutes les `BackgroundJobs:Interval` (une minute par défaut) deux services, chacun dans sa portée ; une exception est journalisée et la boucle continue. `BackgroundJobs:Enabled=false` l'éteint (c'est le cas dans les tests, qui appellent les services directement avec une horloge `FakeTimeProvider`).
+
+- **Rappel** (`WalkReminderJob`) : deux heures avant le début, pour les balades `Scheduled` pas encore commencées. Chaque rappel est réservé en base avant l'envoi (`UPDATE … SET reminder_sent_at … WHERE reminder_sent_at IS NULL … RETURNING`) : au plus un envoi, même avec plusieurs instances ou après un redémarrage. Changer l'heure de début d'une balade rend son rappel de nouveau dû.
+- **Série** (`WalkSeriesJob`) : quand la dernière balade d'une série active a commencé (annulée ou non), crée la suivante sept jours plus tard à la même heure locale `Europe/Paris` (10:00 reste 10:00 aux changements d'heure ; une heure inexistante est avancée d'une heure, une heure ambiguë prend sa première occurrence). Après une longue interruption, seule la première occurrence future est créée. Les champs sont copiés, pas les inscriptions ; les inscrits `Accepted` de la précédente sont prévenus. La ligne de la série est verrouillée (`FOR UPDATE`) et la condition revérifiée : jamais plus d'une balade à venir par série.
+
+Essai rapide (balade hebdomadaire et fil) :
+
+```bash
+curl -s -X PUT http://localhost:5080/api/v1/me/devices -H "Authorization: Bearer $ALICE" \
+  -H 'Content-Type: application/json' -d '{"expoPushToken":"ExponentPushToken[essai-alice]","platform":"Ios"}'
+curl -s -X POST http://localhost:5080/api/v1/walks -H "Authorization: Bearer $ALICE" -H 'Content-Type: application/json' \
+  -d '{"title":"Tour du lac","startsAt":"2030-05-04T08:00:00Z","location":{"latitude":48.853,"longitude":2.35},
+       "locationLabel":"Parvis","maxDogs":5,"allowedSizes":["Small","Medium"],"leashRule":"LeashRequired","access":"Open","repeatWeekly":true}'
+# après l'inscription d'un chien de Bob :
+curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/messages -H "Authorization: Bearer $BOB" \
+  -H 'Content-Type: application/json' -d '{"text":"On se retrouve au portail ?"}'
+# le journal de l'API affiche : Push notification (not sent, log provider) to user <id d'Alice>: …
 ```
 
 ## Migrations
@@ -124,6 +173,10 @@ dotnet ef migrations script --idempotent --project src/Dogo.Api --output migrate
 | `Auth:Google:Audiences` | `Auth__Google__Audiences__0`, … | vide | Identifiants client OAuth acceptés pour Google |
 | `Admin:Emails` | `Admin__Emails__0`, … | vide | E-mails des administrateurs (`isAdmin`) |
 | `Storage:Local:Path` | `Storage__Local__Path` | `./data/photos` | Dossier des photos |
+| `Notifications:Provider` | `Notifications__Provider` | `Log` | `Log` (journal seulement) ou `Expo` (envoi réel) |
+| `Notifications:Expo:AccessToken` | `Notifications__Expo__AccessToken` | vide | Jeton d'accès Expo, seulement si la sécurité renforcée des notifications est activée |
+| `BackgroundJobs:Enabled` | `BackgroundJobs__Enabled` | `true` | Fait tourner les rappels et les séries dans cette instance |
+| `BackgroundJobs:Interval` | `BackgroundJobs__Interval` | `00:01:00` | Intervalle entre deux passages des tâches |
 
 Exemple complet : [`.env.example`](.env.example). Durées fixées dans le code : jeton d'accès 15 minutes, jeton de rafraîchissement 30 jours, renouvelé à chaque usage (ADR 0009).
 

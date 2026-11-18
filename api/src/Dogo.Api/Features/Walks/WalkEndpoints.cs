@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Dogo.Api.Common;
 using Dogo.Api.Features.Dogs;
+using Dogo.Api.Features.Notifications;
 using Dogo.Api.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -51,6 +52,13 @@ public static class WalkEndpoints
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
+        group.MapPost("/walks/{id:guid}/stop-series", StopSeries)
+            .WithName("stopWalkSeries")
+            .WithSummary("Stop the weekly series of a walk (organizer only): no further walk is created. Idempotent.")
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
         group.MapGet("/me/walks", ListMyWalks)
             .WithName("listMyWalks")
             .WithSummary("List the walks the signed-in user organises or takes part in, upcoming or past.")
@@ -64,9 +72,16 @@ public static class WalkEndpoints
         CreateWalkRequest request, ClaimsPrincipal principal, DogoDbContext db, CancellationToken cancellationToken)
     {
         var userId = principal.GetUserId();
+        var series = request.RepeatWeekly ? new WalkSeries { OrganizerId = userId } : null;
+        if (series is not null)
+        {
+            db.WalkSeries.Add(series);
+        }
+
         var walk = new Walk
         {
             OrganizerId = userId,
+            SeriesId = series?.Id,
             Title = request.Title.Trim(),
             Description = request.Description?.Trim() ?? "",
             StartsAt = TruncateToMicroseconds(request.StartsAt),
@@ -150,14 +165,18 @@ public static class WalkEndpoints
             .Take(limit)
             .Select(w => new
             {
-                Row = new WalkRow(w, w.Organizer, w.Registrations.Count(r => r.Status == RegistrationStatus.Accepted)),
+                Row = new WalkRow(
+                    w,
+                    w.Organizer,
+                    w.Registrations.Count(r => r.Status == RegistrationStatus.Accepted),
+                    w.Series != null && w.Series.Active),
                 Distance = w.Location.Distance(point),
             })
             .ToListAsync(cancellationToken);
 
         var viewerId = principal.GetUserId();
         return TypedResults.Ok(results
-            .Select(r => WalkSearchResult.From(r.Row, r.Distance, LaterLotFields.For(r.Row.Walk, viewerId)))
+            .Select(r => WalkSearchResult.From(r.Row, r.Distance, LaterLotFields.For(r.Row, viewerId)))
             .ToList());
     }
 
@@ -175,6 +194,7 @@ public static class WalkEndpoints
         ClaimsPrincipal principal,
         DogoDbContext db,
         TimeProvider timeProvider,
+        NotificationQueue notifications,
         CancellationToken cancellationToken)
     {
         var userId = principal.GetUserId();
@@ -224,9 +244,11 @@ public static class WalkEndpoints
             walk.Description = request.Description.Trim();
         }
 
-        if (request.StartsAt is { } startsAt)
+        if (request.StartsAt is { } startsAt && TruncateToMicroseconds(startsAt) != walk.StartsAt)
         {
+            // The reminder is due again relative to the new start.
             walk.StartsAt = TruncateToMicroseconds(startsAt);
+            walk.ReminderSentAt = null;
         }
 
         if (request.DurationMinutes is { } durationMinutes)
@@ -259,13 +281,27 @@ public static class WalkEndpoints
             walk.Access = access;
         }
 
+        // Values equal to the current ones are not changes (EF compares with the loaded snapshot).
+        var changed = db.ChangeTracker.HasChanges();
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+
+        if (changed)
+        {
+            notifications.Enqueue(new NotificationRequest(
+                NotificationType.WalkUpdated, NotificationSubject.ForWalk(walk), userId, await ActiveRegistrantIdsAsync(db, walk.Id, cancellationToken)));
+        }
+
         return TypedResults.Ok((await db.LoadDetailAsync(walk.Id, userId, cancellationToken))!);
     }
 
     private static async Task<Results<Ok<WalkDetailResponse>, ProblemHttpResult>> CancelWalk(
-        Guid id, ClaimsPrincipal principal, DogoDbContext db, TimeProvider timeProvider, CancellationToken cancellationToken)
+        Guid id,
+        ClaimsPrincipal principal,
+        DogoDbContext db,
+        TimeProvider timeProvider,
+        NotificationQueue notifications,
+        CancellationToken cancellationToken)
     {
         var userId = principal.GetUserId();
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -282,14 +318,58 @@ public static class WalkEndpoints
                 return RegistrationRules.NotOpen();
             }
 
-            // Registrations are left as they are. Lot 3 notifies Accepted and Pending registrants here (spec §4.4).
+            // Registrations are left as they are; the series, if any, goes on (spec §4.5).
             walk.Status = WalkStatus.Cancelled;
             await db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            // Spec §4.4: accepted and pending registrants are told.
+            notifications.Enqueue(new NotificationRequest(
+                NotificationType.WalkCancelled, NotificationSubject.ForWalk(walk), userId, await ActiveRegistrantIdsAsync(db, walk.Id, cancellationToken)));
+        }
+        else
+        {
+            await transaction.CommitAsync(cancellationToken);
         }
 
-        await transaction.CommitAsync(cancellationToken);
         return TypedResults.Ok((await db.LoadDetailAsync(walk.Id, userId, cancellationToken))!);
     }
+
+    private static async Task<Results<Ok<WalkDetailResponse>, ProblemHttpResult>> StopSeries(
+        Guid id, ClaimsPrincipal principal, DogoDbContext db, CancellationToken cancellationToken)
+    {
+        var userId = principal.GetUserId();
+        var walk = await db.Walks.AsNoTracking().SingleOrDefaultAsync(w => w.Id == id, cancellationToken);
+        if (walk is null)
+        {
+            return WalkNotFound();
+        }
+
+        if (walk.OrganizerId != userId)
+        {
+            return Problems.Forbidden(ErrorCodes.WalkForbidden, "Only the organizer can manage this walk.");
+        }
+
+        if (walk.SeriesId is not { } seriesId)
+        {
+            return Problems.Conflict(ErrorCodes.WalkNotInSeries, "The walk does not repeat weekly.");
+        }
+
+        // Any walk of the series, past, upcoming or cancelled, stops it. The walks already
+        // created stay as they are. A job run creating the next walk holds the series row
+        // lock: this update waits for it, and the job re-reads Active under the lock.
+        await db.WalkSeries.Where(s => s.Id == seriesId && s.Active)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Active, false), cancellationToken);
+        return TypedResults.Ok((await db.LoadDetailAsync(walk.Id, userId, cancellationToken))!);
+    }
+
+    /// <summary>Owners of <c>Accepted</c> and <c>Pending</c> registrations, told about changes and cancellation (spec §4.4).</summary>
+    private static Task<List<Guid>> ActiveRegistrantIdsAsync(DogoDbContext db, Guid walkId, CancellationToken cancellationToken) =>
+        db.Registrations
+            .Where(r => r.WalkId == walkId && (r.Status == RegistrationStatus.Accepted || r.Status == RegistrationStatus.Pending))
+            .Select(r => r.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
 
     private static async Task<Results<Ok<List<MyWalkResponse>>, ProblemHttpResult>> ListMyWalks(
         ClaimsPrincipal principal,
@@ -328,7 +408,7 @@ public static class WalkEndpoints
             .ToLookup(r => r.WalkId, MyRegistrationResponse.From);
 
         return TypedResults.Ok(rows
-            .Select(r => MyWalkResponse.From(r, LaterLotFields.For(r.Walk, userId), myRegistrations[r.Walk.Id].ToList()))
+            .Select(r => MyWalkResponse.From(r, LaterLotFields.For(r, userId), myRegistrations[r.Walk.Id].ToList()))
             .ToList());
     }
 
@@ -353,7 +433,7 @@ public static class WalkEndpoints
     internal static ProblemHttpResult WalkNotFound() => Problems.NotFound(ErrorCodes.WalkNotFound, "The walk does not exist.");
 
     /// <summary>PostgreSQL keeps microseconds: the value returned after a write equals the one read back later.</summary>
-    private static DateTimeOffset TruncateToMicroseconds(DateTimeOffset value) =>
+    internal static DateTimeOffset TruncateToMicroseconds(DateTimeOffset value) =>
         value.AddTicks(-(value.Ticks % TimeSpan.TicksPerMicrosecond)).ToUniversalTime();
 
     private static List<DogSize> Sorted(IEnumerable<DogSize> sizes) => sizes.Distinct().Order().ToList();
