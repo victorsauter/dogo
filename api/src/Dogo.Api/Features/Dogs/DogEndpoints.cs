@@ -177,7 +177,12 @@ public static class DogEndpoints
         TimeProvider timeProvider,
         CancellationToken cancellationToken)
     {
-        var (dog, problem) = await FindOwnedDogAsync(db, id, principal, cancellationToken);
+        // The dog row is locked first (ADR 0037): a registration of this dog running at the same
+        // time share-locks it, so it either commits before the update below, which then cancels
+        // it, or waits and finds no dog. An acceptance racing the update only accepts a
+        // registration still pending, and the update below cancels an accepted one.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var (dog, problem) = await FindOwnedDogAsync(db, id, principal, cancellationToken, forUpdate: true);
         if (dog is null)
         {
             return problem!;
@@ -186,7 +191,6 @@ public static class DogEndpoints
         // Spec §4.1: deleting a dog cancels its upcoming registrations, which frees their places.
         // Registrations of past walks are kept as history; the foreign key sets their dog to null.
         var now = timeProvider.GetUtcNow();
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await db.Registrations
             .Where(r => r.DogId == id
                 && (r.Status == RegistrationStatus.Pending || r.Status == RegistrationStatus.Accepted)

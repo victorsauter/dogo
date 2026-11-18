@@ -59,14 +59,16 @@ public static class RegistrationEndpoints
 
         // The walk row lock serialises registrations to the same walk: capacity and duplicate
         // checks below see every registration committed before them.
+        // The dogs are share-locked first, then the walk (lock order: dogs, then walk; ADR 0037).
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var ownDogs = await RegistrationRules.LockDogsAsync(db, [.. request.DogIds], userId, cancellationToken);
         var walk = await db.LockWalkAsync(id, cancellationToken);
         if (walk is null)
         {
             return WalkEndpoints.WalkNotFound();
         }
 
-        var attempt = new RegistrationAttempt(walk, userId, request.DogIds, timeProvider.GetUtcNow());
+        var attempt = new RegistrationAttempt(walk, userId, request.DogIds, ownDogs, timeProvider.GetUtcNow());
         var problem = await RegistrationRules.CheckAsync(db, attempt, cancellationToken);
         if (problem is not null)
         {
@@ -126,9 +128,16 @@ public static class RegistrationEndpoints
             return NotActive();
         }
 
-        // Frees the place at once (only accepted registrations count).
-        registration.Status = RegistrationStatus.Cancelled;
-        await db.SaveChangesAsync(cancellationToken);
+        // Frees the place at once (only accepted registrations count). The status condition makes
+        // the write safe against a concurrent decision of the organizer (ADR 0037): a registration
+        // declined meanwhile stays declined.
+        if (await TransitionAsync(db, registrationId, RegistrationStatus.Cancelled, [RegistrationStatus.Pending, RegistrationStatus.Accepted], cancellationToken) == 0)
+        {
+            return await CurrentStatusAsync(db, registrationId, cancellationToken) == RegistrationStatus.Cancelled
+                ? TypedResults.NoContent()
+                : NotActive();
+        }
+
         return TypedResults.NoContent();
     }
 
@@ -142,6 +151,15 @@ public static class RegistrationEndpoints
         CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        // The dog is share-locked before the walk, as at registration (ADR 0037): its size cannot
+        // change and it cannot be deleted until the decision is written.
+        var dogIds = await db.Registrations.AsNoTracking()
+            .Where(r => r.Id == registrationId && r.WalkId == id && r.DogId != null)
+            .Select(r => r.DogId!.Value)
+            .ToArrayAsync(cancellationToken);
+        var dog = (await RegistrationRules.LockDogsAsync(db, dogIds, null, cancellationToken)).SingleOrDefault();
+
         var (walk, registration, problem) = await LockForDecisionAsync(db, id, registrationId, principal.GetUserId(), cancellationToken);
         if (registration is null)
         {
@@ -171,11 +189,13 @@ public static class RegistrationEndpoints
         }
 
         // The allowed sizes may have changed since the request.
-        // Share-locked like at registration: the dog's size cannot change underneath.
-        var dog = registration.DogId is { } dogId
-            ? (await db.Dogs.FromSql($"SELECT * FROM dogs WHERE id = {dogId} FOR SHARE").AsNoTracking().ToListAsync(cancellationToken)).SingleOrDefault()
-            : null;
-        if (dog is null || !walk.AllowedSizes.Contains(dog.Size))
+        if (dog is null)
+        {
+            // Deleted meanwhile: its upcoming registrations are cancelled (spec §4.1).
+            return NotActive();
+        }
+
+        if (!walk.AllowedSizes.Contains(dog.Size))
         {
             return RegistrationRules.SizeNotAllowed();
         }
@@ -193,8 +213,16 @@ public static class RegistrationEndpoints
             return RegistrationRules.MembersOnly();
         }
 
+        // Only a registration still pending is accepted: its author may have cancelled it, or
+        // deleted the dog, since it was read (ADR 0037). Those writes do not take the walk lock.
+        if (await TransitionAsync(db, registrationId, RegistrationStatus.Accepted, [RegistrationStatus.Pending], cancellationToken) == 0)
+        {
+            return await CurrentStatusAsync(db, registrationId, cancellationToken) == RegistrationStatus.Accepted
+                ? TypedResults.Ok(RegistrationResponse.From(registration))
+                : NotActive();
+        }
+
         registration.Status = RegistrationStatus.Accepted;
-        await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         // Spec §4.4: the author of the registration is told.
@@ -234,9 +262,14 @@ public static class RegistrationEndpoints
             return NotActive();
         }
 
-        // Declining a pending request or removing an accepted participant (spec §4.3).
+        // Declining a pending request or removing an accepted participant (spec §4.3). A registration
+        // cancelled by its author meanwhile stays cancelled (ADR 0037).
+        if (await TransitionAsync(db, registrationId, RegistrationStatus.Declined, [RegistrationStatus.Pending, RegistrationStatus.Accepted], cancellationToken) == 0)
+        {
+            return NotActive();
+        }
+
         registration.Status = RegistrationStatus.Declined;
-        await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         // Spec §4.4: the author of the registration is told.
@@ -261,6 +294,21 @@ public static class RegistrationEndpoints
         var registration = await db.Registrations.SingleOrDefaultAsync(r => r.Id == registrationId && r.WalkId == walkId, cancellationToken);
         return registration is null ? (walk, null, RegistrationNotFound()) : (walk, registration, null);
     }
+
+    /// <summary>
+    /// Moves a registration to <paramref name="target"/> only if its current status is one of
+    /// <paramref name="from"/>, in one conditional <c>UPDATE</c>; returns the number of rows changed.
+    /// Under <c>READ COMMITTED</c>, PostgreSQL waits for a concurrent writer of the row and evaluates
+    /// the condition again on the version it committed, so no status is ever overwritten blindly.
+    /// </summary>
+    private static Task<int> TransitionAsync(
+        DogoDbContext db, Guid registrationId, RegistrationStatus target, RegistrationStatus[] from, CancellationToken cancellationToken) =>
+        db.Registrations
+            .Where(r => r.Id == registrationId && from.Contains(r.Status))
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, target), cancellationToken);
+
+    private static Task<RegistrationStatus> CurrentStatusAsync(DogoDbContext db, Guid registrationId, CancellationToken cancellationToken) =>
+        db.Registrations.Where(r => r.Id == registrationId).Select(r => r.Status).SingleAsync(cancellationToken);
 
     private static ProblemHttpResult RegistrationNotFound() =>
         Problems.NotFound(ErrorCodes.RegistrationNotFound, "The registration does not exist on this walk.");

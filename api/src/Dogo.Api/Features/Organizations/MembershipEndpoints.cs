@@ -162,8 +162,13 @@ public static class MembershipEndpoints
             return NotPending();
         }
 
+        // Conditional write: the request may have been withdrawn, removed or declined meanwhile.
+        if (await TransitionAsync(db, membershipId, MembershipStatus.Accepted, cancellationToken) == 0)
+        {
+            return await AfterLostRaceAsync(db, membership, MembershipStatus.Accepted, cancellationToken);
+        }
+
         membership.Status = MembershipStatus.Accepted;
-        await db.SaveChangesAsync(cancellationToken);
 
         // Spec §4.4: the new member is told.
         notifications.Enqueue(new NotificationRequest(
@@ -197,8 +202,12 @@ public static class MembershipEndpoints
         }
 
         // The requester is not notified of a refusal (spec §4.4 lists acceptance only).
+        if (await TransitionAsync(db, membershipId, MembershipStatus.Declined, cancellationToken) == 0)
+        {
+            return await AfterLostRaceAsync(db, membership, MembershipStatus.Declined, cancellationToken);
+        }
+
         membership.Status = MembershipStatus.Declined;
-        await db.SaveChangesAsync(cancellationToken);
         return TypedResults.Ok(MembershipResponse.From(membership));
     }
 
@@ -243,7 +252,16 @@ public static class MembershipEndpoints
         }
 
         membership.Role = request.Role;
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // The member left or was removed meanwhile.
+            return MembershipNotFound();
+        }
+
         return TypedResults.Ok(MembershipResponse.From(membership));
     }
 
@@ -298,8 +316,12 @@ public static class MembershipEndpoints
         // The membership row is deleted first: a registration of this user running at the same time
         // holds it share-locked, so the deletion waits for it and the update below then sees it.
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
-        db.Memberships.Remove(membership);
-        await db.SaveChangesAsync(cancellationToken);
+        var membershipToDelete = membership.Id;
+        if (await db.Memberships.Where(m => m.Id == membershipToDelete).ExecuteDeleteAsync(cancellationToken) == 0)
+        {
+            // Removed by someone else meanwhile.
+            return MembershipNotFound();
+        }
 
         // Upcoming registrations to the walks reserved to the members of this organisation are
         // cancelled, which frees their places. The walks this user organises are left alone: an
@@ -332,9 +354,7 @@ public static class MembershipEndpoints
 
         var membership = await db.Memberships.Include(m => m.User)
             .SingleOrDefaultAsync(m => m.Id == membershipId && m.OrganizationId == organizationId, cancellationToken);
-        return membership is null
-            ? (access, null, Problems.NotFound(ErrorCodes.MembershipNotFound, "The membership does not exist in this organisation."))
-            : (access, membership, null);
+        return membership is null ? (access, null, MembershipNotFound()) : (access, membership, null);
     }
 
     /// <summary>A membership to accept or decline: 403 <c>organization.forbidden</c> unless owner or educator, 409 if closed.</summary>
@@ -356,6 +376,44 @@ public static class MembershipEndpoints
             ? (access, null, OrganizationQueries.Closed())
             : (access, membership, null);
     }
+
+    /// <summary>
+    /// Moves a pending membership to <paramref name="target"/> in one conditional <c>UPDATE</c>;
+    /// returns the number of rows changed (0 when it is gone or no longer pending).
+    /// </summary>
+    private static Task<int> TransitionAsync(DogoDbContext db, Guid membershipId, MembershipStatus target, CancellationToken cancellationToken) =>
+        db.Memberships
+            .Where(m => m.Id == membershipId && m.Status == MembershipStatus.Pending)
+            .ExecuteUpdateAsync(s => s.SetProperty(m => m.Status, target), cancellationToken);
+
+    /// <summary>
+    /// Answer after a concurrent change won: 404 if the membership was deleted, the same answer as
+    /// an idempotent retry if it already has <paramref name="target"/>, 409 <c>membership.not_pending</c> otherwise.
+    /// </summary>
+    private static async Task<Results<Ok<MembershipResponse>, ProblemHttpResult>> AfterLostRaceAsync(
+        DogoDbContext db, Membership membership, MembershipStatus target, CancellationToken cancellationToken)
+    {
+        var membershipId = membership.Id;
+        var current = await db.Memberships.AsNoTracking()
+            .Where(m => m.Id == membershipId)
+            .Select(m => (MembershipStatus?)m.Status)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (current is null)
+        {
+            return MembershipNotFound();
+        }
+
+        if (current != target)
+        {
+            return NotPending();
+        }
+
+        membership.Status = target;
+        return TypedResults.Ok(MembershipResponse.From(membership));
+    }
+
+    private static ProblemHttpResult MembershipNotFound() =>
+        Problems.NotFound(ErrorCodes.MembershipNotFound, "The membership does not exist in this organisation.");
 
     private static ProblemHttpResult Duplicate() =>
         Problems.Conflict(ErrorCodes.MembershipDuplicate, "You are already a member of this organisation or your request is pending.");

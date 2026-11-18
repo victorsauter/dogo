@@ -6,8 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Dogo.Api.Features.Walks;
 
-/// <summary>A registration request after the walk has been locked: who registers which dogs.</summary>
-internal sealed record RegistrationAttempt(Walk Walk, Guid UserId, IReadOnlyList<Guid> DogIds, DateTimeOffset Now)
+/// <summary>
+/// A registration request after the dogs and the walk have been locked: who registers which dogs.
+/// <paramref name="OwnDogs"/> are the requested dogs that exist and belong to the user.
+/// </summary>
+internal sealed record RegistrationAttempt(Walk Walk, Guid UserId, IReadOnlyList<Guid> DogIds, IReadOnlyList<Dogs.Dog> OwnDogs, DateTimeOffset Now)
 {
     /// <summary>The organizer's own dogs are accepted immediately, even on an <c>Approval</c> walk (spec §4.3).</summary>
     public RegistrationStatus InitialStatus =>
@@ -37,13 +40,8 @@ internal static class RegistrationRules
             return NotOpen();
         }
 
-        // Someone else's dog is reported like a missing one (spec: 404). The rows are share-locked
-        // so that the dog's size cannot change, nor the dog be deleted, until the registration is written.
-        var dogIds = attempt.DogIds.ToArray();
-        var dogs = await db.Dogs
-            .FromSql($"SELECT * FROM dogs WHERE id = ANY({dogIds}) AND owner_id = {attempt.UserId} FOR SHARE")
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
+        // Someone else's dog is reported like a missing one (spec: 404).
+        var dogs = attempt.OwnDogs;
         if (dogs.Count != attempt.DogIds.Count)
         {
             return Problems.NotFound(ErrorCodes.DogNotFound, "A dog does not exist or does not belong to you.");
@@ -87,6 +85,17 @@ internal static class RegistrationRules
 
         return null;
     }
+
+    /// <summary>
+    /// Loads dogs and share-locks their rows (<c>FOR SHARE</c>) until the transaction ends: their
+    /// size cannot change, nor can they be deleted, until the registration is written (ADR 0037).
+    /// Always called <b>before</b> <see cref="WalkQueries.LockWalkAsync"/>: deleting a dog locks the
+    /// dog and then touches the walk rows (foreign key checks), so the opposite order could deadlock.
+    /// </summary>
+    public static Task<List<Dogs.Dog>> LockDogsAsync(DogoDbContext db, Guid[] dogIds, Guid? ownerId, CancellationToken cancellationToken) =>
+        ownerId is { } owner
+            ? db.Dogs.FromSql($"SELECT * FROM dogs WHERE id = ANY({dogIds}) AND owner_id = {owner} FOR SHARE").AsNoTracking().ToListAsync(cancellationToken)
+            : db.Dogs.FromSql($"SELECT * FROM dogs WHERE id = ANY({dogIds}) FOR SHARE").AsNoTracking().ToListAsync(cancellationToken);
 
     /// <summary>
     /// Whether the organisation is <c>Approved</c>. Its row is share-locked until the transaction
