@@ -22,7 +22,9 @@ public sealed record MeResponse(
         PhotoUrls.For(user.PhotoFileName),
         user.Email,
         user.Status,
-        admin.IsAdmin(user.Email),
+        // The full rule (ADR 0031): a suspended account, or a dev account outside Development
+        // and Testing, is not shown as an administrator.
+        admin.IsAdmin(user.Provider, user.Status, user.Email),
         user.CreatedAt);
 }
 
