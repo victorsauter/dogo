@@ -49,6 +49,23 @@ describe('toApiError', () => {
     expect(error.message).toBe(t.errors.network);
   });
 
+  it('recognizes the network failures of expo/fetch', () => {
+    expect(
+      toApiError(new Error('fetch failed: The Internet connection appears to be offline.')).kind,
+    ).toBe('network');
+    expect(toApiError(Object.assign(new Error('aborted'), { name: 'AbortError' })).kind).toBe(
+      'network',
+    );
+  });
+
+  it('does not report an app-side failure as a network failure (defect D1)', () => {
+    const error = toApiError(new Error('Unsupported FormDataPart implementation'));
+    expect(error.kind).toBe('client');
+    expect(error.message).toBe(t.errors.unexpected);
+    expect(error.message).not.toBe(t.errors.network);
+    expect(error.isClientError).toBe(false);
+  });
+
   it('wraps an openapi-fetch error body with its response status', () => {
     const error = toApiError({ code: 'account.suspended' }, new Response(null, { status: 403 }));
     expect(error.status).toBe(403);

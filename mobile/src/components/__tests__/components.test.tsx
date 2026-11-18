@@ -5,7 +5,17 @@ import { ApiError } from '@/api/errors';
 import { t } from '@/strings';
 import { renderWithTheme } from '@/test/render';
 
-import { Avatar, Button, ChoiceGroup, ErrorState, initials, TextField } from '..';
+import { StyleSheet } from 'react-native';
+
+import {
+  Avatar,
+  Button,
+  ChoiceGroup,
+  createFieldRegistry,
+  ErrorState,
+  initials,
+  TextField,
+} from '..';
 
 describe('Button', () => {
   it('calls onPress', async () => {
@@ -93,6 +103,41 @@ describe('Avatar', () => {
     expect(screen.getByText('LM')).toBeTruthy();
     expect(screen.getByLabelText('Photo de Léa Martin')).toBeTruthy();
     expect(initials('  rex ')).toBe('R');
+  });
+
+  it.each([48, 64, 112, 120])(
+    'gives the initials a line height that fits the font at size %i (defect D2)',
+    async (size) => {
+      await renderWithTheme(<Avatar name="Rex" size={size} />);
+      const style = StyleSheet.flatten(screen.getByText('R').props.style);
+      expect(style.lineHeight).toBeGreaterThanOrEqual(style.fontSize);
+      expect(style.includeFontPadding).toBe(false);
+    },
+  );
+
+  it('shows a placeholder icon instead of initials while there is no name (defect D3)', async () => {
+    await renderWithTheme(<Avatar name="  " placeholderIcon="paw" />);
+    expect(screen.getByLabelText(t.a11y.photo)).toBeTruthy();
+    expect(screen.queryByText(/\S/)).toBeNull();
+  });
+});
+
+describe('createFieldRegistry (scroll to the first error, defect D4)', () => {
+  it('picks the highest field in error, with a margin', async () => {
+    const registry = createFieldRegistry();
+    registry.register('title', async () => 40);
+    registry.register('sizes', async () => 600);
+    registry.register('label', async () => 300);
+    expect(await registry.firstErrorOffset({ sizes: 'x', label: 'y', title: undefined })).toBe(276);
+    expect(await registry.firstErrorOffset({ title: 'x', sizes: 'y' })).toBe(16);
+  });
+
+  it('returns null when no field in error is known', async () => {
+    const registry = createFieldRegistry();
+    const unregister = registry.register('title', async () => 40);
+    unregister();
+    expect(await registry.firstErrorOffset({ title: 'x', other: 'y' })).toBeNull();
+    expect(await registry.firstErrorOffset({})).toBeNull();
   });
 });
 

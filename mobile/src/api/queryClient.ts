@@ -6,9 +6,9 @@ import { ApiError } from './errors';
 
 const MAX_RETRIES = 2;
 
-/** Retries network and 5xx failures, never 4xx (the answer will not change). */
+/** Retries network and 5xx failures, never 4xx nor app-side failures (the answer will not change). */
 export function shouldRetry(failureCount: number, error: unknown): boolean {
-  if (error instanceof ApiError && error.isClientError) return false;
+  if (error instanceof ApiError && (error.isClientError || error.kind === 'client')) return false;
   return failureCount < MAX_RETRIES;
 }
 

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { View } from 'react-native';
 
 import { enumValues } from '@/api/enums';
 import { errorMessage } from '@/api/errors';
@@ -18,6 +17,7 @@ import { useTheme } from '@/theme';
 import { Button } from './Button';
 import { ChoiceGroup } from './Chip';
 import { DateField } from './DateField';
+import { FieldAnchor, useScrollToFirstError } from './FormScroll';
 import { PhotoPicker } from './PhotoPicker';
 import { Text } from './Text';
 import { TextField } from './TextField';
@@ -47,6 +47,7 @@ export function DogForm({ initial, photoUrl, submitLabel, onSubmit }: DogFormPro
   const [errors, setErrors] = useState<FieldErrors<keyof DogFormValues>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const scrollToFirstError = useScrollToFirstError();
 
   const set = <K extends keyof DogFormValues>(key: K, value: DogFormValues[K]) => {
     setValues((current) => ({ ...current, [key]: value }));
@@ -57,13 +58,18 @@ export function DogForm({ initial, photoUrl, submitLabel, onSubmit }: DogFormPro
     const found = validateDog(values);
     setErrors(found);
     setFormError(null);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) {
+      void scrollToFirstError(found);
+      return;
+    }
     setSubmitting(true);
     try {
       await onSubmit(values, photo);
     } catch (error) {
-      setErrors(serverFieldErrors(error, dogFields));
+      const serverErrors = serverFieldErrors(error, dogFields);
+      setErrors(serverErrors);
       setFormError(errorMessage(error));
+      void scrollToFirstError(serverErrors);
     } finally {
       setSubmitting(false);
     }
@@ -78,13 +84,15 @@ export function DogForm({ initial, photoUrl, submitLabel, onSubmit }: DogFormPro
   return (
     <>
       <PhotoPicker
-        name={values.name || t.dog.detailTitle}
+        name={values.name}
+        placeholderIcon="paw"
         photoUrl={photoUrl}
         picked={photo}
         onPick={setPhoto}
         disabled={submitting}
       />
       <TextField
+        name="name"
         label={t.dog.name}
         value={values.name}
         onChangeText={(text) => set('name', text)}
@@ -101,7 +109,7 @@ export function DogForm({ initial, photoUrl, submitLabel, onSubmit }: DogFormPro
           ['leashHabit', t.dog.leashHabit, 'LeashHabit'],
         ] as const
       ).map(([key, label, enumName]) => (
-        <View key={key} style={{ gap: spacing.sm }}>
+        <FieldAnchor key={key} name={key} style={{ gap: spacing.sm }}>
           <Text variant="label">{label}</Text>
           <ChoiceGroup
             accessibilityLabel={label}
@@ -110,9 +118,10 @@ export function DogForm({ initial, photoUrl, submitLabel, onSubmit }: DogFormPro
             onChange={(value) => set(key, value as never)}
           />
           <GroupError message={errors[key]} />
-        </View>
+        </FieldAnchor>
       ))}
       <DateField
+        name="birthDate"
         label={t.dog.birthDate}
         value={values.birthDate}
         onChange={(date) => set('birthDate', date)}
@@ -123,6 +132,7 @@ export function DogForm({ initial, photoUrl, submitLabel, onSubmit }: DogFormPro
         error={errors.birthDate}
       />
       <TextField
+        name="breed"
         label={t.dog.breed}
         value={values.breed}
         onChangeText={(text) => set('breed', text)}
@@ -131,6 +141,7 @@ export function DogForm({ initial, photoUrl, submitLabel, onSubmit }: DogFormPro
         maxLength={limits.dogBreed}
       />
       <TextField
+        name="description"
         label={t.dog.description}
         value={values.description}
         onChangeText={(text) => set('description', text)}

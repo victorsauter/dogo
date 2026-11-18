@@ -3,11 +3,12 @@ import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform } from 'react-native';
 
 import { useTheme } from '@/theme';
 
 import { Button } from './Button';
+import { FieldAnchor } from './FormScroll';
 import { Text } from './Text';
 
 export interface DateFieldProps {
@@ -21,6 +22,8 @@ export interface DateFieldProps {
   clearLabel: string;
   error?: string;
   hint?: string;
+  /** Name in the form's errors, to scroll to it when it is the first in error. */
+  name?: string;
 }
 
 const FALLBACK_DATE = new Date(2020, 0, 1);
@@ -38,6 +41,7 @@ export function DateField({
   clearLabel,
   error,
   hint,
+  name,
 }: DateFieldProps) {
   const { spacing } = useTheme();
   const [open, setOpen] = useState(false);
@@ -62,7 +66,7 @@ export function DateField({
   }
 
   return (
-    <View style={{ gap: spacing.xs }}>
+    <FieldAnchor name={name} style={{ gap: spacing.xs }}>
       <Text variant="label">{label}</Text>
       <Button
         label={display ?? pickLabel}
@@ -92,6 +96,6 @@ export function DateField({
           {hint}
         </Text>
       ) : null}
-    </View>
+    </FieldAnchor>
   );
 }

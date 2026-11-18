@@ -8,7 +8,7 @@ import { useTheme } from '@/theme';
 
 /**
  * Signed-in area: the tabs, and the screens pushed on top of them (edit
- * profile, public profile, dogs). Also opens the edit-profile screen once for
+ * profile, public profile, dogs, walks). Also opens the edit-profile screen once for
  * a new member who still has the default display name.
  */
 export default function AppLayout() {
@@ -41,6 +41,9 @@ export default function AppLayout() {
       <Stack.Screen name="dogs/new" options={{ title: t.dog.addTitle }} />
       <Stack.Screen name="dogs/[id]/index" options={{ title: t.dog.detailTitle }} />
       <Stack.Screen name="dogs/[id]/edit" options={{ title: t.dog.editTitle }} />
+      <Stack.Screen name="walks/new" options={{ title: t.walk.newTitle }} />
+      <Stack.Screen name="walks/[id]/index" options={{ title: t.walk.detailTitle }} />
+      <Stack.Screen name="walks/[id]/edit" options={{ title: t.walk.editTitle }} />
     </Stack>
   );
 }

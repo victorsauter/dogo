@@ -146,7 +146,11 @@ describe('edit profile', () => {
     await waitFor(() => expect(sessionStore.getSession()?.user.photoUrl).toBe('/photos/new.jpg'));
     const upload = calls.find((c) => c.method === 'PUT');
     expect(upload?.path).toBe('/api/v1/me/photo');
-    expect(upload?.contentType).not.toContain('json');
+    expect(upload?.contentType).toMatch(/^multipart\/form-data; boundary=/);
+    const file = upload?.form?.get('file') as File;
+    expect(file).toBeInstanceOf(Blob);
+    expect(file.name).toBe('photo.jpg');
+    expect(file.type).toBe('image/jpeg');
     expect(screen).toHavePathname('/profile');
   });
 
@@ -190,7 +194,7 @@ describe('first-run nudge', () => {
     await fireEvent.changeText(screen.getByLabelText(t.profile.displayName), 'Léa');
     await fireEvent.press(screen.getByRole('button', { name: t.common.save }));
 
-    expect(await screen.findByText(t.discover.emptyTitle)).toBeTruthy();
+    expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
     expect(screen).toHavePathname('/');
     expect(screen.queryByText(t.profile.welcome)).toBeNull();
   });
@@ -200,7 +204,7 @@ describe('first-run nudge', () => {
     await sessionStore.set(authResponse({ user: newMember }));
     await renderRouter(APP_DIR, { initialUrl: '/' });
     await fireEvent.press(await screen.findByRole('button', { name: t.profile.later }));
-    expect(await screen.findByText(t.discover.emptyTitle)).toBeTruthy();
+    expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
 
     // A profile refresh must not reopen it.
     await act(() => sessionStore.updateUser({ ...testUser, ...newMember, bio: 'x' }));
@@ -211,7 +215,7 @@ describe('first-run nudge', () => {
     mockApi({});
     await sessionStore.set(authResponse());
     await renderRouter(APP_DIR, { initialUrl: '/' });
-    expect(await screen.findByText(t.discover.emptyTitle)).toBeTruthy();
+    expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
     expect(screen).toHavePathname('/');
   });
 });

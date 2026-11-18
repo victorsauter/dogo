@@ -1,4 +1,5 @@
 export { Avatar, initials, type AvatarProps } from './Avatar';
+export { Badge, type BadgeProps, type BadgeTone } from './Badge';
 export { Button, type ButtonProps, type ButtonVariant } from './Button';
 export { Card, type CardProps } from './Card';
 export {
@@ -9,14 +10,39 @@ export {
   type ChoiceOption,
 } from './Chip';
 export { DateField, type DateFieldProps } from './DateField';
+export { DateTimeField, type DateTimeFieldProps } from './DateTimeField';
 export { DogCard, dogSummary } from './DogCard';
 export { DogForm, type DogFormProps } from './DogForm';
 export { EmptyState, type EmptyStateProps, type StateAction } from './EmptyState';
 export { ErrorState, type ErrorStateProps } from './ErrorState';
+export {
+  createFieldRegistry,
+  FieldAnchor,
+  FormScrollProvider,
+  useScrollToFirstError,
+  type FieldAnchorProps,
+} from './FormScroll';
 export { Icon, type IconName, type IconProps } from './Icon';
 export { ListItem, type ListItemProps } from './ListItem';
 export { LoadingState } from './LoadingState';
+export { MeetingPointPicker, type MeetingPointPickerProps } from './MeetingPointPicker';
 export { PhotoPicker, type PhotoPickerProps } from './PhotoPicker';
 export { Screen, type ScreenProps } from './Screen';
+export { Stepper, type StepperProps } from './Stepper';
 export { Text, type TextProps } from './Text';
 export { TextField, type TextFieldProps } from './TextField';
+export {
+  isWalkFull,
+  myRegistrationState,
+  sizesLabel,
+  WalkCard,
+  type WalkCardProps,
+} from './WalkCard';
+export { WalkForm, walkSubmitErrors, type WalkFormProps } from './WalkForm';
+export { WalksMap, type WalksMapProps } from './WalksMap';
+export { ParticipantCard, type ParticipantCardProps } from './ParticipantCard';
+export {
+  dogUnavailableReason,
+  WalkRegistrationPanel,
+  type WalkRegistrationPanelProps,
+} from './WalkRegistrationPanel';

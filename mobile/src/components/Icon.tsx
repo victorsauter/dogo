@@ -13,6 +13,12 @@ const icons = {
   person: { ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' },
   paw: { ios: 'pawprint', android: 'pets', web: 'pets' },
   offline: { ios: 'wifi.slash', android: 'cloud_off', web: 'cloud_off' },
+  plus: { ios: 'plus', android: 'add', web: 'add' },
+  minus: { ios: 'minus', android: 'remove', web: 'remove' },
+  pin: { ios: 'mappin.and.ellipse', android: 'location_on', web: 'location_on' },
+  clock: { ios: 'clock', android: 'schedule', web: 'schedule' },
+  warning: { ios: 'exclamationmark.triangle', android: 'warning', web: 'warning' },
+  info: { ios: 'info.circle', android: 'info', web: 'info' },
 } as const;
 
 export type IconName = keyof typeof icons;
