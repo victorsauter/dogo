@@ -1,0 +1,68 @@
+version: 2
+
+# Mises à jour hebdomadaires, une demande de fusion par groupe plutôt qu'une par paquet.
+updates:
+  # API : paquets NuGet (versions centralisées dans api/Directory.Packages.props).
+  - package-ecosystem: nuget
+    directory: /api
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    commit-message:
+      prefix: "chore"
+    groups:
+      api-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # L'API vise .NET 10 : un saut de version majeure de la plate-forme (EF Core 11, ASP.NET Core 11...)
+      # est une migration à planifier, pas une mise à jour de routine.
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+
+  # Application mobile : paquets npm. Les versions de React Native, de React et de tous les paquets
+  # Expo (expo, expo-*, @expo/*, react-native-* livrés avec le SDK) sont dictées par le SDK Expo : on
+  # les change avec « npx expo install --fix » à chaque montée de SDK, pas avec un robot, qui proposerait
+  # des versions incompatibles entre elles. Ils sont donc ignorés ici ; le reste est groupé.
+  # La liste vient de node_modules/expo/bundledNativeModules.json (paquets de la V1 concernés :
+  # voir mobile/package.json). Après toute mise à jour : « npx expo install --check ».
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    commit-message:
+      prefix: "chore"
+    groups:
+      mobile-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "expo"
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "jest-expo"
+      - dependency-name: "eslint-config-expo"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "@types/react"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+      - dependency-name: "@react-native-community/*"
+
+  # Workflows GitHub Actions.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    commit-message:
+      prefix: "chore"
+    groups:
+      github-actions:
+        patterns: ["*"]

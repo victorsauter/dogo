@@ -7,6 +7,9 @@ Thumbs.db
 .vscode/
 *.swp
 
+# Worktrees des agents (Claude Code)
+.claude/worktrees/
+
 # Configuration locale et secrets
 .env
 .env.*
