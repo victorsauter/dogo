@@ -9,11 +9,26 @@ import Constants from 'expo-constants';
 
 import type { GeoPoint } from '@/api/types';
 
+/**
+ * A distribution build that cannot work: API address missing (`missingApiUrl`)
+ * or not `https` (`insecureApiUrl`). The app shows a configuration error
+ * screen instead of failing every request.
+ */
+export type ConfigError = 'missingApiUrl' | 'insecureApiUrl';
+
 export interface AppConfig {
-  /** Base URL of the dogo API, without a trailing slash (e.g. `http://localhost:5080`). */
+  /**
+   * Base URL of the dogo API, without a trailing slash (e.g. `http://localhost:5080`).
+   * Falls back to the local API in development only; empty when `error` is `missingApiUrl`.
+   */
   apiUrl: string;
-  /** Shows the test sign-in button (`POST /auth/dev`) on the sign-in screen. */
+  /**
+   * Shows the test sign-in (`POST /auth/dev`) and the demo data on the sign-in
+   * screen: `EXPO_PUBLIC_DEV_LOGIN=true` **and** a development build (`__DEV__`).
+   */
   devLogin: boolean;
+  /** Set when a distribution build is misconfigured (see `ConfigError`). */
+  error?: ConfigError;
   /** Google OAuth web client ID (audience of the ID token); the Google button needs it. */
   googleWebClientId?: string;
   /** Google OAuth iOS client ID; also required on iOS. */
@@ -56,18 +71,39 @@ function readEasProjectId(): string | undefined {
   }
 }
 
-export function readConfig(env: {
-  EXPO_PUBLIC_API_URL?: string;
-  EXPO_PUBLIC_DEV_LOGIN?: string;
-  EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?: string;
-  EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?: string;
-  EXPO_PUBLIC_DEFAULT_LATITUDE?: string;
-  EXPO_PUBLIC_DEFAULT_LONGITUDE?: string;
-}): AppConfig {
-  const apiUrl = (env.EXPO_PUBLIC_API_URL?.trim() || DEFAULT_API_URL).replace(/\/+$/, '');
+/**
+ * The API address. In development, a missing value falls back to the local
+ * API and any scheme is accepted (simulator, emulator, phone on the Wi-Fi).
+ * In a distribution build, it must be given and use `https`.
+ */
+function readApiUrl(
+  value: string | undefined,
+  dev: boolean,
+): { apiUrl: string; error?: ConfigError } {
+  const given = value?.trim().replace(/\/+$/, '') ?? '';
+  if (dev) return { apiUrl: given || DEFAULT_API_URL };
+  if (!given) return { apiUrl: '', error: 'missingApiUrl' };
+  if (!/^https:\/\/[^/\s]+/i.test(given)) return { apiUrl: given, error: 'insecureApiUrl' };
+  return { apiUrl: given };
+}
+
+export function readConfig(
+  env: {
+    EXPO_PUBLIC_API_URL?: string;
+    EXPO_PUBLIC_DEV_LOGIN?: string;
+    EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?: string;
+    EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?: string;
+    EXPO_PUBLIC_DEFAULT_LATITUDE?: string;
+    EXPO_PUBLIC_DEFAULT_LONGITUDE?: string;
+  },
+  /** Development build (`__DEV__`); injected in tests. */
+  dev: boolean = __DEV__,
+): AppConfig {
+  const { apiUrl, error } = readApiUrl(env.EXPO_PUBLIC_API_URL, dev);
   return {
     apiUrl,
-    devLogin: env.EXPO_PUBLIC_DEV_LOGIN?.trim().toLowerCase() === 'true',
+    ...(error ? { error } : {}),
+    devLogin: dev && env.EXPO_PUBLIC_DEV_LOGIN?.trim().toLowerCase() === 'true',
     googleWebClientId: env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim() || undefined,
     googleIosClientId: env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() || undefined,
     easProjectId: readEasProjectId(),

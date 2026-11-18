@@ -47,6 +47,40 @@ describe('readConfig', () => {
     expect(readConfig({ EXPO_PUBLIC_DEV_LOGIN: 'TRUE' }).devLogin).toBe(true);
   });
 
+  it('never enables the test sign-in outside a development build', () => {
+    const release = readConfig(
+      { EXPO_PUBLIC_API_URL: 'https://api.dogo.test', EXPO_PUBLIC_DEV_LOGIN: 'true' },
+      false,
+    );
+    expect(release.devLogin).toBe(false);
+  });
+
+  it('accepts any API address in development, without error', () => {
+    expect(readConfig({ EXPO_PUBLIC_API_URL: 'http://192.168.1.20:5080' }, true)).toMatchObject({
+      apiUrl: 'http://192.168.1.20:5080',
+    });
+    expect(readConfig({}, true).error).toBeUndefined();
+  });
+
+  it('flags a distribution build without an API address instead of using localhost', () => {
+    const release = readConfig({ EXPO_PUBLIC_API_URL: '  ' }, false);
+    expect(release.error).toBe('missingApiUrl');
+    expect(release.apiUrl).toBe('');
+  });
+
+  it.each(['http://api.dogo.test', 'api.dogo.test', 'https://', 'ftp://api.dogo.test'])(
+    'flags a distribution build whose API address is not https (%p)',
+    (url) => {
+      expect(readConfig({ EXPO_PUBLIC_API_URL: url }, false).error).toBe('insecureApiUrl');
+    },
+  );
+
+  it('accepts an https API address in a distribution build', () => {
+    const release = readConfig({ EXPO_PUBLIC_API_URL: 'https://api.dogo.test/' }, false);
+    expect(release.error).toBeUndefined();
+    expect(release.apiUrl).toBe('https://api.dogo.test');
+  });
+
   it('reads the Google client IDs and ignores blanks', () => {
     const config = readConfig({
       EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ' web.apps.googleusercontent.com ',

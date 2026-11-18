@@ -2,6 +2,7 @@ import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testi
 
 import { sessionStore } from '@/auth/sessionStore';
 import { config } from '@/lib/config';
+import { setSignInNotice } from '@/lib/signInNotice';
 import { t } from '@/strings';
 import { authResponse } from '@/test/fixtures';
 import { mockApi, ok, problemResponse, type MockRequest } from '@/test/mockApi';
@@ -210,4 +211,44 @@ describe('sign-in: Google', () => {
     expect(await screen.findByText(t.auth.devLoginSection)).toBeTruthy();
     expect(screen.queryByText(t.auth.signInWithGoogle)).toBeNull();
   });
+});
+
+describe('sign-in: development tools', () => {
+  it('hides the test sign-in outside a development build, even with the variable', async () => {
+    const globals = globalThis as unknown as { __DEV__: boolean };
+    mockApi({});
+    globals.__DEV__ = false;
+    try {
+      await renderRouter(APP_DIR, { initialUrl: '/sign-in' });
+      expect(await screen.findByText(t.auth.noMethodTitle)).toBeTruthy();
+      expect(screen.queryByText(t.auth.devLoginSection)).toBeNull();
+      expect(screen.queryByText(t.demoData.title)).toBeNull();
+    } finally {
+      globals.__DEV__ = true;
+    }
+  });
+});
+
+describe('sign-in: imposed end of session', () => {
+  afterEach(() => setSignInNotice(null));
+
+  it.each([
+    ['expired', () => problemResponse(401, 'auth.invalid_token'), t.auth.sessionExpired],
+    ['suspended', () => problemResponse(403, 'account.suspended'), t.auth.accountSuspended],
+  ])(
+    'returns to the sign-in screen with a sentence (%s)',
+    async (_label, refreshAnswer, message) => {
+      await act(() => sessionStore.set(authResponse()));
+      mockApi({
+        'GET /api/v1/me': () => problemResponse(401, 'auth.unauthenticated'),
+        'POST /api/v1/auth/refresh': refreshAnswer,
+      });
+
+      await renderRouter(APP_DIR, { initialUrl: '/profile' });
+
+      expect(await screen.findByText(message)).toBeTruthy();
+      expect(screen).toHavePathname('/sign-in');
+      expect(sessionStore.getSnapshot().status).toBe('signedOut');
+    },
+  );
 });
