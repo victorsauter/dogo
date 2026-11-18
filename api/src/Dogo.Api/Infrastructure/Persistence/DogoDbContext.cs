@@ -44,7 +44,10 @@ public sealed class DogoDbContext(DbContextOptions<DogoDbContext> options, TimeP
 
     private void StampCreatedAt()
     {
+        // PostgreSQL stores microseconds: truncate so that the value returned right after
+        // a save equals the value read back later (Linux clocks have 100 ns resolution).
         var now = timeProvider.GetUtcNow();
+        now = now.AddTicks(-(now.Ticks % TimeSpan.TicksPerMicrosecond));
         foreach (var entry in ChangeTracker.Entries<IHasCreatedAt>().Where(e => e.State == EntityState.Added))
         {
             entry.Entity.CreatedAt = now;
