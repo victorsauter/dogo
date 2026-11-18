@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Linking, Platform, View } from 'react-native';
+import { Alert, Linking, Platform, RefreshControl, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { errorMessage } from '@/api/errors';
@@ -62,6 +62,9 @@ function Row({ label, value }: { label: string; value: string }) {
 export default function WalkDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const walk = useWalk(id);
+  const { colors } = useTheme();
+  // Pulled by the person only: background refetches do not show the spinner.
+  const [refreshing, setRefreshing] = useState(false);
 
   if (walk.isPending) {
     return (
@@ -78,7 +81,27 @@ export default function WalkDetailScreen() {
     );
   }
   return (
-    <Screen edges={['left', 'right', 'bottom']}>
+    <Screen
+      testID="walk-detail"
+      edges={['left', 'right', 'bottom']}
+      refreshControl={
+        // A request accepted, a new participant or a change by the organizer
+        // happen elsewhere: pulling the page shows them.
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={async () => {
+            setRefreshing(true);
+            try {
+              await walk.refetch();
+            } finally {
+              setRefreshing(false);
+            }
+          }}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+        />
+      }
+    >
       <Stack.Screen options={{ title: t.walk.detailTitle }} />
       <WalkDetailContent walk={walk.data} />
     </Screen>
