@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Linking, Platform, RefreshControl, View } from 'react-native';
+import { Alert, Platform, RefreshControl, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
 import { errorMessage } from '@/api/errors';
@@ -32,20 +32,17 @@ import {
 } from '@/components';
 import { formatDuration, formatWalkStart, walkTiming } from '@/lib/dates';
 import { regionAround } from '@/lib/geo';
+import { openMapsAt } from '@/lib/linking';
 import { reportHref } from '@/lib/report';
 import { canUseThread } from '@/lib/thread';
 import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
 
-/** Opens the meeting point in the device's maps app. */
-function openInMaps(walk: WalkDetail) {
-  const { latitude, longitude } = walk.location;
-  const label = encodeURIComponent(walk.locationLabel);
-  const url =
-    Platform.OS === 'ios'
-      ? `https://maps.apple.com/?ll=${latitude},${longitude}&q=${label}`
-      : `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`;
-  void Linking.openURL(url);
+/** Opens the meeting point in the device's maps app, or says it could not. */
+async function openInMaps(walk: WalkDetail) {
+  if (!(await openMapsAt(walk.location, walk.locationLabel))) {
+    Alert.alert(t.walk.openInMapsFailed);
+  }
 }
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -266,7 +263,7 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
         <Button
           label={Platform.OS === 'ios' ? t.walk.openInMaps : t.walk.openInMapsAndroid}
           variant="secondary"
-          onPress={() => openInMaps(walk)}
+          onPress={() => void openInMaps(walk)}
         />
       </Card>
 

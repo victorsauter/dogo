@@ -191,6 +191,7 @@ export const fr = {
     meetingPoint: 'Point de rendez-vous',
     openInMaps: 'Ouvrir dans Plans',
     openInMapsAndroid: 'Ouvrir dans Maps',
+    openInMapsFailed: 'Impossible d’ouvrir une application de cartes sur cet appareil.',
     organizer: 'Organisée par',
     organizerA11y: 'Voir le profil de {name}',
     organizerDeleted: 'Compte supprimé',
