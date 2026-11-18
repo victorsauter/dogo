@@ -13,6 +13,24 @@ const permissions = {
   camera: 'dogo utilise l’appareil photo pour prendre ta photo de profil et celles de tes chiens.',
 } as const;
 
+/**
+ * Google sign-in needs custom native code (development build) and its config
+ * plugin wants the iOS URL scheme, the reversed iOS client ID. Without the iOS
+ * client ID the plugin is left out, so Expo Go and `expo export` keep working.
+ */
+function googleSignInPlugin(): [string, { iosUrlScheme: string }][] {
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim();
+  const suffix = '.apps.googleusercontent.com';
+  if (!iosClientId?.endsWith(suffix)) return [];
+  const prefix = iosClientId.slice(0, -suffix.length);
+  return [
+    [
+      '@react-native-google-signin/google-signin',
+      { iosUrlScheme: `com.googleusercontent.apps.${prefix}` },
+    ],
+  ];
+}
+
 const brandColor = '#F4EFE6';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
@@ -29,6 +47,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // Provisional identifier, to confirm before any store submission (spec §7).
     bundleIdentifier: 'com.victorsauter.dogo',
     supportsTablet: false,
+    usesAppleSignIn: true,
     infoPlist: {
       NSLocationWhenInUseUsageDescription: permissions.locationWhenInUse,
       NSPhotoLibraryUsageDescription: permissions.photoLibrary,
@@ -57,6 +76,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-secure-store',
+    'expo-apple-authentication',
+    [
+      'expo-image-picker',
+      {
+        photosPermission: permissions.photoLibrary,
+        cameraPermission: permissions.camera,
+        microphonePermission: false,
+      },
+    ],
+    '@react-native-community/datetimepicker',
+    ...googleSignInPlugin(),
     [
       'expo-splash-screen',
       {

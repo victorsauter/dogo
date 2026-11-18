@@ -31,6 +31,24 @@ describe('session store', () => {
     });
   });
 
+  it('updates the user and keeps the tokens, in memory and in storage', async () => {
+    const response = authResponse();
+    const store = createSessionStore();
+    await store.load();
+    await store.updateUser({ ...response.user, displayName: 'Nouveau nom' });
+
+    expect(store.getSession()).toBeNull(); // nothing to update when signed out
+
+    await store.set(response);
+    await store.updateUser({ ...response.user, displayName: 'Nouveau nom' });
+    expect(store.getSession()?.user.displayName).toBe('Nouveau nom');
+    expect(store.getSession()?.refreshToken).toBe(response.refreshToken);
+
+    const restored = createSessionStore();
+    await restored.load();
+    expect(restored.getSession()?.user.displayName).toBe('Nouveau nom');
+  });
+
   it('clears the session from memory and storage', async () => {
     const store = createSessionStore();
     await store.set(authResponse());

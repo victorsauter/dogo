@@ -18,4 +18,13 @@ describe('readConfig', () => {
     expect(readConfig({ EXPO_PUBLIC_DEV_LOGIN: '1' }).devLogin).toBe(false);
     expect(readConfig({ EXPO_PUBLIC_DEV_LOGIN: 'TRUE' }).devLogin).toBe(true);
   });
+
+  it('reads the Google client IDs and ignores blanks', () => {
+    const config = readConfig({
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ' web.apps.googleusercontent.com ',
+      EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: '  ',
+    });
+    expect(config.googleWebClientId).toBe('web.apps.googleusercontent.com');
+    expect(config.googleIosClientId).toBeUndefined();
+  });
 });

@@ -104,6 +104,15 @@ export function createSessionStore(storage: SecureStorage = SecureStore) {
       return session;
     },
 
+    /** Replaces the user of the current session (profile edited); tokens are kept. */
+    async updateUser(user: SessionUser): Promise<void> {
+      const current = snapshot.session;
+      if (!current) return;
+      const session = { ...current, user };
+      emit({ status: 'signedIn', session });
+      await storage.setItemAsync(SESSION_STORAGE_KEY, JSON.stringify(session));
+    },
+
     async clear(): Promise<void> {
       emit({ status: 'signedOut', session: null });
       await storage.deleteItemAsync(SESSION_STORAGE_KEY);
