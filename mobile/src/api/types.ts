@@ -1,32 +1,22 @@
 /**
- * Hand-written API shapes needed before the schema is generated.
- * Only the session contract lives here (sign-in and refresh responses); every
- * other type comes from `schema.d.ts`.
+ * API shapes used across the app, taken from the generated `schema.d.ts`
+ * (`api/openapi.json`). Only RFC 9457 problem details keep a local shape, with
+ * the dogo `code` extension (spec §1), because errors are read loosely.
  */
-import type { UserStatus } from './enums';
+import type { components } from './schema';
 
-/** `user` in the session response (private profile of the signed-in user). */
-export interface SessionUser {
-  id: string;
-  displayName: string;
-  bio: string | null;
-  /** Relative path (`/photos/...`); display it through `photoUri()`. */
-  photoUrl: string | null;
-  email: string | null;
-  status: UserStatus;
-  isAdmin: boolean;
-  createdAt: string;
-}
+type Schemas = components['schemas'];
+
+/** `user` in the session response: private profile of the signed-in user. */
+export type SessionUser = Schemas['MeResponse'];
 
 /** Response of `POST /api/v1/auth/{apple,google,dev,refresh}`. */
-export interface AuthResponse {
-  accessToken: string;
-  /** ISO 8601, UTC. Access tokens last 15 minutes. */
-  accessTokenExpiresAt: string;
-  /** Rotated on every use: always store the latest one. */
-  refreshToken: string;
-  user: SessionUser;
-}
+export type AuthResponse = Schemas['SessionResponse'];
+
+export type Dog = Schemas['DogResponse'];
+export type PublicUser = Schemas['PublicUserResponse'];
+export type CreateDogRequest = Schemas['CreateDogRequest'];
+export type UpdateDogRequest = Schemas['UpdateDogRequest'];
 
 /** RFC 9457 problem details, with the dogo `code` extension (spec §1). */
 export interface ProblemDetails {
