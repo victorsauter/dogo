@@ -1,6 +1,6 @@
-# dogo — application mobile
+# Uzu — application mobile
 
-Application iOS et Android de dogo, en React Native avec Expo (SDK 58, React Native 0.88, React 19.3), TypeScript strict et Expo Router.
+Application iOS et Android d’Uzu (le nom du produit, voir l’ADR 0041 ; le dépôt et le dossier gardent le nom `dogo`), en React Native avec Expo (SDK 58, React Native 0.88, React 19.3), TypeScript strict et Expo Router.
 
 ## Prérequis
 
@@ -8,7 +8,7 @@ Application iOS et Android de dogo, en React Native avec Expo (SDK 58, React Nat
 - Pour le simulateur iOS : Xcode 26.4 ou plus récent, sur macOS.
 - Pour l'émulateur Android : Android Studio et un appareil virtuel.
 - Pour un téléphone : l'application Expo Go (App Store ou Play Store).
-- L'API dogo lancée en local (voir `api/README.md`), sur `http://localhost:5080` par défaut.
+- L'API Uzu lancée en local (voir `api/README.md`), sur `http://localhost:5080` par défaut.
 
 L'application se lance et s'utilise entièrement dans **Expo Go et le simulateur iOS** avec la connexion de test. Ce qui demande une **version de développement** (`expo prebuild` ou EAS, voir « Construire une version de test » plus bas ; pas encore construite) :
 
@@ -73,7 +73,7 @@ Le code vit à part, dans `src/devtools/` (`demoData.ts` pour les appels typés 
 
 Cette section dit comment produire une build installable sur un vrai téléphone : TestFlight sur iOS, test interne sur Android. Elle est écrite pour une première fois, avec EAS (Expo Application Services). La configuration est prête (`eas.json`, `app.config.ts`) ; **rien n'a encore été construit ni envoyé** : il manque les comptes, qui ne peuvent être créés que par le porteur du produit (voir l'[ADR 0039](../docs/adr/0039-profils-de-build-eas.md)).
 
-> **Avant le premier envoi.** L'identifiant de bundle iOS et le nom de paquet Android (`com.victorsauter.dogo`) et le schéma de lien (`dogo://`) sont **figés dès la première build envoyée** à App Store Connect ou à Google Play : on ne les change plus ensuite sans créer une nouvelle application. **Un renommage de l'application est prévu avant** : ne rien envoyer à un store tant qu'il n'a pas eu lieu. Se fabriquer des builds de développement ou `preview` (installées par lien ou par câble) reste sans conséquence. Les icônes et l'écran de démarrage sont encore ceux du modèle d'Expo (le logo viendra d'un lot suivant) : cela suffit pour tester.
+> **Identifiants confirmés (ADR 0041).** Nom affiché `Uzu`, slug Expo `uzu`, identifiant de bundle iOS et nom de paquet Android `com.victorsauter.uzu`, schéma de lien `uzu://` (`uzu://walks/<id>`). Ils sont **figés dès la première build envoyée** à App Store Connect ou à Google Play : on ne les change plus ensuite sans créer une nouvelle application. Se fabriquer des builds de développement ou `preview` (installées par lien ou par câble) reste sans conséquence. Les icônes et l'écran de démarrage sont encore ceux du modèle d'Expo (le logo viendra d'un lot suivant) : cela suffit pour tester. Aucune build n'a jamais été distribuée : l'ancien schéma `dogo://` n'est plus accepté, et les clés de stockage `dogo.*` de l'appareil ne sont pas reprises (`uzu.*`).
 
 ### Les profils de build (`eas.json`)
 
@@ -117,8 +117,10 @@ Tout se fait depuis `mobile/`. Installer l'outil une fois : `npm install -g eas-
 
 ```sh
 eas login                       # le porteur saisit lui-même son mot de passe
-eas init                        # crée le projet dogo sur expo.dev (ou : eas init --id <id> pour un projet existant)
+eas init                        # crée le projet uzu sur expo.dev (ou : eas init --id <id> pour un projet existant)
 ```
+
+Le projet Expo doit avoir le slug `uzu` (celui de `app.config.ts`) et appartenir au compte du porteur.
 
 `app.config.ts` est dynamique : EAS CLI ne peut pas y écrire l'identifiant, il l'affiche (il est aussi sur la page du projet, sur expo.dev). Il se reporte dans la variable `EXPO_PUBLIC_EAS_PROJECT_ID` (voir l'étape suivante). Le temps des premières commandes, la définir aussi dans le terminal pour que EAS CLI trouve le projet : `export EXPO_PUBLIC_EAS_PROJECT_ID=<id>` (non vérifié sans compte : si EAS CLI la réclame ailleurs, la poser aussi dans `mobile/.env`, qui n'est pas versionné).
 
@@ -153,11 +155,11 @@ eas env:exec preview "EAS_BUILD_PROFILE=preview npx expo config --type public"
 
 **Garde-fou.** Pour les profils `preview` et `production`, `app.config.ts` fait échouer la build, avec un message qui dit quoi corriger, si `EXPO_PUBLIC_API_URL` est absente ou n'est pas en `https`, ou si `EXPO_PUBLIC_DEV_LOGIN` vaut `true`. Il s'appuie sur `EAS_BUILD_PROFILE`, que EAS Build pose sur la machine de build : EAS CLI ne l'a pas quand il lit la configuration chez toi, donc l'erreur peut n'apparaître qu'à l'étape « Read app config » du journal de build (la commande `eas env:exec` ci-dessus la montre avant). Le développement local et les tests ne sont jamais gênés (`app.config.ts`, tests dans `src/lib/__tests__/appConfig.test.ts`).
 
-**4. Créer les identifiants de connexion Apple et Google, et les reporter des deux côtés.**
+**4. Créer les identifiants de connexion Apple et Google, et les reporter des deux côtés.** Tout est lié à l'identifiant `com.victorsauter.uzu` : l'audience Apple de l'API (`Auth__Apple__Audiences__0`) est exactement cet identifiant, et les clients OAuth Google (iOS, Android) et la clé Google Maps Android se créent pour ce bundle et ce paquet.
 
 | Fournisseur | À créer                                                                                                                                                                                                                              | À reporter côté application                                                                        | À reporter côté API (`api/.env.example`)                                                                                 |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Apple       | rien d'autre que le compte : EAS crée l'identifiant d'application, le certificat et active la capacité « Se connecter avec Apple » à la première build iOS (à vérifier)                                                              | rien                                                                                               | `Auth__Apple__Audiences__0` = l'identifiant de bundle (`com.victorsauter.dogo`, déjà dans le fichier d'exemple)          |
+| Apple       | rien d'autre que le compte : EAS crée l'identifiant d'application, le certificat et active la capacité « Se connecter avec Apple » à la première build iOS (à vérifier)                                                              | rien                                                                                               | `Auth__Apple__Audiences__0` = l'identifiant de bundle (`com.victorsauter.uzu`, déjà dans le fichier d'exemple)           |
 | Google      | dans la console Google Cloud, écran de consentement OAuth, puis trois identifiants OAuth : un **client Web**, un **client iOS** (identifiant de bundle) et un **client Android par empreinte de certificat** (nom de paquet + SHA-1) | `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (client Web) et `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` (client iOS) | `Auth__Google__Audiences__0` = l'identifiant du **client Web** (c'est lui, l'audience du jeton envoyé par l'application) |
 
 - Le client Android ne s'écrit nulle part dans le code : Google s'en sert pour reconnaître l'application qui ouvre la fenêtre de connexion. Sans lui, la connexion échoue sur Android (erreur `DEVELOPER_ERROR`). Il en faut **un par empreinte SHA-1** : celle du keystore géré par EAS (pour `development` et `preview` ; `eas credentials -p android`, ou expo.dev, projet, Credentials) et celle de la **clé de signature de l'application de Google Play** (Play Console, Intégrité de l'application) pour les builds installées depuis le Play Store.
@@ -167,9 +169,9 @@ eas env:exec preview "EAS_BUILD_PROFILE=preview npx expo config --type public"
 **5. Notifications push.**
 
 - **iOS** : à la première build, EAS CLI propose de configurer les notifications et de créer une clé APNs : répondre oui (compte Apple payant exigé).
-- **Android** : ajouter une application Android dans le projet Firebase (nom de paquet `com.victorsauter.dogo`), télécharger `google-services.json` (variable `GOOGLE_SERVICES_JSON`, étape 3), puis créer une clé de compte de service (Firebase, Paramètres, Comptes de service, « Générer une nouvelle clé privée ») et la téléverser dans EAS : `eas credentials`, Android, puis la clé de compte de service pour les notifications (FCM V1) ; ou sur expo.dev, Project settings, Credentials. Cette clé ne va jamais dans le dépôt (le `.gitignore` de `mobile/` ignore `google-service-account*.json` et `google-services.json`). Si la clé d'API Google Cloud du projet Firebase est restreinte, autoriser « FCM Registration API » et « Firebase Installations API », avec l'empreinte SHA-1 de la clé de signature de Google Play.
+- **Android** : ajouter une application Android dans le projet Firebase (nom de paquet `com.victorsauter.uzu`), télécharger `google-services.json` (variable `GOOGLE_SERVICES_JSON`, étape 3), puis créer une clé de compte de service (Firebase, Paramètres, Comptes de service, « Générer une nouvelle clé privée ») et la téléverser dans EAS : `eas credentials`, Android, puis la clé de compte de service pour les notifications (FCM V1) ; ou sur expo.dev, Project settings, Credentials. Cette clé ne va jamais dans le dépôt (le `.gitignore` de `mobile/` ignore `google-service-account*.json` et `google-services.json`). Si la clé d'API Google Cloud du projet Firebase est restreinte, autoriser « FCM Registration API » et « Firebase Installations API », avec l'empreinte SHA-1 de la clé de signature de Google Play.
 
-**6. Clé Google Maps pour Android.** Sans elle, la carte reste grise hors Expo Go. Dans la console Google Cloud : activer **Maps SDK for Android**, créer une clé d'API, puis **la restreindre** : restriction d'application « Applications Android », avec le nom de paquet (`com.victorsauter.dogo`) et une entrée par empreinte SHA-1 (celle du keystore EAS et celle de la clé de signature de Google Play, comme ci-dessus), et restriction d'API limitée à Maps SDK for Android. Une clé embarquée dans une application est lisible par n'importe qui qui l'ouvre : ce sont ces restrictions qui la protègent. La clé se pose dans `GOOGLE_MAPS_ANDROID_API_KEY` ; `app.config.ts` l'ajoute par l'option `androidGoogleMapsApiKey` du plugin de `react-native-maps` (Apple Plans sur iOS n'a besoin d'aucune clé).
+**6. Clé Google Maps pour Android.** Sans elle, la carte reste grise hors Expo Go. Dans la console Google Cloud : activer **Maps SDK for Android**, créer une clé d'API, puis **la restreindre** : restriction d'application « Applications Android », avec le nom de paquet (`com.victorsauter.uzu`) et une entrée par empreinte SHA-1 (celle du keystore EAS et celle de la clé de signature de Google Play, comme ci-dessus), et restriction d'API limitée à Maps SDK for Android. Une clé embarquée dans une application est lisible par n'importe qui qui l'ouvre : ce sont ces restrictions qui la protègent. La clé se pose dans `GOOGLE_MAPS_ANDROID_API_KEY` ; `app.config.ts` l'ajoute par l'option `androidGoogleMapsApiKey` du plugin de `react-native-maps` (Apple Plans sur iOS n'a besoin d'aucune clé).
 
 **7. Construire et envoyer sur iOS (TestFlight).**
 
@@ -205,7 +207,7 @@ eas submit -p android --profile closed-test --latest  # piste « test fermé » 
 2. **Connexion Apple** (iPhone) puis **connexion Google** (iPhone et Android) : un compte se crée, le profil s'ouvre ; l'API répond sans refuser le jeton (sinon, vérifier les audiences de `api/.env.example`).
 3. **Carte Android** : les tuiles s'affichent (grise = clé Maps absente, mal restreinte, ou empreinte SHA-1 manquante dans la restriction). Sur iOS, la carte Apple Plans.
 4. **Notifications** : accepter l'autorisation proposée après une inscription à une balade ; depuis un second compte, écrire dans le fil de la balade ; la notification arrive application fermée, et un appui ouvre le fil. À faire sur iOS et sur Android (sans `google-services.json` et clé FCM, Android ne reçoit rien).
-5. **Liens profonds** : ouvrir `dogo://walks/<id>` (simulateur : `xcrun simctl openurl booted dogo://walks/<id>` ; Android : `adb shell am start -a android.intent.action.VIEW -d "dogo://walks/<id>"`) ; un lien inconnu (`dogo://nimporte`) affiche la page « introuvable ».
+5. **Liens profonds** : ouvrir `uzu://walks/<id>` (simulateur : `xcrun simctl openurl booted uzu://walks/<id>` ; Android : `adb shell am start -a android.intent.action.VIEW -d "uzu://walks/<id>"`) ; un lien inconnu (`uzu://nimporte`) affiche la page « introuvable ».
 6. **Position, photos, appareil photo** : les trois demandes d'autorisation apparaissent avec leurs textes en français.
 7. **Mode sombre sur Android** : `expo-doctor` ne le signale pas, mais le prebuild avertit que `userInterfaceStyle` demande `expo-system-ui` sur Android ; à vérifier sur la build, et à installer au besoin.
 8. **Icône, écran de démarrage** : encore ceux du modèle d'Expo, aux couleurs de la charte pour le fond.
@@ -221,9 +223,9 @@ eas build -p android --profile development         # .apk
 npx expo start --dev-client
 ```
 
-### Renommer l'application (lot à venir)
+### Si l'application devait être renommée à nouveau
 
-Tout part de `APP` en tête de `app.config.ts` (nom affiché, slug, schéma de lien, identifiants de bundle et de paquet) ; les textes des permissions le reprennent. Ensuite, à la main : `Auth__Apple__Audiences__0` de l'API, les clients OAuth Google (identifiant de bundle et nom de paquet), l'application Android du projet Firebase (nom de paquet), la restriction de la clé Maps (nom de paquet), le projet EAS (slug) et le schéma `dogo://`, encore écrit en dur dans `src/notifications/routing.ts` (application) et dans `NotificationService.cs` et `NotificationRequest.cs` (API, liens des notifications). **Avant le premier envoi à un store seulement** : ensuite l'identifiant est figé.
+Le renommage en Uzu (ADR 0041) a suivi ce chemin ; il ne se refait pas après le premier envoi à un store. Tout part de `APP` en tête de `app.config.ts` (nom affiché, slug, schéma de lien, identifiants de bundle et de paquet) ; les textes des permissions le reprennent. Le schéma est aussi écrit dans `src/lib/appLinks.ts` (`APP_URL_SCHEME`, lu par `src/notifications/routing.ts`), qu'un test de `appConfig.test.ts` tient égal à `APP.urlScheme`, et dans l'API (liens des notifications). Ensuite, à la main : `Auth__Apple__Audiences__0` de l'API, les clients OAuth Google (identifiant de bundle et nom de paquet), l'application Android du projet Firebase (nom de paquet), la restriction de la clé Maps (nom de paquet), le projet EAS (slug), `fr.app.name` et les textes de `src/strings/` qui citent le nom, et les clés de stockage `uzu.*`.
 
 ## Scripts
 
@@ -252,13 +254,13 @@ Le script lit `../api/openapi.json` et échoue avec un message clair s'il n'exis
 
 ```text
 mobile/
-├── app.config.ts          nom, identifiants, schéma dogo://, textes des permissions, garde-fou de distribution
+├── app.config.ts          nom, identifiants, schéma uzu://, textes des permissions, garde-fou de distribution
 ├── eas.json               profils de build EAS (development, preview, production) et soumission
 ├── scripts/generate-api.mjs
 └── src/
     ├── app/               écrans (Expo Router) — uniquement des routes et des dispositions
     │   ├── _layout.tsx    fournisseurs + garde d'authentification + `ErrorBoundary` (écran d'erreur en français, « Réessayer »)
-    │   ├── +not-found.tsx adresse inconnue (`dogo://nimporte`) : écran en français, retour à l'accueil
+    │   ├── +not-found.tsx adresse inconnue (`uzu://nimporte`) : écran en français, retour à l'accueil
     │   ├── (auth)/        écrans accessibles déconnecté (sign-in)
     │   ├── (legal)/       conditions d'utilisation et confidentialité, sans garde (ADR 0025)
     │   └── (app)/         pile : (tabs)/ (Balades, Mes balades `mine`, Profil) et écrans poussés
@@ -284,7 +286,7 @@ Les tests vivent dans des dossiers `__tests__/` à côté du code testé, jamais
 
 ### Ajouter un écran
 
-1. Créer le fichier dans `src/app/(app)/` (connecté ; un écran de détail ou de formulaire va là, un onglet dans `(app)/(tabs)/`, voir l'[ADR 0017](../docs/adr/0017-ecrans-empiles-sur-les-onglets.md)) ou `src/app/(auth)/` (déconnecté). Exemple : `src/app/(app)/walks/[id].tsx` donne `/walks/123` et `dogo://walks/123`.
+1. Créer le fichier dans `src/app/(app)/` (connecté ; un écran de détail ou de formulaire va là, un onglet dans `(app)/(tabs)/`, voir l'[ADR 0017](../docs/adr/0017-ecrans-empiles-sur-les-onglets.md)) ou `src/app/(auth)/` (déconnecté). Exemple : `src/app/(app)/walks/[id].tsx` donne `/walks/123` et `uzu://walks/123`.
 2. L'envelopper dans `<Screen>` ; `scroll={false}` pour une liste (`FlatList`) ou un état centré, `edges={['top', 'left', 'right']}` dans un onglet.
 3. Pour les états : `<LoadingState />`, `<ErrorState error={error} onRetry={refetch} />`, `<EmptyState title=… />`.
 4. Utiliser `Text`, `Button`, `TextField`, `Card`, `ListItem`, `Avatar`, `ChoiceGroup` et les jetons de `useTheme()` ; aucune couleur ni taille en dur.
@@ -347,7 +349,7 @@ export function useCreateDog() {
 
 ### Onglet « Balades » : deux vues au choix
 
-L’onglet a deux vues, au choix de chacun dans le profil, sous **Réglages › Affichage des balades** (deux cartes avec une petite illustration : « Carte et panneau » et « Liste »). **« Carte et panneau » est la vue par défaut.** Le choix s’applique aussitôt à l’onglet et reste mémorisé sur l’appareil (`expo-secure-store`, clé `dogo.discoverLayout`) ; une valeur inconnue (ou l’ancienne « current ») redonne le panneau. Il ne dépend pas de `EXPO_PUBLIC_DEV_LOGIN`.
+L’onglet a deux vues, au choix de chacun dans le profil, sous **Réglages › Affichage des balades** (deux cartes avec une petite illustration : « Carte et panneau » et « Liste »). **« Carte et panneau » est la vue par défaut.** Le choix s’applique aussitôt à l’onglet et reste mémorisé sur l’appareil (`expo-secure-store`, clé `uzu.discoverLayout`) ; une valeur inconnue (ou l’ancienne « current ») redonne le panneau. Il ne dépend pas de `EXPO_PUBLIC_DEV_LOGIN`.
 
 - Le code vit dans `src/discover/` : `shared.tsx` (état des filtres partagé par les deux vues, en-tête de la liste et rangée de pastilles, contrôles flottants sur la carte, recherche qui suit la carte, actualisation, boutons flottants), `PanelLayout.tsx`, `ListLayout.tsx`, `layoutPreference.ts` (la préférence) et `LayoutSetting.tsx` (le réglage du profil). La route `(tabs)/index.tsx` choisit la vue et garde les filtres.
 - **Préférence observable** : `layoutPreference.ts` est un petit store (`useSyncExternalStore`) lu une fois depuis le stockage sécurisé, puis partagé par l’onglet et le réglage. `useDiscoverLayout()` renvoie `{ layout, setLayout }` ; `layout` vaut `null` le temps de la lecture (quelques millisecondes), l’onglet n’affiche alors rien plutôt que la mauvaise vue.
@@ -362,7 +364,7 @@ L’onglet a deux vues, au choix de chacun dans le profil, sous **Réglages › 
 ### Fil de balade, répétition et notifications (lot 3)
 
 - **Fil** `walks/[id]/messages` : visible de l'organisateur et des propriétaires de chiens acceptés (`canUseThread`, `src/lib/thread.ts`) ; les autres voient, sur la fiche, une phrase qui explique l'absence du bouton. `useWalkMessages` (`src/api/messages.ts`) charge la dernière page (clé `['walks', id, 'messages']`, donc rafraîchie par `walksChanged`), la recharge au focus, par tirer pour rafraîchir et toutes les 15 s tant que l'écran est au premier plan, et ajoute les pages plus anciennes avec `before=<id du premier message>`. **Le cache du fil est cumulatif** : chaque lecture est fusionnée (sans doublon, par date) à ce qu'il contient au moment de la réponse, si bien qu'un message déjà reçu ne disparaît jamais ; si plus d'une page est arrivée entre deux lectures, les pages intermédiaires sont relues. L'envoi annule les lectures en cours avant d'écrire dans le cache. `useSendMessage` envoie de façon optimiste : le texte s'affiche aussitôt (« Envoi… »), puis devient le vrai message, ou « Message non envoyé » avec « Réessayer » / « Supprimer ». Annulée : lecture seule avec une bannière.
-- **Notifications** (`src/notifications/`, voir l'[ADR 0022](../docs/adr/0022-notifications-push-mobile.md)) : `expo-notifications` n'est chargé que si `EXPO_PUBLIC_EAS_PROJECT_ID` est défini ; sinon tout est inactif, sans message. `offerNotifications()` explique puis demande l'autorisation (une seule fois, après une inscription ou une création de balade) ; `registerDevice()` / `unregisterDevice()` gèrent `PUT` et `DELETE /me/devices` (la déconnexion supprime l'appareil avant d'effacer la session) ; `targetForNotification()` ne suit que `dogo://walks/<id>` (le fil pour `message_posted`, sinon la fiche) ; `NotificationsEffects` (dans la disposition racine) écoute les notifications et le renouvellement du jeton push (`addPushTokenListener` : l'appareil est ré-enregistré, l'ancien jeton retiré). Un tap reçu pendant que la session se lit attend la connexion ; dès que la personne est déconnectée, un tap mémorisé est oublié et ceux qui arrivent sont ignorés (ils peuvent venir d'un autre compte). Les tests activent la fonction avec `config.easProjectId = '…'` ; `expo-notifications` y est simulé (`jest.setup.ts` : `__tap(data)`, `__receive(data)`, `__state`).
+- **Notifications** (`src/notifications/`, voir l'[ADR 0022](../docs/adr/0022-notifications-push-mobile.md)) : `expo-notifications` n'est chargé que si `EXPO_PUBLIC_EAS_PROJECT_ID` est défini ; sinon tout est inactif, sans message. `offerNotifications()` explique puis demande l'autorisation (une seule fois, après une inscription ou une création de balade) ; `registerDevice()` / `unregisterDevice()` gèrent `PUT` et `DELETE /me/devices` (la déconnexion supprime l'appareil avant d'effacer la session) ; `targetForNotification()` ne suit que `uzu://walks/<id>` (le fil pour `message_posted`, sinon la fiche) ; `NotificationsEffects` (dans la disposition racine) écoute les notifications et le renouvellement du jeton push (`addPushTokenListener` : l'appareil est ré-enregistré, l'ancien jeton retiré). Un tap reçu pendant que la session se lit attend la connexion ; dès que la personne est déconnectée, un tap mémorisé est oublié et ceux qui arrivent sont ignorés (ils peuvent venir d'un autre compte). Les tests activent la fonction avec `config.easProjectId = '…'` ; `expo-notifications` y est simulé (`jest.setup.ts` : `__tap(data)`, `__receive(data)`, `__state`).
 - **Notifications reçues, sur un appareil** : il faut une version de développement et un projet EAS (`eas init`, puis `EXPO_PUBLIC_EAS_PROJECT_ID`) ; ni Expo Go ni le simulateur sans projet ne peuvent obtenir de jeton. Sur Android, Expo Go ne gère plus les notifications push depuis le SDK 53.
 - **Réglages** : écran `notifications` (onglet « Profil »), quatre interrupteurs liés à `/me/notification-preferences` (`useUpdateNotificationPreferences(change)`, enregistrement immédiat, retour en arrière en cas d'échec ; les envois se font l'un après l'autre, chacun portant les valeurs du cache à son tour) et l'état de l'autorisation du téléphone.
 - **Répétition** : `repeatWeekly` dans `WalkForm` (création seulement, option `allowRepeat`), badge « Chaque semaine » (`repeatsWeekly`) sur `WalkCard` et la fiche, « Arrêter la répétition » (`useStopSeries`) pour l'organisateur.
@@ -378,7 +380,7 @@ L’onglet a deux vues, au choix de chacun dans le profil, sous **Réglages › 
 - **Signalement** : un seul écran `report?kind=user|dog|walk&id=…&name=…` (`reportHref()` dans `src/lib/report.ts`), ouvert depuis un profil, un chien et une balade qui ne sont pas les miens.
 - **Réglages et compte** : l'onglet « Profil » range « Mes chiens », les organisations, « Réglages » (notifications, personnes bloquées, textes légaux, suppression) puis « Se déconnecter ». `delete-account` demande de taper `SUPPRIMER`, appelle `DELETE /me`, puis `endSession()` (session effacée sur l'appareil seulement : ni déconnexion ni retrait de l'appareil, le serveur s'en est chargé) et l'écran de connexion affiche une phrase (`setSignInNotice`). Un compte `Suspended` voit un bandeau dans le profil.
 - **Textes légaux** : `src/strings/legal.ts`, affichés par `LegalDocument` dans `(legal)/terms` et `(legal)/privacy` (accessibles connecté ou non, ADR 0025), avec le bandeau « Version provisoire — à faire valider avant la publication » et des passages `[…]` à compléter (éditeur, adresse, contact, droit applicable, durée de conservation des signalements).
-- **Notifications** : `membership_requested` ouvre l'écran des membres, `membership_accepted` et `organization_approved` la fiche de l'organisation ; seul `dogo://organizations/<id>` est suivi, et le type doit correspondre au genre de lien.
+- **Notifications** : `membership_requested` ouvre l'écran des membres, `membership_accepted` et `organization_approved` la fiche de l'organisation ; seul `uzu://organizations/<id>` est suivi, et le type doit correspondre au genre de lien.
 - **Actualisation au retour** : `useRefetchOnFocus()` (`src/lib/hooks.ts`) relit le profil, les organisations et les membres quand l'écran reprend le focus (par exemple après une validation par l'équipe).
 - **Administration** : pas d'écran (ADR 0020), à faire avec `curl` (voir `api/README.md`, « Agir en administrateur en local »).
 
