@@ -130,4 +130,16 @@ public sealed class StrictInputTests(ApiFixture fixture) : WalkTestBase(fixture)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(walk.StartsAt, (await GetWalkAsync(client, walk.Id)).StartsAt);
     }
+
+    [Fact]
+    public async Task A_walk_cannot_start_more_than_a_year_ahead()
+    {
+        var (client, _) = await SignedInAsync();
+        var walk = await CreateWalkAsync(client);
+        var tooFar = DateTimeOffset.UtcNow.AddYears(1).AddDays(1);
+
+        await AssertValidationProblemAsync(await client.PostAsJsonAsync("/api/v1/walks", ValidWalk(("startsAt", tooFar)), Ct), "startsAt");
+        await AssertValidationProblemAsync(await client.PatchAsJsonAsync($"/api/v1/walks/{walk.Id}", new { startsAt = tooFar }, Ct), "startsAt");
+        await CreateWalkAsync(client, ("startsAt", TruncateToSecond(DateTimeOffset.UtcNow.AddYears(1).AddDays(-1))));
+    }
 }

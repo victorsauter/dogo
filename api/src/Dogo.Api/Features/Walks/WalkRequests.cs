@@ -25,8 +25,9 @@ public sealed record CreateWalkRequest
     [StringLength(Walk.DescriptionMaxLength)]
     public string? Description { get; init; }
 
-    /// <summary>ISO 8601 with an explicit offset (<c>Z</c> or <c>±hh:mm</c>); must be in the future.</summary>
+    /// <summary>ISO 8601 with an explicit offset (<c>Z</c> or <c>±hh:mm</c>); must be in the future and at most one year ahead.</summary>
     [InFuture]
+    [WithinYears(1)]
     [JsonConverter(typeof(ExplicitOffsetDateTimeOffsetConverter))]
     public required DateTimeOffset StartsAt { get; init; }
 
@@ -85,8 +86,9 @@ public sealed record UpdateWalkRequest
     [StringLength(Walk.DescriptionMaxLength)]
     public string? Description { get; init; }
 
-    /// <summary>ISO 8601 with an explicit offset (<c>Z</c> or <c>±hh:mm</c>); must be in the future.</summary>
+    /// <summary>ISO 8601 with an explicit offset (<c>Z</c> or <c>±hh:mm</c>); must be in the future and at most one year ahead.</summary>
     [InFuture]
+    [WithinYears(1)]
     [JsonConverter(typeof(ExplicitOffsetDateTimeOffsetConverter))]
     public DateTimeOffset? StartsAt { get; init; }
 
