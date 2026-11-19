@@ -24,7 +24,11 @@ export default function EditWalkScreen() {
   if (walk.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={walk.error} onRetry={() => walk.refetch()} />
+        <ErrorState
+          error={walk.error}
+          notFoundTitle={t.walk.notFoundTitle}
+          onRetry={() => walk.refetch()}
+        />
       </Screen>
     );
   }

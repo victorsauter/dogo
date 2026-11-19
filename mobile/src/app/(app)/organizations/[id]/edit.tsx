@@ -22,7 +22,11 @@ export default function EditOrganizationScreen() {
   if (organization.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={organization.error} onRetry={() => organization.refetch()} />
+        <ErrorState
+          error={organization.error}
+          notFoundTitle={t.organization.notFoundTitle}
+          onRetry={() => organization.refetch()}
+        />
       </Screen>
     );
   }

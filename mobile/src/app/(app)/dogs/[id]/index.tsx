@@ -44,7 +44,11 @@ export default function DogDetailScreen() {
   if (dog.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={dog.error} onRetry={() => dog.refetch()} />
+        <ErrorState
+          error={dog.error}
+          notFoundTitle={t.dog.notFoundTitle}
+          onRetry={() => dog.refetch()}
+        />
       </Screen>
     );
   }

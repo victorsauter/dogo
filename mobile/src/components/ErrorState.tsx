@@ -11,6 +11,11 @@ export interface ErrorStateProps {
   error?: unknown;
   /** Overrides the message derived from `error`. */
   message?: string;
+  /**
+   * Title when `error` is a 404 (« Balade introuvable »): the thing shown by the
+   * screen does not exist, or no longer does. Without it, a generic « Introuvable ».
+   */
+  notFoundTitle?: string;
   onRetry?: () => void;
 }
 
@@ -39,6 +44,11 @@ export function isDefinitiveError(error: unknown): boolean {
   );
 }
 
+/** True for a 404: what the screen shows does not exist (or is hidden from this person). */
+export function isNotFoundError(error: unknown): boolean {
+  return error instanceof ApiError && error.kind === 'http' && error.status === 404;
+}
+
 /** Leaves the screen: back when there is a screen to go back to (a deep link has none), else home. */
 export function leaveScreen(): void {
   if (router.canGoBack()) router.back();
@@ -47,14 +57,18 @@ export function leaveScreen(): void {
 
 /**
  * Error of a screen. A transient failure offers « Réessayer »; a definitive
- * one (404, 403…) offers « Retour » instead, since asking again is useless.
+ * one (404, 403…) offers « Retour » instead, since asking again is useless. A
+ * 404 is not « a problem »: its title says the thing cannot be found.
  */
-export function ErrorState({ error, message, onRetry }: ErrorStateProps) {
+export function ErrorState({ error, message, notFoundTitle, onRetry }: ErrorStateProps) {
   const definitive = isDefinitiveError(error);
+  const title = isNotFoundError(error)
+    ? (notFoundTitle ?? t.states.missingTitle)
+    : t.states.errorTitle;
   return (
     <EmptyState
       icon={errorIcon(error)}
-      title={t.states.errorTitle}
+      title={title}
       message={message ?? errorMessage(error)}
       action={
         definitive

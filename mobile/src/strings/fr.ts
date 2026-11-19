@@ -168,6 +168,8 @@ export const fr = {
   },
   walk: {
     detailTitle: 'Balade',
+    /** Title of the walk screens when the walk does not exist (404). */
+    notFoundTitle: 'Balade introuvable',
     newTitle: 'Nouvelle balade',
     editTitle: 'Modifier la balade',
     when: '{day} à {time}',
@@ -342,6 +344,8 @@ export const fr = {
     channelName: 'Balades et messages',
   },
   profile: {
+    /** Title of a public profile when the person does not exist (404). */
+    notFoundTitle: 'Profil introuvable',
     greeting: 'Bonjour {name} !',
     later: 'Plus tard',
     noBio: 'Pas encore de présentation.',
@@ -366,6 +370,8 @@ export const fr = {
     pickFailed: 'Impossible de récupérer cette photo. Essaie-en une autre.',
   },
   dog: {
+    /** Title of the dog screens when the dog does not exist (404). */
+    notFoundTitle: 'Chien introuvable',
     limitTitle: 'Maximum de chiens atteint',
     myDogsEmptyTitle: 'Ajoute ton premier chien',
     myDogsEmptyMessage: 'Présente ton chien pour pouvoir l’inscrire à des balades.',
@@ -418,6 +424,8 @@ export const fr = {
   },
   states: {
     errorTitle: 'Oups, un problème est survenu',
+    /** Title of an error that is a 404 when the screen gives no more precise one. */
+    missingTitle: 'Introuvable',
     /** Last-resort screen (render error caught by the root error boundary). */
     crashTitle: 'Oups, dogo a rencontré un problème',
     crashMessage:
@@ -433,6 +441,8 @@ export const fr = {
       'Active les notifications pour être prévenu des inscriptions, des changements de balade, des messages et des rappels.',
   },
   organization: {
+    /** Title of the organisation screens when it does not exist (404). */
+    notFoundTitle: 'Organisation introuvable',
     findTitle: 'Trouver une organisation',
     find: 'Trouver une organisation',
     createTitle: 'Créer une organisation',

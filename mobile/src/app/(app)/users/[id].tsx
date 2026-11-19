@@ -33,7 +33,11 @@ export default function PublicProfileScreen() {
   if (user.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={user.error} onRetry={() => user.refetch()} />
+        <ErrorState
+          error={user.error}
+          notFoundTitle={t.profile.notFoundTitle}
+          onRetry={() => user.refetch()}
+        />
       </Screen>
     );
   }

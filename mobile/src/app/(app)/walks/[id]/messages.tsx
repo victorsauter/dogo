@@ -43,7 +43,11 @@ export default function WalkThreadScreen() {
   if (walk.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={walk.error} onRetry={() => walk.refetch()} />
+        <ErrorState
+          error={walk.error}
+          notFoundTitle={t.walk.notFoundTitle}
+          onRetry={() => walk.refetch()}
+        />
       </Screen>
     );
   }
@@ -115,7 +119,11 @@ function Thread({ walk }: { walk: WalkDetail }) {
     body = forbidden ? (
       <EmptyState title={t.thread.title} message={t.thread.hiddenReason} icon="info" />
     ) : (
-      <ErrorState error={latest.error} onRetry={() => latest.refetch()} />
+      <ErrorState
+        error={latest.error}
+        notFoundTitle={t.walk.notFoundTitle}
+        onRetry={() => latest.refetch()}
+      />
     );
   } else {
     body = (

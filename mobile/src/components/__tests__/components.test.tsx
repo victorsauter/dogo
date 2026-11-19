@@ -239,6 +239,25 @@ describe('ErrorState', () => {
     await fireEvent.press(screen.getByRole('button', { name: t.common.retry }));
     expect(onRetry).toHaveBeenCalled();
   });
+
+  it('titles a 404 with what cannot be found, not « un problème »', async () => {
+    const notFound = new ApiError({ kind: 'http', status: 404 });
+    await renderWithTheme(<ErrorState error={notFound} notFoundTitle={t.walk.notFoundTitle} />);
+    expect(screen.getByText(t.walk.notFoundTitle)).toBeTruthy();
+    expect(screen.queryByText(t.states.errorTitle)).toBeNull();
+  });
+
+  it('gives a 404 without a precise title a generic « Introuvable »', async () => {
+    await renderWithTheme(<ErrorState error={new ApiError({ kind: 'http', status: 404 })} />);
+    expect(screen.getByText(t.states.missingTitle)).toBeTruthy();
+  });
+
+  it('keeps the « problème » title for any other error', async () => {
+    const error = new ApiError({ kind: 'http', status: 500 });
+    await renderWithTheme(<ErrorState error={error} notFoundTitle={t.walk.notFoundTitle} />);
+    expect(screen.getByText(t.states.errorTitle)).toBeTruthy();
+    expect(screen.queryByText(t.walk.notFoundTitle)).toBeNull();
+  });
 });
 
 describe('ErrorState: retry or leave', () => {

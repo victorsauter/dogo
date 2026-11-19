@@ -227,6 +227,8 @@ describe('detail', () => {
     mockApi({ [`GET ${orgPath}`]: () => problemResponse(404, 'organization.not_found') });
     await openAt(`/organizations/${orgId}`);
     expect(await screen.findByText(t.errors['organization.not_found'])).toBeTruthy();
+    expect(screen.getByText(t.organization.notFoundTitle)).toBeTruthy();
+    expect(screen.queryByText(t.states.errorTitle)).toBeNull();
   });
 
   describe('my membership', () => {
