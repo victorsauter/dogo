@@ -48,7 +48,7 @@ public sealed class NotificationEventTests(ApiFixture fixture) : WalkTestBase(fi
         Assert.Equal("Nouvelle inscription", push.Title);
         Assert.Equal("alice participera à « Tour du lac ».", push.Body);
         Assert.Equal(
-            new Dictionary<string, string> { ["type"] = "registration_created", ["walkId"] = walk.Id.ToString(), ["url"] = $"dogo://walks/{walk.Id}" },
+            new Dictionary<string, string> { ["type"] = "registration_created", ["walkId"] = walk.Id.ToString(), ["url"] = $"uzu://walks/{walk.Id}" },
             push.Data);
     }
 

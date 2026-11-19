@@ -63,7 +63,7 @@ public sealed class DemoPhotoTests(ApiFixture fixture) : DemoDataTestBase(fixtur
             Assert.Equal("https", r.RequestUri!.Scheme);
             Assert.Null(r.Headers.Authorization);
             Assert.False(r.Headers.Contains("Cookie"));
-            Assert.Equal("dogo-demo-data/1.0 (development seed data)", string.Join(" ", r.Headers.GetValues("User-Agent")));
+            Assert.Equal("uzu-demo-data/1.0 (development seed data)", string.Join(" ", r.Headers.GetValues("User-Agent")));
             Assert.Contains(r.RequestUri.Host, new[] { "api.dicebear.com", "en.wikipedia.org", "commons.wikimedia.org", "upload.wikimedia.org" });
         });
 

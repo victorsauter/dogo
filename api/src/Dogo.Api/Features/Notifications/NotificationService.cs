@@ -51,7 +51,7 @@ public sealed partial class NotificationService(DogoDbContext db, IPushSender se
         if (request.Subject.Path is { } path)
         {
             // Without url the app shows the notification and ignores a tap (mobile routing.ts).
-            data["url"] = $"dogo://{path}";
+            data["url"] = $"{DeepLinkPrefix}{path}";
         }
 
         var messages = devices.Select(d => new PushMessage(d.UserId, d.ExpoPushToken, text.Title, text.Body, data)).ToList();
@@ -65,6 +65,12 @@ public sealed partial class NotificationService(DogoDbContext db, IPushSender se
             LogDevicesRemoved(removed);
         }
     }
+
+    /// <summary>Deep link scheme of the app (ADR 0041); the single place where it is defined.</summary>
+    public const string DeepLinkScheme = "uzu";
+
+    /// <summary>Start of every deep link in <c>data.url</c>, e.g. <c>uzu://walks/{id}</c>.</summary>
+    public const string DeepLinkPrefix = DeepLinkScheme + "://";
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "{Type} notification for {SubjectId}: {DeviceCount} devices of {UserCount} users")]
     private partial void LogSent(NotificationType type, Guid subjectId, int deviceCount, int userCount);

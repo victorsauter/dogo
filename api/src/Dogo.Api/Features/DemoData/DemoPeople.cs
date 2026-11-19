@@ -119,7 +119,7 @@ internal static class DemoPeople
             D("Nina", "Croisé dobermann", 26, Easygoing, None, LongLine)),
         P("Monique", "Biehler", "Septuagénaire en pleine forme, je préfère les balades courtes et plates.",
             D("Kiki", "West Highland white terrier", 110, Easygoing, None, OnLeash)),
-        P("Gérard", "Koenig", "Marcheur du Club vosgien, j'ai rejoint dogo pour Tobby.",
+        P("Gérard", "Koenig", "Marcheur du Club vosgien, j'ai rejoint Uzu pour Tobby.",
             D("Tobby", "Springer anglais", 76, Easygoing, None, OffLeash),
             D("Saucisse", "Teckel", 168, Easygoing, None, OnLeash, "Quatorze ans, finit parfois la balade dans les bras.")),
         P("Brigitte", "Faure", "",

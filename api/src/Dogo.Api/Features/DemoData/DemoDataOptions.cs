@@ -24,7 +24,7 @@ public sealed class DemoPhotoOptions
     /// Sent with every download. Generic on purpose (no personal data); Wikimedia grants higher
     /// rate limits to a user agent with a contact, which a developer may add locally.
     /// </summary>
-    public string UserAgent { get; set; } = "dogo-demo-data/1.0 (development seed data)";
+    public string UserAgent { get; set; } = "uzu-demo-data/1.0 (development seed data)";
 
     /// <summary>Time allowed for each request.</summary>
     public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(10);
