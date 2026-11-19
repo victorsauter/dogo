@@ -3,7 +3,7 @@ import { Platform, Text } from 'react-native';
 
 import { renderWithTheme } from '@/test/render';
 
-import { Screen } from '../Screen';
+import { measureScreenTop, Screen } from '../Screen';
 
 // Records the props `Screen` gives to `KeyboardAvoidingView`.
 const mockKeyboardAvoidingView = jest.fn();
@@ -36,5 +36,37 @@ describe('Screen keyboard avoidance', () => {
     );
     expect(screen.getByText('contenu')).toBeTruthy();
     expect(mockKeyboardAvoidingView.mock.calls.at(-1)![0].behavior).toBe('padding');
+  });
+});
+
+describe('the top of the screen given to the keyboard avoidance', () => {
+  const original = Platform.OS;
+  afterEach(() => {
+    Platform.OS = original;
+  });
+
+  // Below a header, edge-to-edge: 80 from the top of the screen, but Android's
+  // `measureInWindow` leaves out the 24 of the status bar.
+  const view = {
+    measure: jest.fn((callback: (...values: number[]) => void) => callback(0, 0, 400, 800, 0, 80)),
+    measureInWindow: jest.fn((callback: (...values: number[]) => void) =>
+      callback(0, Platform.OS === 'android' ? 56 : 80, 400, 800),
+    ),
+  } as unknown as Parameters<typeof measureScreenTop>[0];
+
+  it.each([
+    ['android', 80],
+    ['ios', 80],
+  ] as const)('is measured from the top of the screen on %s', (os, expected) => {
+    Platform.OS = os;
+    const onTop = jest.fn();
+    measureScreenTop(view, onTop);
+    expect(onTop).toHaveBeenCalledWith(expected);
+  });
+
+  it('does nothing before the view exists', () => {
+    const onTop = jest.fn();
+    measureScreenTop(null, onTop);
+    expect(onTop).not.toHaveBeenCalled();
   });
 });

@@ -161,6 +161,14 @@ describe('staying on the newest message', () => {
     expect(scrollToEnd).toHaveBeenCalled();
   });
 
+  it('scrolls again on the next frame, once the scroll view knows the new height (Android)', async () => {
+    const { scrollToEnd, list } = await openLongThread();
+    scrollToEnd.mockClear();
+    await fireEvent(list, 'contentSizeChange', 400, 3400);
+    expect(scrollToEnd).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(scrollToEnd).toHaveBeenCalledTimes(2));
+  });
+
   it('stops following once the person scrolls up to read', async () => {
     const { scrollToEnd, list } = await openLongThread();
     await fireEvent(list, 'scrollEndDrag', farFromBottom);
