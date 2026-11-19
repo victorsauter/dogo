@@ -18,7 +18,9 @@ import {
   MenuPill,
   placeMenu,
   TextField,
+  WalksMap,
 } from '..';
+import { errorIcon } from '../ErrorState';
 
 describe('Button', () => {
   it('calls onPress', async () => {
@@ -238,4 +240,83 @@ describe('ErrorState', () => {
     await fireEvent.press(screen.getByRole('button', { name: t.common.retry }));
     expect(onRetry).toHaveBeenCalled();
   });
+
+  it('titles a 404 with what cannot be found, not « un problème »', async () => {
+    const notFound = new ApiError({ kind: 'http', status: 404 });
+    await renderWithTheme(<ErrorState error={notFound} notFoundTitle={t.walk.notFoundTitle} />);
+    expect(screen.getByText(t.walk.notFoundTitle)).toBeTruthy();
+    expect(screen.queryByText(t.states.errorTitle)).toBeNull();
+  });
+
+  it('gives a 404 without a precise title a generic « Introuvable »', async () => {
+    await renderWithTheme(<ErrorState error={new ApiError({ kind: 'http', status: 404 })} />);
+    expect(screen.getByText(t.states.missingTitle)).toBeTruthy();
+  });
+
+  it('keeps the « problème » title for any other error', async () => {
+    const error = new ApiError({ kind: 'http', status: 500 });
+    await renderWithTheme(<ErrorState error={error} notFoundTitle={t.walk.notFoundTitle} />);
+    expect(screen.getByText(t.states.errorTitle)).toBeTruthy();
+    expect(screen.queryByText(t.walk.notFoundTitle)).toBeNull();
+  });
+});
+
+describe('ErrorState: retry or leave', () => {
+  it.each([404, 403, 409])(
+    'offers « Retour », not « Réessayer », for a definitive %s',
+    async (status) => {
+      const onRetry = jest.fn();
+      await renderWithTheme(
+        <ErrorState error={new ApiError({ kind: 'http', status })} onRetry={onRetry} />,
+      );
+      expect(screen.queryByRole('button', { name: t.common.retry })).toBeNull();
+      expect(screen.getByRole('button', { name: t.common.back })).toBeTruthy();
+    },
+  );
+
+  it.each([
+    ['a network failure', new ApiError({ kind: 'network' })],
+    ['a server fault', new ApiError({ kind: 'http', status: 503 })],
+    ['a timeout', new ApiError({ kind: 'http', status: 408 })],
+    ['rate limiting', new ApiError({ kind: 'http', status: 429 })],
+  ])('keeps « Réessayer » for %s', async (_name, error) => {
+    const onRetry = jest.fn();
+    await renderWithTheme(<ErrorState error={error} onRetry={onRetry} />);
+    await fireEvent.press(screen.getByRole('button', { name: t.common.retry }));
+    expect(onRetry).toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: t.common.back })).toBeNull();
+  });
+});
+
+describe('ErrorState icon', () => {
+  it('shows « hors ligne » only when the server could not be reached', () => {
+    expect(errorIcon(new ApiError({ kind: 'network' }))).toBe('offline');
+    expect(errorIcon(new ApiError({ kind: 'http', status: 404 }))).toBe('warning');
+    expect(errorIcon(new ApiError({ kind: 'http', status: 500 }))).toBe('warning');
+    expect(errorIcon(new ApiError({ kind: 'client' }))).toBe('warning');
+    expect(errorIcon(undefined)).toBe('warning');
+  });
+});
+
+describe('WalksMap', () => {
+  it.each(['light', 'dark'] as const)(
+    'draws the map in the %s theme (Android stayed light without it)',
+    async (scheme) => {
+      await renderWithTheme(
+        <WalksMap
+          initialRegion={{
+            latitude: 47.5,
+            longitude: 7.2,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          }}
+          walks={[]}
+          onRegionChange={() => {}}
+          onOpenWalk={() => {}}
+        />,
+        scheme,
+      );
+      expect(screen.getByTestId('walks-map').props.userInterfaceStyle).toBe(scheme);
+    },
+  );
 });

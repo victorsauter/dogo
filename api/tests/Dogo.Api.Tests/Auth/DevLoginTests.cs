@@ -84,14 +84,21 @@ public sealed class DevLoginTests(ApiFixture fixture) : ApiTestBase(fixture)
     }
 
     [Fact]
-    public async Task Dev_login_returns_404_when_disabled()
+    public async Task Dev_login_does_not_exist_when_disabled()
     {
+        var signedIn = await SignInDevAsync("bob", "Bob");
         await using var factory = new DogoApiFactory(
             Fixture.ConnectionString, new Dictionary<string, string?> { ["Auth:AllowDevLogin"] = "false", ["DemoData:Enabled"] = "false" });
+        var body = new { subject = "alice", displayName = "Alice" };
 
-        var response = await factory.CreateClient().PostAsJsonAsync("/api/v1/auth/dev", new { subject = "alice", displayName = "Alice" }, Ct);
+        // Like any unknown route (see ErrorHandlingTests): 401 without a token, 404 with one.
+        var anonymous = await factory.CreateClient().PostAsJsonAsync("/api/v1/auth/dev", body, Ct);
+        var authenticated = factory.CreateClient();
+        authenticated.DefaultRequestHeaders.Authorization = new("Bearer", signedIn.AccessToken);
+        var response = await authenticated.PostAsJsonAsync("/api/v1/auth/dev", body, Ct);
 
+        await AssertProblemAsync(anonymous, HttpStatusCode.Unauthorized, "auth.unauthenticated");
         await AssertProblemAsync(response, HttpStatusCode.NotFound, "not_found");
-        Assert.Equal(0, await WithDbAsync(db => db.Users.CountAsync(Ct)));
+        Assert.Equal(1, await WithDbAsync(db => db.Users.CountAsync(Ct))); // bob only: alice was not created
     }
 }

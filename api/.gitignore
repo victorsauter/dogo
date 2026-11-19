@@ -6,3 +6,6 @@ TestResults/
 
 # Local photo storage (Storage:Local:Path)
 data/
+
+# Environment variables outside development (see .env.example)
+.env

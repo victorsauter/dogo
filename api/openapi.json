@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.1",
   "info": {
-    "title": "dogo API",
-    "description": "API of the dogo app. Errors are RFC 9457 problem details with a stable `code` extension.",
+    "title": "Uzu API",
+    "description": "API of the Uzu app. Errors are RFC 9457 problem details with a stable `code` extension.",
     "version": "v1"
   },
   "paths": {
@@ -225,7 +225,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Rotate the refresh token and get a new access token.",
+        "summary": "Rotate the refresh token and get a new access token. A token just replaced is accepted again for a short grace period; any later reuse revokes its session.",
         "operationId": "refreshSession",
         "requestBody": {
           "content": {
@@ -286,7 +286,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Revoke a refresh token.",
+        "summary": "Revoke a refresh token and the session it belongs to (every token rotated from the same sign-in).",
         "operationId": "logout",
         "requestBody": {
           "content": {
@@ -526,7 +526,7 @@
         "tags": [
           "Users"
         ],
-        "summary": "Delete the signed-in user's account: upcoming walks cancelled, dogs, registrations, devices, memberships, blocks and sessions deleted; messages and reports kept without author.",
+        "summary": "Delete the signed-in user's account: upcoming walks cancelled, dogs, registrations, devices, memberships, blocks and sessions deleted; messages and reports kept without author. Allowed to a suspended account (the only write it may do).",
         "operationId": "deleteMe",
         "responses": {
           "204": {
@@ -534,16 +534,6 @@
           },
           "401": {
             "description": "Unauthorized",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -684,7 +674,7 @@
         "tags": [
           "Dogs"
         ],
-        "summary": "Create a dog owned by the signed-in user.",
+        "summary": "Create a dog owned by the signed-in user (20 dogs at most per account).",
         "operationId": "createDog",
         "requestBody": {
           "content": {
@@ -729,6 +719,16 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -805,7 +805,7 @@
         "tags": [
           "Dogs"
         ],
-        "summary": "Update one of the signed-in user's dogs.",
+        "summary": "Update one of the signed-in user's dogs. The size cannot change while the dog is registered to an upcoming walk that does not allow the new size.",
         "operationId": "updateDog",
         "parameters": [
           {
@@ -871,6 +871,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -950,7 +960,7 @@
         "tags": [
           "Photos"
         ],
-        "summary": "Upload or replace the signed-in user's photo (JPEG, PNG, WebP or HEIC, 5 MB max).",
+        "summary": "Upload or replace the signed-in user's photo (JPEG, PNG or WebP, 5 MB max, metadata removed).",
         "operationId": "uploadMyPhoto",
         "requestBody": {
           "content": {
@@ -1041,7 +1051,7 @@
         "tags": [
           "Photos"
         ],
-        "summary": "Upload or replace a dog's photo (JPEG, PNG, WebP or HEIC, 5 MB max).",
+        "summary": "Upload or replace a dog's photo (JPEG, PNG or WebP, 5 MB max, metadata removed).",
         "operationId": "uploadDogPhoto",
         "parameters": [
           {
@@ -1898,7 +1908,7 @@
         "tags": [
           "Registrations"
         ],
-        "summary": "Accept a pending registration (organizer only). Capacity is checked again.",
+        "summary": "Accept a pending registration (organizer only). Size, capacity, membership and the organisation's status are checked again.",
         "operationId": "acceptRegistration",
         "parameters": [
           {
@@ -2261,7 +2271,7 @@
         "tags": [
           "Notifications"
         ],
-        "summary": "Register the signed-in user's device for push notifications. A token registered by another user moves to this one.",
+        "summary": "Register the signed-in user's device for push notifications. A token registered by another user moves to this one. At most 10 devices per user: the least recently registered ones are removed.",
         "operationId": "registerDevice",
         "requestBody": {
           "content": {
@@ -2910,7 +2920,7 @@
         "tags": [
           "Memberships"
         ],
-        "summary": "List the accepted members and the pending requests of an organisation (owner and educators only).",
+        "summary": "List the accepted members and the pending requests of an organisation (owner and educators only); limit applies to each list.",
         "operationId": "listMemberships",
         "parameters": [
           {
@@ -2921,6 +2931,17 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
           }
         ],
         "responses": {
@@ -2930,6 +2951,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OrganizationMembersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
                 }
               }
             }
@@ -3253,7 +3284,7 @@
         "tags": [
           "Memberships"
         ],
-        "summary": "Leave an organisation or withdraw a request (own membership), or remove a member (owner or educator; only the owner removes an educator). The sole owner cannot leave.",
+        "summary": "Leave an organisation or withdraw a request (own membership), or remove a member (owner or educator; only the owner removes an educator). The sole owner cannot leave. The upcoming registrations of that user to the organisation's walks are cancelled.",
         "operationId": "deleteMembership",
         "parameters": [
           {
@@ -3997,7 +4028,7 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Suspend an account: its writes are refused and its sessions revoked. Idempotent.",
+        "summary": "Suspend an account: writes refused (except deleting the account), sessions revoked, weekly series stopped, upcoming walks cancelled with their registrants notified, push devices removed, upcoming registrations to other walks cancelled. Idempotent.",
         "operationId": "adminSuspendUser",
         "parameters": [
           {
@@ -4074,7 +4105,7 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Lift an account's suspension. Idempotent.",
+        "summary": "Lift an account's suspension. Restores nothing: series stay stopped, walks and registrations cancelled, devices and sessions gone. Idempotent.",
         "operationId": "adminUnsuspendUser",
         "parameters": [
           {
@@ -4495,8 +4526,6 @@
         "type": "object",
         "properties": {
           "title": {
-            "maxLength": 80,
-            "minLength": 3,
             "type": "string"
           },
           "description": {
@@ -5606,6 +5635,7 @@
           "expoPushToken": {
             "maxLength": 255,
             "minLength": 0,
+            "pattern": "^(?:(?:ExponentPushToken|ExpoPushToken)\\[[^\\[\\]\\s]+\\]|[0-9A-Za-z]{8}-[0-9A-Za-z]{4}-[0-9A-Za-z]{4}-[0-9A-Za-z]{4}-[0-9A-Za-z]{12})$",
             "type": "string"
           },
           "platform": {
@@ -5954,8 +5984,6 @@
         "type": "object",
         "properties": {
           "title": {
-            "maxLength": 80,
-            "minLength": 3,
             "type": [
               "null",
               "string"

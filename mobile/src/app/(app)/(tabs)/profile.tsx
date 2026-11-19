@@ -1,7 +1,8 @@
-import { useRouter, type Href } from 'expo-router';
+import { type Href } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { useMyDogs } from '@/api/dogs';
 import { useMyOrganizations } from '@/api/organizations';
 import { useMe } from '@/api/profile';
@@ -22,6 +23,7 @@ import {
   Text,
 } from '@/components';
 import { LayoutSetting } from '@/discover/LayoutSetting';
+import { limits } from '@/lib/forms';
 import { useRefetchOnFocus } from '@/lib/hooks';
 import { format, t } from '@/strings';
 import { useTheme } from '@/theme';
@@ -47,7 +49,7 @@ const settingsEntries: Entry[] = [
 
 /** Rows with a chevron in one card: the compact way to list entry points on a small phone. */
 function EntryList({ entries }: { entries: Entry[] }) {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { colors } = useTheme();
   return (
     <Card style={{ padding: 0, overflow: 'hidden', gap: 0 }}>
@@ -71,7 +73,7 @@ function EntryList({ entries }: { entries: Entry[] }) {
 export default function ProfileScreen() {
   const { user, signOut } = useSession();
   const { spacing } = useTheme();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const me = useMe();
   const dogs = useMyDogs();
   const organizations = useMyOrganizations();
@@ -130,7 +132,18 @@ export default function ProfileScreen() {
               onPress={() => router.push({ pathname: '/dogs/[id]', params: { id: dog.id } })}
             />
           ))}
-          <Button label={t.dog.add} variant="secondary" onPress={() => router.push('/dogs/new')} />
+          {dogs.data.length >= limits.dogsMax ? (
+            // The API refuses a 21st dog: explain rather than offer a button that fails.
+            <Text color="textMuted" accessibilityLiveRegion="polite">
+              {t.errors['dog.limit_reached']}
+            </Text>
+          ) : (
+            <Button
+              label={t.dog.add}
+              variant="secondary"
+              onPress={() => router.push('/dogs/new')}
+            />
+          )}
         </View>
       )}
 

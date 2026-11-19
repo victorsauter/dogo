@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 
 import { sessionStore } from '@/auth/sessionStore';
 import { enumLabel, format, t } from '@/strings';
+import { minTouchSize } from '@/theme/tokens';
 import {
   authResponse,
   otherDog,
@@ -139,6 +140,19 @@ describe('blocking', () => {
 
     expect(await screen.findByText(t.block.emptyTitle)).toBeTruthy();
     expect(calls.some((c) => c.method === 'DELETE')).toBe(true);
+  });
+
+  it('opens the profile from the name, which has a full-size touch area', async () => {
+    mockApi({
+      'GET /api/v1/me/blocks': () => ok([blockedEntry]),
+      [`GET /api/v1/users/${otherUser.id}`]: () => ok({ ...otherUser, bio: '', dogs: [] }),
+    });
+    await openAt('/blocked');
+    const name = await screen.findByRole('button', { name: otherUser.displayName });
+    expect(StyleSheet.flatten(name.props.style).minHeight).toBeGreaterThanOrEqual(minTouchSize);
+
+    await fireEvent.press(name);
+    await waitFor(() => expect(screen).toHavePathname(`/users/${otherUser.id}`));
   });
 
   it('refreshes the walk (« Participant bloqué ») after blocking and unblocking', async () => {

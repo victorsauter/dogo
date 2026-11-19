@@ -1,7 +1,7 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FlatList } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { useOrganizationSearch } from '@/api/organizations';
 import {
   EmptyState,
@@ -17,7 +17,7 @@ import { useTheme } from '@/theme';
 
 /** Search for approved organisations by name or city (`GET /organizations?query`). */
 export default function FindOrganizationScreen() {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { spacing } = useTheme();
   const [text, setText] = useState('');
   const query = useDebouncedValue(text.trim(), 400);

@@ -39,6 +39,12 @@ public sealed class Dog : IHasCreatedAt
     public const int BreedMaxLength = 80;
     public const int DescriptionMaxLength = 1000;
 
+    /// <summary>
+    /// How many dogs one account may have (409 <c>dog.limit_reached</c> beyond). Far above any real
+    /// household; it bounds the public profile, which lists every dog of a user without paging.
+    /// </summary>
+    public const int MaxPerOwner = 20;
+
     public Guid Id { get; init; } = Guid.CreateVersion7();
 
     public Guid OwnerId { get; init; }

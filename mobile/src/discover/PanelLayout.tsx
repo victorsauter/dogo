@@ -21,6 +21,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { WalkSearchResult } from '@/api/types';
+import { isSearchCapped } from '@/api/walks';
 import {
   EmptyState,
   ErrorState,
@@ -34,14 +35,16 @@ import {
 import { DEFAULT_CENTER, regionAround } from '@/lib/geo';
 import { haptics } from '@/lib/haptics';
 import type { UserLocation } from '@/lib/location';
-import { plural, t } from '@/strings';
+import { format, plural, t } from '@/strings';
 import { useTheme } from '@/theme';
 
 import {
   byStartDate,
   LocateButton,
+  locationNoticeAction,
   locationUnknown,
   MapTopControls,
+  StaleNotice,
   useDiscoverNavigation,
   useMapAreaSearch,
   type DiscoverFilterState,
@@ -156,7 +159,12 @@ export function PanelLayout({
   // the camera on each change, so there it keeps the middle position's.
   const coveredBottom = Platform.OS === 'ios' && position === 0 ? lowHeight : middleHeight;
 
-  const count = !located || search.isPending ? t.discover.panelLoading : searchCountLabel(sorted);
+  const count =
+    !located || search.isPending
+      ? t.discover.panelLoading
+      : search.isError && sorted.length === 0
+        ? t.discover.panelError
+        : searchCountLabel(sorted);
   const action = HANDLE_ACTION[position];
 
   const listEmpty =
@@ -165,9 +173,9 @@ export function PanelLayout({
     ) : search.isError ? (
       <ErrorState error={search.error} onRetry={() => search.refetch()} />
     ) : (
+      // No title of its own: the handle above already says « Aucune balade dans cette zone ».
       <EmptyState
         icon="paw"
-        title={t.discover.emptyTitle}
         message={t.discover.emptyMessage}
         action={{ label: t.discover.emptyAction, onPress: createWalk }}
       />
@@ -291,6 +299,11 @@ export function PanelLayout({
             {/* Beside the handle, not inside it: a button cannot nest in a button. */}
             <RefreshButton busy={search.isFetching} onPress={() => void refresh()} />
           </View>
+          <StaleNotice
+            isRefetchError={search.isRefetchError}
+            dataUpdatedAt={search.dataUpdatedAt}
+            style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}
+          />
         </View>
         {/* No pull-to-refresh here: at the high position it captures the downward
             drag meant to lower the panel. The refresh button next to the handle, coming
@@ -324,6 +337,7 @@ export function PanelLayout({
         onFiltersChange={setFilters}
         onCreate={createWalk}
         notice={locationUnknown(location) ? t.discover.locationDenied : null}
+        noticeAction={locationNoticeAction(location)}
         onHeightChange={setControlsHeight}
       />
     </View>
@@ -391,5 +405,9 @@ function RefreshButton({ busy, onPress }: { busy: boolean; onPress: () => void }
 }
 
 function searchCountLabel(walks: readonly WalkSearchResult[]): string {
-  return walks.length === 0 ? t.discover.emptyTitle : plural(t.discover.zoneCount, walks.length);
+  if (walks.length === 0) return t.discover.emptyTitle;
+  if (isSearchCapped(walks.length)) {
+    return format(t.discover.zoneCountPartial, { count: walks.length });
+  }
+  return plural(t.discover.zoneCount, walks.length);
 }

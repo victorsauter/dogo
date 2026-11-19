@@ -1,4 +1,4 @@
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
@@ -8,6 +8,7 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { ApiError } from '@/api/errors';
 import { useSendMessage, useWalkMessages } from '@/api/messages';
 import type { WalkDetail } from '@/api/types';
@@ -42,7 +43,11 @@ export default function WalkThreadScreen() {
   if (walk.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={walk.error} onRetry={() => walk.refetch()} />
+        <ErrorState
+          error={walk.error}
+          notFoundTitle={t.walk.notFoundTitle}
+          onRetry={() => walk.refetch()}
+        />
       </Screen>
     );
   }
@@ -58,7 +63,7 @@ export default function WalkThreadScreen() {
 }
 
 function Thread({ walk }: { walk: WalkDetail }) {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { colors, spacing } = useTheme();
   const [focused, setFocused] = useState(false);
   const { latest, items, hasMore, loadOlder, loadingOlder, olderError } = useWalkMessages(
@@ -92,10 +97,18 @@ function Thread({ walk }: { walk: WalkDetail }) {
 
   // The scroll view's `scrollToEnd` uses the real content height; the list's
   // own estimates the rows not measured yet (a long message) and stopped short.
+  // It runs again on the next frame: on Android, `contentSizeChange` arrives
+  // before the native scroll view knows the new height, so the first call
+  // stopped at the old end and a message just sent stayed below the composer
+  // (seen on the emulator: no scroll at all after « Envoyer »).
   function scrollToNewest() {
-    const scrollView = listRef.current?.getNativeScrollRef();
-    if (scrollView) scrollView.scrollToEnd({ animated: false });
-    else listRef.current?.scrollToEnd({ animated: false });
+    const scroll = () => {
+      const scrollView = listRef.current?.getNativeScrollRef();
+      if (scrollView) scrollView.scrollToEnd({ animated: false });
+      else listRef.current?.scrollToEnd({ animated: false });
+    };
+    scroll();
+    requestAnimationFrame(scroll);
   }
 
   // Only the person's own scrolling decides whether the list sticks to the
@@ -114,7 +127,11 @@ function Thread({ walk }: { walk: WalkDetail }) {
     body = forbidden ? (
       <EmptyState title={t.thread.title} message={t.thread.hiddenReason} icon="info" />
     ) : (
-      <ErrorState error={latest.error} onRetry={() => latest.refetch()} />
+      <ErrorState
+        error={latest.error}
+        notFoundTitle={t.walk.notFoundTitle}
+        onRetry={() => latest.refetch()}
+      />
     );
   } else {
     body = (

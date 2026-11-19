@@ -1,7 +1,8 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { enumValues, type ReportType } from '@/api/enums';
 import { errorMessage } from '@/api/errors';
 import { useCreateReport } from '@/api/reports';
@@ -65,7 +66,7 @@ export default function ReportScreen() {
 
 function ReportForm({ kind, id, name }: { kind: ReportKind; id: string; name: string }) {
   const { spacing } = useTheme();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const create = useCreateReport();
   const [values, setValues] = useState<ReportFormValues>({ type: null, facts: '' });
   const [errors, setErrors] = useState<FieldErrors<keyof ReportFormValues>>({});

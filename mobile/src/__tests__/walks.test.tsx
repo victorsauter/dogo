@@ -258,6 +258,31 @@ describe('walk detail and registration', () => {
     expect(await screen.findByText(t.errors[code as 'walk.full'])).toBeTruthy();
   });
 
+  it('a refusal tells the screen it is out of date: the walk is read again', async () => {
+    const { calls } = mockApi({
+      ...routes(),
+      [`POST ${walkPath}/registrations`]: () => problemResponse(409, 'walk.not_open'),
+    });
+    await openWalk();
+    await fireEvent.press(await screen.findByRole('checkbox', { name: testDog.name }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Inscrire 1 chien' }));
+    expect(await screen.findByText(t.errors['walk.not_open'])).toBeTruthy();
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === 'GET' && c.path === walkPath)).toHaveLength(2),
+    );
+  });
+
+  it('a blocked person gets the very same refusal as for a full walk (ADR 0037)', async () => {
+    mockApi({
+      ...routes(),
+      [`POST ${walkPath}/registrations`]: () => problemResponse(409, 'walk.full'),
+    });
+    await openWalk();
+    await fireEvent.press(await screen.findByRole('checkbox', { name: testDog.name }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Inscrire 1 chien' }));
+    expect(await screen.findByText('Cette balade est complète.')).toBeTruthy();
+  });
+
   it('offers to add a dog when I have none', async () => {
     mockApi(routes(walk, []));
     await openWalk();
@@ -345,6 +370,38 @@ describe('organizer tools', () => {
       screen.getByRole('button', { name: `Accepter Pixel de ${otherUser.displayName}` }),
     );
     expect(await screen.findByText(t.errors['walk.full'])).toBeTruthy();
+  });
+
+  it('explains an acceptance refused because the author left the organisation, and refreshes the request list', async () => {
+    let detail = mine({ pendingRegistrations: [participant(otherDog, 'reg-1')] });
+    const { calls } = await openMine(detail, {
+      [`GET ${walkPath}`]: () => ok(detail),
+      [`POST ${walkPath}/registrations/reg-1/accept`]: () => {
+        // The author's registration was cancelled when they left.
+        detail = mine({ pendingRegistrations: [] });
+        return problemResponse(409, 'walk.members_only');
+      },
+    });
+    await fireEvent.press(
+      screen.getByRole('button', { name: `Accepter Pixel de ${otherUser.displayName}` }),
+    );
+    expect(await screen.findByText(t.walk.acceptNotMember)).toBeTruthy();
+    // The refusal says the screen was out of date: the walk is read again and the request is gone.
+    await waitFor(() => expect(screen.queryByText('Pixel')).toBeNull());
+    expect(calls.filter((c) => c.method === 'GET' && c.path === walkPath).length).toBeGreaterThan(
+      1,
+    );
+  });
+
+  it('shows « registration.not_active » when the request was cancelled meanwhile', async () => {
+    await openMine(mine({ pendingRegistrations: [participant(otherDog, 'reg-1')] }), {
+      [`POST ${walkPath}/registrations/reg-1/accept`]: () =>
+        problemResponse(409, 'registration.not_active'),
+    });
+    await fireEvent.press(
+      screen.getByRole('button', { name: `Accepter Pixel de ${otherUser.displayName}` }),
+    );
+    expect(await screen.findByText(t.errors['registration.not_active'])).toBeTruthy();
   });
 
   it('removes a participant after confirmation', async () => {

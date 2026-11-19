@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { useTheme } from '@/theme';
+import { useLineLimit, useTheme } from '@/theme';
 
 import { Text } from './Text';
 
@@ -28,6 +28,8 @@ export function ListItem({
   danger = false,
 }: ListItemProps) {
   const { colors, spacing } = useTheme();
+  const titleLines = useLineLimit(1);
+  const subtitleLines = useLineLimit(2);
   return (
     <Pressable
       disabled={!onPress}
@@ -46,11 +48,11 @@ export function ListItem({
     >
       {left}
       <View style={{ flex: 1 }}>
-        <Text variant="subheading" numberOfLines={1} color={danger ? 'danger' : 'text'}>
+        <Text variant="subheading" numberOfLines={titleLines} color={danger ? 'danger' : 'text'}>
           {title}
         </Text>
         {subtitle ? (
-          <Text variant="caption" color="textMuted" numberOfLines={2}>
+          <Text variant="caption" color="textMuted" numberOfLines={subtitleLines}>
             {subtitle}
           </Text>
         ) : null}

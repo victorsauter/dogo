@@ -37,7 +37,7 @@ export function useUpdateDog(id: string) {
   });
 }
 
-/** Deleting a dog cancels its upcoming registrations (spec §4.1): walks refresh too. */
+/** Deleting a dog cancels its upcoming registrations (spec §4.1): `invalidateDogs` refreshes the walks too. */
 export function useDeleteDog() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -45,13 +45,9 @@ export function useDeleteDog() {
       await unwrap(api.DELETE('/api/v1/dogs/{id}', { params: { path: { id } } }));
       return id;
     },
-    onSuccess: async (id) => {
+    onSuccess: (id) => {
       queryClient.removeQueries({ queryKey: queryKeys.dog(id) });
-      await Promise.all([
-        invalidateDogs(queryClient),
-        queryClient.invalidateQueries({ queryKey: ['walks'] }),
-        queryClient.invalidateQueries({ queryKey: ['me', 'walks'] }),
-      ]);
+      invalidateDogs(queryClient);
     },
   });
 }

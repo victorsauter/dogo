@@ -20,7 +20,8 @@ public sealed record BlockResponse(UserSummaryResponse User, DateTimeOffset Crea
 
 /// <summary>
 /// Blocks (spec §4.7). Only the blocker ever sees a block: no endpoint lets the blocked person
-/// find out, and registering to the blocker's walks fails with a generic <c>walk.not_allowed</c>.
+/// find out, and registering to the blocker's walks fails exactly like registering to a full walk
+/// (<c>walk.full</c>, ADR 0037).
 /// </summary>
 public static class BlockEndpoints
 {

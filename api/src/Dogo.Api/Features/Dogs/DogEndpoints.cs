@@ -25,9 +25,10 @@ public static class DogEndpoints
 
         group.MapPost("/dogs", CreateDog)
             .WithName("createDog")
-            .WithSummary("Create a dog owned by the signed-in user.")
+            .WithSummary("Create a dog owned by the signed-in user (20 dogs at most per account).")
             .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status403Forbidden);
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapGet("/dogs/{id:guid}", GetDog)
             .WithName("getDog")
@@ -36,10 +37,11 @@ public static class DogEndpoints
 
         group.MapPatch("/dogs/{id:guid}", UpdateDog)
             .WithName("updateDog")
-            .WithSummary("Update one of the signed-in user's dogs.")
+            .WithSummary("Update one of the signed-in user's dogs. The size cannot change while the dog is registered to an upcoming walk that does not allow the new size.")
             .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapDelete("/dogs/{id:guid}", DeleteDog)
             .WithName("deleteDog")
@@ -65,12 +67,21 @@ public static class DogEndpoints
         return TypedResults.Ok(dogs.Select(DogResponse.From).ToList());
     }
 
-    private static async Task<Created<DogResponse>> CreateDog(
+    private static async Task<Results<Created<DogResponse>, ProblemHttpResult>> CreateDog(
         CreateDogRequest request, ClaimsPrincipal principal, DogoDbContext db, CancellationToken cancellationToken)
     {
+        // The owner's row is locked so that concurrent creations cannot pass the limit together.
+        var ownerId = principal.GetUserId();
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.Database.SqlQuery<Guid>($"SELECT id AS \"Value\" FROM users WHERE id = {ownerId} FOR UPDATE").ToListAsync(cancellationToken);
+        if (await db.Dogs.CountAsync(d => d.OwnerId == ownerId, cancellationToken) >= Dog.MaxPerOwner)
+        {
+            return Problems.Conflict(ErrorCodes.DogLimitReached, $"An account cannot have more than {Dog.MaxPerOwner} dogs.");
+        }
+
         var dog = new Dog
         {
-            OwnerId = principal.GetUserId(),
+            OwnerId = ownerId,
             Name = request.Name.Trim(),
             Size = request.Size,
             BirthDate = request.BirthDate,
@@ -82,6 +93,7 @@ public static class DogEndpoints
         };
         db.Dogs.Add(dog);
         await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return TypedResults.Created($"/api/v1/dogs/{dog.Id}", DogResponse.From(dog));
     }
 
@@ -93,12 +105,34 @@ public static class DogEndpoints
     }
 
     private static async Task<Results<Ok<DogResponse>, ProblemHttpResult>> UpdateDog(
-        Guid id, UpdateDogRequest request, ClaimsPrincipal principal, DogoDbContext db, CancellationToken cancellationToken)
+        Guid id,
+        UpdateDogRequest request,
+        ClaimsPrincipal principal,
+        DogoDbContext db,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
     {
-        var (dog, problem) = await FindOwnedDogAsync(db, id, principal, cancellationToken);
+        // The dog row is locked: a registration of this dog running at the same time (which
+        // share-locks it) either finishes before the check below, or reads the new size.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var (dog, problem) = await FindOwnedDogAsync(db, id, principal, cancellationToken, forUpdate: true);
         if (dog is null)
         {
             return problem!;
+        }
+
+        // A dog cannot take a size that one of the walks it is registered to does not allow.
+        var now = timeProvider.GetUtcNow();
+        if (request.Size is { } newSize && newSize != dog.Size
+            && await db.Registrations.AnyAsync(
+                r => r.DogId == id
+                    && (r.Status == RegistrationStatus.Pending || r.Status == RegistrationStatus.Accepted)
+                    && r.Walk.Status == WalkStatus.Scheduled
+                    && r.Walk.StartsAt > now
+                    && !r.Walk.AllowedSizes.Contains(newSize),
+                cancellationToken))
+        {
+            return Problems.Conflict(ErrorCodes.DogSizeInUse, "The dog is registered to an upcoming walk that does not allow this size.");
         }
 
         if (request.Name is not null)
@@ -142,6 +176,7 @@ public static class DogEndpoints
         }
 
         await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return TypedResults.Ok(DogResponse.From(dog));
     }
 
@@ -153,7 +188,12 @@ public static class DogEndpoints
         TimeProvider timeProvider,
         CancellationToken cancellationToken)
     {
-        var (dog, problem) = await FindOwnedDogAsync(db, id, principal, cancellationToken);
+        // The dog row is locked first (ADR 0037): a registration of this dog running at the same
+        // time share-locks it, so it either commits before the update below, which then cancels
+        // it, or waits and finds no dog. An acceptance racing the update only accepts a
+        // registration still pending, and the update below cancels an accepted one.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var (dog, problem) = await FindOwnedDogAsync(db, id, principal, cancellationToken, forUpdate: true);
         if (dog is null)
         {
             return problem!;
@@ -162,7 +202,6 @@ public static class DogEndpoints
         // Spec §4.1: deleting a dog cancels its upcoming registrations, which frees their places.
         // Registrations of past walks are kept as history; the foreign key sets their dog to null.
         var now = timeProvider.GetUtcNow();
-        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await db.Registrations
             .Where(r => r.DogId == id
                 && (r.Status == RegistrationStatus.Pending || r.Status == RegistrationStatus.Accepted)
@@ -183,10 +222,13 @@ public static class DogEndpoints
     /// Loads a dog for modification by the signed-in user: 404 <c>dog.not_found</c> when it
     /// does not exist, 403 <c>dog.forbidden</c> when someone else owns it (spec §4.1).
     /// </summary>
+    /// <param name="forUpdate">Locks the dog row (<c>SELECT … FOR UPDATE</c>) until the current transaction ends.</param>
     internal static async Task<(Dog? Dog, ProblemHttpResult? Problem)> FindOwnedDogAsync(
-        DogoDbContext db, Guid id, ClaimsPrincipal principal, CancellationToken cancellationToken)
+        DogoDbContext db, Guid id, ClaimsPrincipal principal, CancellationToken cancellationToken, bool forUpdate = false)
     {
-        var dog = await db.Dogs.SingleOrDefaultAsync(d => d.Id == id, cancellationToken);
+        var dog = forUpdate
+            ? (await db.Dogs.FromSql($"SELECT * FROM dogs WHERE id = {id} FOR UPDATE").ToListAsync(cancellationToken)).SingleOrDefault()
+            : await db.Dogs.SingleOrDefaultAsync(d => d.Id == id, cancellationToken);
         if (dog is null)
         {
             return (null, DogNotFound());

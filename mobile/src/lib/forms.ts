@@ -20,6 +20,7 @@ import type {
 import { format, t } from '@/strings';
 
 import { parseBirthDate, toApiDate } from './age';
+import { latestWalkStart, toApiDateTime } from './dates';
 
 /** Limits of the API (`api/openapi.json`): keep in sync with the request schemas. */
 export const limits = {
@@ -38,6 +39,8 @@ export const limits = {
   walkDurationStep: 15,
   walkDogsMin: 1,
   walkDogsMax: 50,
+  /** Dogs one account may have (`Dog.MaxPerOwner` of the API). */
+  dogsMax: 20,
   organizationNameMin: 3,
   organizationName: 80,
   organizationDescription: 2000,
@@ -50,6 +53,19 @@ export type FieldErrors<K extends string> = Partial<Record<K, string>>;
 
 const tooLong = (max: number) => format(t.common.tooLong, { max });
 
+/** Refusals (409) that name one form field, by their `code`. */
+const fieldOfCode: Record<string, string> = {
+  'dog.size_in_use': 'size',
+};
+
+/**
+ * True when the refusal is already shown on its field (see `serverFieldErrors`):
+ * the form then shows no second message under the button.
+ */
+export function isFieldRefusal(error: unknown): boolean {
+  return error instanceof ApiError && error.code !== undefined && error.code in fieldOfCode;
+}
+
 /**
  * Maps `validation.failed` field errors of the API to a French message per
  * form field. Server messages are not translated, so a generic one is shown.
@@ -59,6 +75,9 @@ const tooLong = (max: number) => format(t.common.tooLong, { max });
 export function serverFieldErrors<K extends string>(error: unknown, fields: readonly K[]) {
   const errors: FieldErrors<K> = {};
   if (!(error instanceof ApiError)) return errors;
+  // A refusal that belongs to one field (`dog.size_in_use` → the size): its own message, on the field.
+  const owner = error.code ? fieldOfCode[error.code] : undefined;
+  if (owner && fields.includes(owner as K)) errors[owner as K] = error.message;
   for (const name of Object.keys(error.fieldErrors)) {
     const root = name.split(/[.[]/)[0] ?? name;
     const key = (root.charAt(0).toLowerCase() + root.slice(1)) as K;
@@ -318,6 +337,9 @@ export function validateWalk(values: WalkFormValues, now: Date = new Date()) {
   }
   if (Number.isNaN(values.startsAt.getTime())) errors.startsAt = t.common.required;
   else if (values.startsAt.getTime() <= now.getTime()) errors.startsAt = t.walk.startsAtPast;
+  else if (values.startsAt.getTime() > latestWalkStart(now).getTime()) {
+    errors.startsAt = t.walk.startsAtTooFar;
+  }
   if (!inRange(values.durationMinutes, limits.walkDurationMin, limits.walkDurationMax)) {
     errors.durationMinutes = t.common.fieldInvalid;
   }
@@ -347,7 +369,7 @@ export function toCreateWalkRequest(values: WalkFormValues): CreateWalkRequest {
   return {
     title: values.title.trim(),
     description: values.description.trim(),
-    startsAt: values.startsAt.toISOString(),
+    startsAt: toApiDateTime(values.startsAt),
     durationMinutes: values.durationMinutes,
     location: { latitude: values.location.latitude, longitude: values.location.longitude },
     locationLabel: values.locationLabel.trim(),

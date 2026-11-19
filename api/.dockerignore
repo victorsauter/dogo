@@ -1,0 +1,14 @@
+# Contexte de construction de l'image : le strict nécessaire (global.json, props, .config, src).
+**/bin/
+**/obj/
+**/TestResults/
+tests/
+data/
+deploy/
+.env
+.env.*
+openapi.json
+*.md
+Dockerfile
+.dockerignore
+docker-compose.yml

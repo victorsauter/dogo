@@ -1,7 +1,8 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { errorMessage } from '@/api/errors';
 import { useOrganization, useRemoveMembership, useRequestMembership } from '@/api/organizations';
 import type { OrganizationDetail } from '@/api/types';
@@ -38,7 +39,11 @@ export default function OrganizationDetailScreen() {
   if (organization.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={organization.error} onRetry={() => organization.refetch()} />
+        <ErrorState
+          error={organization.error}
+          notFoundTitle={t.organization.notFoundTitle}
+          onRetry={() => organization.refetch()}
+        />
       </Screen>
     );
   }
@@ -51,7 +56,7 @@ export default function OrganizationDetailScreen() {
 }
 
 function OrganizationContent({ organization }: { organization: OrganizationDetail }) {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { spacing } = useTheme();
   const request = useRequestMembership(organization.id);
   const remove = useRemoveMembership(organization.id);

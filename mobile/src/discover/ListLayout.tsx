@@ -11,7 +11,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { WalkSearchResult } from '@/api/types';
-import { searchParamsAround } from '@/api/walks';
+import { isSearchCapped, searchParamsAround } from '@/api/walks';
 import {
   Button,
   EmptyState,
@@ -25,7 +25,7 @@ import {
 import { DEFAULT_CENTER, regionForRadius, type MapRegion } from '@/lib/geo';
 import { haptics } from '@/lib/haptics';
 import type { UserLocation } from '@/lib/location';
-import { plural, t } from '@/strings';
+import { format, plural, t } from '@/strings';
 import { useTheme } from '@/theme';
 
 import {
@@ -34,9 +34,11 @@ import {
   FLOATING_BUTTON_HEIGHT,
   FloatingButton,
   LocateButton,
+  locationNoticeAction,
   locationUnknown,
   MapNotice,
   MapTopControls,
+  StaleNotice,
   useDiscoverNavigation,
   useMapAreaSearch,
   useRefreshableSearch,
@@ -63,6 +65,8 @@ export function ListLayout({
   const { openWalk, createWalk } = useDiscoverNavigation();
   const { filters, setFilters, radiusKm, setRadiusKm } = filterState;
   const [mapOpen, setMapOpen] = useState(false);
+  // The « Carte » button grows with the text size: the list keeps clear of its real height.
+  const [mapButtonHeight, setMapButtonHeight] = useState(FLOATING_BUTTON_HEIGHT);
   // Last area seen on the map: reopening the map shows it again.
   const [mapArea, setMapArea] = useState<MapRegion | null>(null);
 
@@ -116,7 +120,7 @@ export function ListLayout({
             padding: spacing.lg,
             paddingTop: insets.top + spacing.sm,
             // Room for the floating « Carte » button below the last card.
-            paddingBottom: FLOATING_BUTTON_HEIGHT + spacing.lg * 2,
+            paddingBottom: mapButtonHeight + spacing.lg * 2,
             gap: spacing.md,
             flexGrow: 1,
           }}
@@ -128,10 +132,17 @@ export function ListLayout({
                 onFiltersChange={setFilters}
                 radius={{ value: radiusKm, onChange: setRadiusKm }}
                 notice={locationUnknown(location) ? t.discover.listLocationDenied : null}
+                noticeAction={locationNoticeAction(location)}
+              />
+              <StaleNotice
+                isRefetchError={search.isRefetchError}
+                dataUpdatedAt={search.dataUpdatedAt}
               />
               {sorted.length > 0 ? (
                 <Text variant="caption" color="textMuted">
-                  {plural(t.discover.resultCount, sorted.length)}
+                  {isSearchCapped(sorted.length)
+                    ? format(t.discover.resultCountPartial, { count: sorted.length })
+                    : plural(t.discover.resultCount, sorted.length)}
                 </Text>
               ) : null}
             </View>
@@ -160,7 +171,9 @@ export function ListLayout({
           <Material variant="bar" style={{ flex: 1 }} />
         </Animated.View>
         <View
+          testID="map-button-anchor"
           pointerEvents="box-none"
+          onLayout={(event) => setMapButtonHeight(Math.ceil(event.nativeEvent.layout.height))}
           style={{ position: 'absolute', left: 0, right: 0, bottom: spacing.lg }}
         >
           <FloatingButton

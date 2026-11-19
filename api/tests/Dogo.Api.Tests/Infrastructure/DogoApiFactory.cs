@@ -15,7 +15,7 @@ namespace Dogo.Api.Tests.Infrastructure;
 /// <summary>
 /// In-memory API host for tests: "Testing" environment, fake identity token validator,
 /// photos in a temporary directory, push notifications recorded (never sent) and scheduled
-/// jobs disabled (tests call them directly with a controlled clock), reports recorded instead of logged,
+/// jobs disabled (tests call them directly with a controlled clock), reports recorded (and still notified),
 /// demo data enabled with its photo sources faked. <paramref name="overrides"/> replaces configuration values.
 /// </summary>
 public sealed class DogoApiFactory(
@@ -34,6 +34,8 @@ public sealed class DogoApiFactory(
 
     public FakeDemoPhotoServer DemoPhotos { get; } = new();
 
+    private bool DevTools => environment == Environments.Development || environment == "Testing";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(environment);
@@ -41,14 +43,16 @@ public sealed class DogoApiFactory(
         var settings = new Dictionary<string, string?>
         {
             ["ConnectionStrings:Dogo"] = connectionString,
-            ["Auth:AllowDevLogin"] = "true",
+            // Like the configuration files: dev tools on only where they are allowed (Development, Testing).
+            ["Auth:AllowDevLogin"] = DevTools ? "true" : "false",
             ["Auth:Jwt:SigningKey"] = SigningKey,
             ["Storage:Local:Path"] = PhotoPath,
             ["Admin:Emails:0"] = AdminEmail,
             ["BackgroundJobs:Enabled"] = "false",
             ["Notifications:Provider"] = "Log",
-            // Like the configuration files: demo data on, except in Production where startup refuses it.
-            ["DemoData:Enabled"] = environment == Environments.Production ? "false" : "true",
+            ["DemoData:Enabled"] = DevTools ? "true" : "false",
+            // Off for the suite (hundreds of requests a minute); RateLimitingTests turn it on.
+            ["RateLimiting:Enabled"] = "false",
             ["DemoData:Photos:AvatarInterval"] = "00:00:00",
         };
         foreach (var (key, value) in overrides ?? new Dictionary<string, string?>())
@@ -64,7 +68,8 @@ public sealed class DogoApiFactory(
             services.RemoveAll<IPushSender>();
             services.AddSingleton<IPushSender>(PushSender);
             services.RemoveAll<IReportNotifier>();
-            services.AddSingleton<IReportNotifier>(ReportNotifier);
+            services.AddScoped<AdminReportNotifier>();
+            services.AddScoped(provider => ReportNotifier.Around(provider.GetRequiredService<AdminReportNotifier>()));
             services.AddHttpClient(DemoPhotoFetcher.HttpClientName).ConfigurePrimaryHttpMessageHandler(DemoPhotos.CreateHandler);
         });
     }

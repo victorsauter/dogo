@@ -26,6 +26,8 @@ public sealed class NotificationPreferences
         NotificationCategory.WalkChanges => WalkChanges,
         NotificationCategory.Messages => Messages,
         NotificationCategory.Reminders => Reminders,
+        // Not a walk notification: no preference turns it off (ADR 0036).
+        NotificationCategory.Administration => true,
         _ => throw new ArgumentOutOfRangeException(nameof(category), category, null),
     };
 }

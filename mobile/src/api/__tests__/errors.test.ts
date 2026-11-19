@@ -1,4 +1,4 @@
-import { problemResponse } from '@/test/fixtures';
+import { jsonResponse, problemResponse } from '@/test/fixtures';
 import { t } from '@/strings';
 
 import { ApiError, apiErrorFromResponse, errorMessage, toApiError } from '../errors';
@@ -34,6 +34,39 @@ describe('apiErrorFromResponse', () => {
     );
   });
 
+  it('explains a 429 (rate limiting) in French, with or without a problem body', async () => {
+    const limited = await apiErrorFromResponse(
+      jsonResponse({ status: 429, title: 'Too Many Requests' }, 429, 'application/problem+json'),
+    );
+    expect(limited.status).toBe(429);
+    expect(limited.message).toBe(t.errors.tooManyRequests);
+    expect((await apiErrorFromResponse(new Response('', { status: 429 }))).message).toBe(
+      t.errors.tooManyRequests,
+    );
+  });
+
+  it('announces the wait of a 429 when the API gives its Retry-After', async () => {
+    const limited = new Response(JSON.stringify({ status: 429, code: 'rate_limit.exceeded' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/problem+json', 'Retry-After': '12' },
+    });
+    const error = await apiErrorFromResponse(limited);
+    expect(error.code).toBe('rate_limit.exceeded');
+    expect(error.retryAfterSeconds).toBe(12);
+    expect(error.message).toBe('Trop de demandes d’un coup. Réessaie dans 12 s.');
+    expect(error.isClientError).toBe(true);
+  });
+
+  it('keeps the vague message when Retry-After is absent, unreadable or very long', async () => {
+    for (const value of [undefined, 'soon', '0', '-3', '86400']) {
+      const response = new Response('', {
+        status: 429,
+        headers: value === undefined ? {} : { 'Retry-After': value },
+      });
+      expect((await apiErrorFromResponse(response)).message).toBe(t.errors.tooManyRequests);
+    }
+  });
+
   it('does not mistake fallback keys for API codes', async () => {
     const error = await apiErrorFromResponse(problemResponse(400, 'network'));
     expect(error.message).toBe(t.errors.generic);
@@ -56,6 +89,22 @@ describe('toApiError', () => {
     expect(toApiError(Object.assign(new Error('aborted'), { name: 'AbortError' })).kind).toBe(
       'network',
     );
+  });
+
+  it('recognizes an abort by timeout whatever its message or wrapper', () => {
+    // DOMException-like value that is not an Error instance (Hermes).
+    expect(toApiError({ name: 'TimeoutError', message: 'signal timed out' }).kind).toBe('network');
+    // expo/fetch wraps the abort reason in a FetchError's cause.
+    const reason = Object.assign(new Error('x'), { name: 'TimeoutError' });
+    expect(toApiError(new Error('request cancelled', { cause: reason })).kind).toBe('network');
+  });
+
+  it('keeps the dedicated message of a timed-out request', () => {
+    const error = new ApiError({ kind: 'network', timedOut: true });
+    expect(error.timedOut).toBe(true);
+    expect(error.message).toBe(t.errors.timeout);
+    expect(toApiError(error)).toBe(error);
+    expect(new ApiError({ kind: 'network' }).timedOut).toBe(false);
   });
 
   it('does not report an app-side failure as a network failure (defect D1)', () => {

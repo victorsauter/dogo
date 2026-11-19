@@ -1,9 +1,11 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { Alert, View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { ApiError, errorMessage } from '@/api/errors';
 import {
+  isMembersListCapped,
   useChangeRole,
   useDecideMembership,
   useOrganization,
@@ -68,7 +70,7 @@ function MemberCard({
  */
 export default function MembersScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { spacing } = useTheme();
   const organization = useOrganization(id);
   const members = useOrganizationMembers(id);
@@ -101,7 +103,11 @@ export default function MembersScreen() {
   if (organization.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={organization.error} onRetry={() => organization.refetch()} />
+        <ErrorState
+          error={organization.error}
+          notFoundTitle={t.organization.notFoundTitle}
+          onRetry={() => organization.refetch()}
+        />
       </Screen>
     );
   }
@@ -178,6 +184,12 @@ export default function MembersScreen() {
         })
       )}
 
+      {isMembersListCapped(members.data.requests.length) ? (
+        <Text color="textMuted" accessibilityLiveRegion="polite">
+          {format(t.organization.requestsPartial, { count: members.data.requests.length })}
+        </Text>
+      ) : null}
+
       <Text variant="heading">{t.organization.members}</Text>
       {members.data.members.length === 0 ? (
         <Text color="textMuted">{t.organization.noMembers}</Text>
@@ -231,6 +243,12 @@ export default function MembersScreen() {
           );
         })
       )}
+
+      {isMembersListCapped(members.data.members.length) ? (
+        <Text color="textMuted" accessibilityLiveRegion="polite">
+          {format(t.organization.membersPartial, { count: members.data.members.length })}
+        </Text>
+      ) : null}
 
       {error ? (
         <Text color="danger" accessibilityLiveRegion="polite">

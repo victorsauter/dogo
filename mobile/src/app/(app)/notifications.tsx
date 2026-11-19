@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AppState, Linking } from 'react-native';
+import { AppState } from 'react-native';
 
 import {
   preferenceNames,
@@ -8,6 +8,7 @@ import {
   type PreferenceName,
 } from '@/api/notifications';
 import { Button, Card, ErrorState, LoadingState, Screen, SwitchRow, Text } from '@/components';
+import { openAppSettings } from '@/lib/linking';
 import { enableNotifications, getPermissionState, type PermissionState } from '@/notifications';
 import { t } from '@/strings';
 
@@ -68,10 +69,7 @@ export default function NotificationSettingsScreen() {
 
   function toggle(name: PreferenceName, value: boolean) {
     setError(null);
-    update.mutate(
-      { ...values, [name]: value },
-      { onError: () => setError(t.notifications.saveFailed) },
-    );
+    update.mutate({ [name]: value }, { onError: () => setError(t.notifications.saveFailed) });
   }
 
   return (
@@ -100,7 +98,7 @@ export default function NotificationSettingsScreen() {
           <Button
             label={t.notifications.openSettings}
             variant="secondary"
-            onPress={() => void Linking.openSettings()}
+            onPress={() => void openAppSettings()}
           />
         ) : null}
         {permission === 'undetermined' ? (

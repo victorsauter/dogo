@@ -12,7 +12,8 @@ export interface StateAction {
 }
 
 export interface EmptyStateProps {
-  title: string;
+  /** Left out when the screen already says it right above (the panel's handle: « Aucune balade… »). */
+  title?: string;
   message?: string;
   icon?: IconName;
   action?: StateAction;
@@ -31,9 +32,11 @@ export function EmptyState({ title, message, icon = 'paw', action }: EmptyStateP
       }}
     >
       <Icon name={icon} size={56} color="primary" />
-      <Text variant="heading" align="center">
-        {title}
-      </Text>
+      {title ? (
+        <Text variant="heading" align="center">
+          {title}
+        </Text>
+      ) : null}
       {message ? (
         <Text color="textMuted" align="center">
           {message}

@@ -12,7 +12,7 @@ public sealed class LocalStorageOptions
 }
 
 /// <summary>Stores photos as files in a local directory.</summary>
-public sealed partial class LocalPhotoStorage(IOptions<LocalStorageOptions> options, IHostEnvironment environment) : IPhotoStorage
+public sealed partial class LocalPhotoStorage(IOptions<LocalStorageOptions> options, IHostEnvironment environment, ILogger<LocalPhotoStorage> logger) : IPhotoStorage
 {
     private readonly string _root = System.IO.Path.GetFullPath(options.Value.Path, environment.ContentRootPath);
 
@@ -40,7 +40,15 @@ public sealed partial class LocalPhotoStorage(IOptions<LocalStorageOptions> opti
     {
         if (IsValidFileName(fileName))
         {
-            File.Delete(FullPath(fileName));
+            try
+            {
+                File.Delete(FullPath(fileName));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // The caller already committed its change: a file left behind must not fail the request.
+                LogDeleteFailed(e, fileName);
+            }
         }
 
         return Task.CompletedTask;
@@ -50,6 +58,9 @@ public sealed partial class LocalPhotoStorage(IOptions<LocalStorageOptions> opti
     public static bool IsValidFileName(string fileName) => FileNameRegex().IsMatch(fileName);
 
     private string FullPath(string fileName) => System.IO.Path.Combine(_root, fileName);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Photo file {FileName} could not be deleted and stays on disk")]
+    private partial void LogDeleteFailed(Exception exception, string fileName);
 
     [GeneratedRegex(@"^[0-9a-f]{32}\.[a-z0-9]{3,4}$")]
     private static partial Regex FileNameRegex();

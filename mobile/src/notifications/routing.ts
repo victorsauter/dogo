@@ -1,5 +1,7 @@
 import type { Href } from 'expo-router';
 
+import { APP_URL_SCHEME } from '@/lib/appLinks';
+
 /** Types of notification the API sends (api/README.md, « Notifications »). */
 export const notificationTypes = [
   'registration_created',
@@ -14,9 +16,14 @@ export const notificationTypes = [
   'membership_requested',
   'membership_accepted',
   'organization_approved',
+  // Administrators only (ADR 0036): shown by the system, nothing to open (no administration screen).
+  'report_created',
 ] as const;
 
 export type NotificationType = (typeof notificationTypes)[number];
+
+/** Types shown by the system and never followed: a tap leads nowhere, whatever link they carry. */
+const informationOnlyTypes: readonly NotificationType[] = ['report_created'];
 
 /** Types whose link points to an organisation (payload `organizationId`), not to a walk. */
 const organizationTypes: readonly NotificationType[] = [
@@ -25,9 +32,11 @@ const organizationTypes: readonly NotificationType[] = [
   'organization_approved',
 ];
 
-/** The only links a notification may carry: `dogo://walks/<id>` and `dogo://organizations/<id>`. */
-const WALK_URL = /^dogo:\/\/walks\/([A-Za-z0-9-]{1,64})\/?$/;
-const ORGANIZATION_URL = /^dogo:\/\/organizations\/([A-Za-z0-9-]{1,64})\/?$/;
+/** The only links a notification may carry: `uzu://walks/<id>` and `uzu://organizations/<id>` (the scheme is `APP_URL_SCHEME`). */
+const WALK_URL = new RegExp(`^${APP_URL_SCHEME}:\\/\\/walks\\/([A-Za-z0-9-]{1,64})\\/?$`);
+const ORGANIZATION_URL = new RegExp(
+  `^${APP_URL_SCHEME}:\\/\\/organizations\\/([A-Za-z0-9-]{1,64})\\/?$`,
+);
 
 export interface NotificationTarget {
   /** Set for a walk link. */
@@ -39,7 +48,8 @@ export interface NotificationTarget {
 }
 
 /**
- * Where tapping a notification leads, or `null` to ignore it. Only links that
+ * Where tapping a notification leads, or `null` to ignore it (a `report_created`
+ * has no link: it is only shown, and a tap on it changes nothing). Only links that
  * match the app's own routes are followed (anything else, other schemes and
  * hosts included, is dropped), and the type must agree with the kind of link.
  * Walks: a `message_posted` opens the thread, every other type the walk
@@ -52,6 +62,7 @@ export function targetForNotification(data: unknown): NotificationTarget | null 
   if (typeof url !== 'string') return null;
   const link = url.trim();
   const known = notificationTypes.find((value) => value === type) ?? null;
+  if (known !== null && informationOnlyTypes.includes(known)) return null;
   const isOrganizationType = known !== null && organizationTypes.includes(known);
 
   const walk = WALK_URL.exec(link)?.[1];

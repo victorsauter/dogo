@@ -1,6 +1,6 @@
-# dogo — Consignes pour les agents
+# Uzu — Consignes pour les agents
 
-dogo est une application mobile pour trouver et organiser des balades entre chiens. Ce dépôt contient l'API (`api/`), l'application mobile (`mobile/`) et la documentation (`docs/`).
+Uzu est une application mobile pour trouver et organiser des balades entre chiens. Le dépôt, le code, les namespaces et l'infrastructure gardent le nom `dogo` (ADR 0041) ; identifiants de l'application : `com.victorsauter.uzu`, schéma de lien `uzu://`. Ce dépôt contient l'API (`api/`), l'application mobile (`mobile/`) et la documentation (`docs/`).
 
 ## À lire avant de coder
 

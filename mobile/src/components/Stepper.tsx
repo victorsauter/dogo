@@ -81,7 +81,7 @@ export function Stepper({
           onAccessibilityAction={(event) =>
             onChange(clamp(value + (event.nativeEvent.actionName === 'increment' ? step : -step)))
           }
-          style={{ minWidth: 72, textAlign: 'center' }}
+          style={{ minWidth: 72, flexShrink: 1, textAlign: 'center' }}
         >
           {display}
         </Text>

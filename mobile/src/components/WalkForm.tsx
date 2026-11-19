@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { enumValues, type DogSize, type LeashRule, type WalkAccess } from '@/api/enums';
 import { ApiError, errorMessage } from '@/api/errors';
 import type { GeoPoint } from '@/api/types';
-import { formatDuration } from '@/lib/dates';
+import type { LocationStatus } from '@/lib/location';
+import { formatDuration, latestWalkStart } from '@/lib/dates';
+import { openAppSettings } from '@/lib/linking';
 import {
   limits,
   serverFieldErrors,
@@ -15,6 +17,7 @@ import {
 import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
 
+import { Banner } from './Banner';
 import { Button } from './Button';
 import { ChoiceGroup } from './Chip';
 import { DateTimeField } from './DateTimeField';
@@ -33,6 +36,18 @@ export interface WalkFormProps {
    * pin follows it until the person moves the pin.
    */
   userLocation?: GeoPoint | null;
+  /**
+   * How the user's position went: when it was refused or is unavailable, the
+   * map starts on a default area and the form says so. Creation only.
+   */
+  locationStatus?: LocationStatus;
+  /**
+   * The meeting point is already a real choice (editing a walk: the saved
+   * point counts as placed). Otherwise the pin must be touched or dragged
+   * before the form can be submitted, so a new walk is never published at
+   * the default centre, or at the organiser's own position, by accident.
+   */
+  pinPlaced?: boolean;
   /** Shows the « Répéter chaque semaine » switch: only when creating a walk. */
   allowRepeat?: boolean;
   /**
@@ -74,6 +89,8 @@ export function WalkForm({
   initial,
   submitLabel,
   userLocation,
+  locationStatus,
+  pinPlaced = false,
   allowRepeat = false,
   organizations = [],
   onSubmit,
@@ -84,6 +101,7 @@ export function WalkForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pinMoved, setPinMoved] = useState(false);
+  const pinChosen = pinPlaced || pinMoved;
   const scrollToFirstError = useScrollToFirstError();
 
   const set = <K extends keyof WalkFormValues>(key: K, value: WalkFormValues[K]) => {
@@ -99,6 +117,7 @@ export function WalkForm({
 
   async function submit() {
     const found = validateWalk(current);
+    if (!pinChosen && !found.location) found.location = t.walk.meetingPointRequired;
     setErrors(found);
     setFormError(null);
     if (Object.keys(found).length > 0) {
@@ -164,6 +183,7 @@ export function WalkForm({
         value={values.startsAt}
         onChange={(date) => set('startsAt', date)}
         minimumDate={new Date()}
+        maximumDate={latestWalkStart()}
         dateA11yLabel={t.walk.pickDate}
         timeA11yLabel={t.walk.pickTime}
         error={errors.startsAt}
@@ -181,6 +201,17 @@ export function WalkForm({
           hint={durationRangeHint()}
         />
       </FieldAnchor>
+      {locationStatus === 'denied' || locationStatus === 'unavailable' ? (
+        <Banner
+          tone="warning"
+          message={t.walk.meetingPointNoLocation}
+          action={
+            locationStatus === 'denied'
+              ? { label: t.common.openSettings, onPress: () => void openAppSettings() }
+              : undefined
+          }
+        />
+      ) : null}
       <MeetingPointPicker
         name="location"
         value={current.location}

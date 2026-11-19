@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Dogo.Api.Infrastructure.Push;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -29,10 +30,23 @@ public sealed class ExpoPushSenderTests
         public HttpClient CreateClient(string name) => new(handler, disposeHandler: false);
     }
 
-    private static ExpoPushSender Sender(StubHandler handler, string? accessToken = null) => new(
+    private sealed class ListLogger : ILogger<ExpoPushSender>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Messages.Add(formatter(state, exception));
+    }
+
+    private static ExpoPushSender Sender(StubHandler handler, string? accessToken = null, ILogger<ExpoPushSender>? logger = null) => new(
         new StubFactory(handler),
         Options.Create(new PushOptions { Provider = PushProvider.Expo, Expo = new ExpoPushOptions { AccessToken = accessToken } }),
-        NullLogger<ExpoPushSender>.Instance);
+        logger ?? NullLogger<ExpoPushSender>.Instance);
 
     private static PushMessage Message(int i) => new(
         Guid.NewGuid(), $"ExponentPushToken[{i}]", "Titre", "Corps", new Dictionary<string, string> { ["type"] = "walk_reminder", ["walkId"] = "w" });
@@ -122,5 +136,52 @@ public sealed class ExpoPushSenderTests
         var result = await Sender(handler).SendAsync([Message(0)], Ct);
 
         Assert.Empty(result.UnregisteredTokens);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.OK)]
+    [InlineData(HttpStatusCode.BadGateway)]
+    public async Task A_response_that_is_not_json_is_logged_as_a_failure_without_throwing(HttpStatusCode status)
+    {
+        var logger = new ListLogger();
+        var handler = new StubHandler((_, _) => new HttpResponseMessage(status)
+        {
+            Content = new StringContent("<html><body>502 Bad Gateway</body></html>", Encoding.UTF8, "text/html"),
+        });
+
+        var result = await Sender(handler, logger: logger).SendAsync([Message(0)], Ct);
+
+        Assert.Empty(result.UnregisteredTokens);
+        Assert.Contains(logger.Messages, m => m.Contains("failed", StringComparison.Ordinal) && m.Contains("Bad Gateway", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Push_tokens_are_masked_in_the_logs()
+    {
+        var logger = new ListLogger();
+        var handler = new StubHandler((_, _) => Json(
+            """
+            {"data":[
+              {"status":"error","message":"\"ExponentPushToken[secret-1]\" is not a registered push notification recipient","details":{"error":"DeviceNotRegistered"}}
+            ]}
+            """));
+        var failing = new StubHandler((_, _) => Json("""{"errors":[{"message":"ExpoPushToken[secret-2] is invalid"}]}""", HttpStatusCode.BadRequest));
+
+        var result = await Sender(handler, logger: logger).SendAsync([Message(1)], Ct);
+        await Sender(failing, logger: logger).SendAsync([Message(2)], Ct);
+
+        Assert.Equal(["ExponentPushToken[1]"], result.UnregisteredTokens);
+        Assert.Equal(2, logger.Messages.Count);
+        Assert.DoesNotContain(logger.Messages, m => m.Contains("secret", StringComparison.Ordinal));
+        Assert.Contains(logger.Messages, m => m.Contains("ExponentPushToken[***]", StringComparison.Ordinal));
+        Assert.Contains(logger.Messages, m => m.Contains("ExpoPushToken[***]", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Logged_bodies_are_shortened()
+    {
+        var logged = ExpoPushSender.ForLog(new string('a', 10_000));
+
+        Assert.True(logged.Length <= ExpoPushSender.MaxLoggedBodyLength + 1);
     }
 }

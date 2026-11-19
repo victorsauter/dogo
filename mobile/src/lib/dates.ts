@@ -101,3 +101,23 @@ export function defaultWalkStart(now: Date = new Date()): Date {
   start.setHours(10, 0, 0, 0);
   return start;
 }
+
+/**
+ * An instant as the API wants it: ISO 8601 in UTC with its explicit `Z`
+ * (`2026-11-19T09:00:00.000Z`). The API refuses a date without an offset, so
+ * every date or time sent in a body or a query goes through here, never through
+ * a formatter that would drop the offset (`toLocaleString`, a `YYYY-MM-DD` slice).
+ */
+export function toApiDateTime(date: Date): string {
+  return date.toISOString();
+}
+
+/** How far ahead a walk may start: one year (`WithinYears(1)` of the API). */
+export const WALK_START_MAX_YEARS = 1;
+
+/** Latest instant a walk may start at, from `now` (the API adds one year to the server clock). */
+export function latestWalkStart(now: Date = new Date()): Date {
+  const latest = new Date(now);
+  latest.setFullYear(latest.getFullYear() + WALK_START_MAX_YEARS);
+  return latest;
+}

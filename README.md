@@ -1,6 +1,8 @@
-# dogo
+# Uzu
 
 Application mobile pour trouver et organiser des balades entre chiens, en sachant à l'avance quels chiens seront là.
+
+Le dépôt, le code et l'infrastructure gardent le nom `dogo` (dossiers, projets .NET, base et conteneurs Docker) ; le produit s'appelle Uzu ([ADR 0041](docs/adr/0041-nom-de-l-application-uzu.md)).
 
 ## État
 
@@ -40,6 +42,8 @@ xcrun simctl openurl booted "exp://127.0.0.1:8081"
 
 L'écran de connexion propose alors une « Connexion de test » : chaque identifiant saisi crée un compte distinct, ce qui permet de jouer plusieurs personnes.
 
+Pour voir l'application avec des balades, des chiens et des messages, la même carte propose des données de démonstration fictives autour de Seppois-le-Haut, à générer et à supprimer d'un geste. Elles ne sont permises qu'en développement ; voir [`mobile/README.md`](mobile/README.md#données-de-démonstration-développement) et [`api/README.md`](api/README.md#données-de-démonstration-développement).
+
 Les organisations se valident avec un compte administrateur de test ; la marche à suivre est dans le [README de l'API](api/README.md#agir-en-administrateur-en-local).
 
 ## Vérifier
@@ -62,4 +66,5 @@ Les tests de l'API démarrent leur propre base PostgreSQL dans Docker.
 | [Spécification technique](docs/specification-v1.md) | Modèle de données, règles métier, points d'entrée |
 | [Plan de développement](docs/plan.md) | Les tâches, leur état, et ce qu'il reste à faire |
 | [Décisions d'architecture](docs/adr/README.md) | Un fichier par décision technique |
+| [Guide de déploiement](docs/deploiement.md) | Mettre l'API en ligne : image, migrations, sauvegardes, hébergeurs |
 | [API](api/README.md) et [mobile](mobile/README.md) | Commandes, configuration et conventions de chaque partie |

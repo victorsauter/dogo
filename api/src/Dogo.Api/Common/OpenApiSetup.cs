@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
@@ -23,9 +24,9 @@ public static class OpenApiSetup
             {
                 document.Info = new OpenApiInfo
                 {
-                    Title = "dogo API",
+                    Title = "Uzu API",
                     Version = "v1",
-                    Description = "API of the dogo app. Errors are RFC 9457 problem details with a stable `code` extension.",
+                    Description = "API of the Uzu app. Errors are RFC 9457 problem details with a stable `code` extension.",
                 };
                 // The client chooses the server; no build-machine URL in the committed file.
                 document.Servers = [];
@@ -82,6 +83,18 @@ public static class OpenApiSetup
                             values.Remove(value);
                         }
                     }
+                }
+
+                // A custom converter hides the type from the schema exporter: still an ISO 8601 string.
+                // (On a nullable property the serializer wraps the converter: read the attribute instead.)
+                if (context.JsonPropertyInfo?.AttributeProvider?.GetCustomAttributes(typeof(JsonConverterAttribute), true)
+                        .OfType<JsonConverterAttribute>()
+                        .Any(a => a.ConverterType == typeof(ExplicitOffsetDateTimeOffsetConverter)) == true)
+                {
+                    schema.Type = Nullable.GetUnderlyingType(context.JsonPropertyInfo.PropertyType) is null
+                        ? JsonSchemaType.String
+                        : JsonSchemaType.String | JsonSchemaType.Null;
+                    schema.Format = "date-time";
                 }
 
                 // Every problem carries the stable "code" extension (see ErrorCodes).

@@ -1,4 +1,4 @@
-# dogo — Périmètre V1 (v0.3)
+# Uzu — Périmètre V1 (v0.3)
 
 **Version :** 0.3 · 18/11/2026
 
@@ -90,7 +90,7 @@ Douze décisions sont prises ; une reste ouverte et dépend des éducateurs part
 
 | Décision prise | Choix |
 | --- | --- |
-| Nom et dépôt | L'application s'appelle dogo et vit dans le dépôt `dogo` ; `DogoMeet` est conservé à part |
+| Nom et dépôt | L'application s'appelle Uzu depuis le 19/11/2026 ([ADR 0041](adr/0041-nom-de-l-application-uzu.md)) et vit dans le dépôt `dogo` ; `DogoMeet` est conservé à part |
 | Zone pilote | Seppois-le-Haut et ses environs (Haut-Rhin) |
 | Paiement des balades professionnelles | Hors application en V1 |
 | Pays du pilote | France |
@@ -126,9 +126,9 @@ Le blocage et le signalement ne peuvent pas attendre après le lot 4 : l'App Sto
 
 ## Technique
 
-L'application s'appelle dogo et se développe dans le dépôt `dogo` ; le dépôt `DogoMeet` est conservé tel quel, à part.
+L'application s'appelle Uzu et se développe dans le dépôt `dogo` ; le dépôt `DogoMeet` est conservé tel quel, à part.
 
-- **Nom.** dogo, plus simple à retenir que DogoMeet.
+- **Nom.** Uzu, depuis le 19/11/2026 ([ADR 0041](adr/0041-nom-de-l-application-uzu.md)). Le nom précédent, dogo, reste celui du dépôt et du code.
 - **Dépôt `DogoMeet`.** Premier développement en .NET (utilisateur, chien, balade). Il n'est ni modifié ni déplacé.
 - **API.** .NET 10 en minimal API, PostgreSQL avec PostGIS pour la recherche géographique, migrations EF Core.
 - **Organisation du code.** Par fonctionnalité (comptes, chiens, balades, inscriptions, organisations, signalements) ; voir l'ADR 0004.

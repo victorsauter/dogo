@@ -81,6 +81,56 @@ describe('dog detail', () => {
     await signIn();
     await renderRouter(APP_DIR, { initialUrl: `/dogs/${testDog.id}` });
     expect(await screen.findByText(t.errors['dog.not_found'])).toBeTruthy();
+    expect(screen.getByText(t.dog.notFoundTitle)).toBeTruthy();
+    expect(screen.queryByText(t.states.errorTitle)).toBeNull();
+  });
+});
+
+describe('the limit of 20 dogs', () => {
+  const dogsOf = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      ...testDog,
+      id: `dog-${index}`,
+      name: `Chien ${index}`,
+    }));
+  const routes = (count: number) => ({
+    'GET /api/v1/me': () => ok(testUser),
+    'GET /api/v1/me/dogs': () => ok(dogsOf(count)),
+    'GET /api/v1/me/organizations': () => ok([]),
+  });
+
+  it('still offers to add a dog with 19', async () => {
+    mockApi(routes(19));
+    await signIn();
+    await renderRouter(APP_DIR, { initialUrl: '/profile' });
+    expect(await screen.findByText('Chien 18')).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.dog.add })).toBeTruthy();
+    expect(screen.queryByText(t.errors['dog.limit_reached'])).toBeNull();
+  });
+
+  it('replaces the « add » button by an explanation at 20', async () => {
+    mockApi(routes(20));
+    await signIn();
+    await renderRouter(APP_DIR, { initialUrl: '/profile' });
+    expect(await screen.findByText('Chien 19')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: t.dog.add })).toBeNull();
+    expect(screen.getByText(t.errors['dog.limit_reached'])).toBeTruthy();
+  });
+
+  it('shows no form on the new-dog screen at 20, with the reason', async () => {
+    mockApi(routes(20));
+    await signIn();
+    await renderRouter(APP_DIR, { initialUrl: '/dogs/new' });
+    expect(await screen.findByText(t.dog.limitTitle)).toBeTruthy();
+    expect(screen.getByText(t.errors['dog.limit_reached'])).toBeTruthy();
+    expect(screen.queryByLabelText(t.dog.name)).toBeNull();
+  });
+
+  it('opens the form below the limit', async () => {
+    mockApi(routes(5));
+    await signIn();
+    await renderRouter(APP_DIR, { initialUrl: '/dogs/new' });
+    expect(await screen.findByLabelText(t.dog.name)).toBeTruthy();
   });
 });
 
@@ -159,7 +209,8 @@ describe('dog form', () => {
     await fireEvent.press(await screen.findByRole('button', { name: t.dog.add }));
 
     expect(screen.getAllByText(t.common.required)).toHaveLength(5);
-    expect(screenCalls(calls)).toHaveLength(0);
+    // Nothing is sent (the screen only reads the list of dogs, for the limit of 20).
+    expect(calls.filter((c) => c.method !== 'GET')).toHaveLength(0);
   });
 
   it('creates the dog, then uploads its photo, then opens it', async () => {
@@ -186,7 +237,9 @@ describe('dog form', () => {
 
     expect(await screen.findByText('Nala')).toBeTruthy();
     expect(screen).toHavePathname('/dogs/new-dog-id');
-    const sent = screenCalls(calls);
+    const sent = screenCalls(calls).filter(
+      (c) => c.method !== 'GET' || c.path !== '/api/v1/me/dogs',
+    );
     expect(sent.map((c) => `${c.method} ${c.path}`).slice(0, 2)).toEqual([
       'POST /api/v1/dogs',
       'PUT /api/v1/dogs/new-dog-id/photo',
@@ -249,6 +302,40 @@ describe('dog form', () => {
       birthDate: '2022-03-15',
       description: 'Adore les balades en forêt.',
     });
+  });
+
+  it('shows dog.size_in_use on the size field, with its own message, not « Valeur invalide »', async () => {
+    const { calls } = mockApi({
+      [`GET ${dogPath}`]: () => ok(testDog),
+      [`PATCH ${dogPath}`]: () => problemResponse(409, 'dog.size_in_use'),
+    });
+    await signIn();
+    await renderRouter(APP_DIR, { initialUrl: `/dogs/${testDog.id}/edit` });
+    await screen.findByDisplayValue('Biscotte');
+    await fireEvent.press(screen.getByRole('radio', { name: 'Grand' }));
+    await fireEvent.press(screen.getByRole('button', { name: t.common.save }));
+
+    // On the field, once: the form shows no second copy under the button.
+    expect(await screen.findAllByText(t.errors['dog.size_in_use'])).toHaveLength(1);
+    expect(screen.queryByText(t.common.fieldInvalid)).toBeNull();
+    expect(screen.queryByText(t.errors['validation.failed'])).toBeNull();
+    expect(screen).toHavePathname(`/dogs/${testDog.id}/edit`);
+    // The dog is read again: the screens behind show what the server now knows.
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === 'GET' && c.path === dogPath).length).toBeGreaterThan(
+        1,
+      ),
+    );
+  });
+
+  it('says clearly that 20 dogs is the maximum when the server refuses another one', async () => {
+    mockApi({ 'POST /api/v1/dogs': () => problemResponse(409, 'dog.limit_reached') });
+    await signIn();
+    await renderRouter(APP_DIR, { initialUrl: '/dogs/new' });
+    await screen.findByLabelText(t.dog.name);
+    await fillValid();
+    await fireEvent.press(screen.getByRole('button', { name: t.dog.add }));
+    expect(await screen.findByText(t.errors['dog.limit_reached'])).toBeTruthy();
   });
 
   it('shows a paw, not the initial of « Chien », while the new dog has no name (defect D3)', async () => {

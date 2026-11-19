@@ -9,6 +9,7 @@ import {
 import { api, unwrap } from './client';
 import type { MembershipRole } from './enums';
 import type { CreateOrganizationRequest, MyOrganization, UpdateOrganizationRequest } from './types';
+import { walksChanged } from './walks';
 
 export const organizationKeys = {
   all: ['organizations'] as const,
@@ -44,12 +45,27 @@ export function useOrganization(id: string) {
   });
 }
 
+/**
+ * Largest page the API gives for each of the two lists (members, requests);
+ * its default is 50, which would silently hide the rest of a big organisation.
+ */
+export const MEMBERS_LIMIT = 100;
+
+/** True when a list came back full: the API stops at `MEMBERS_LIMIT`, so there may be more people. */
+export function isMembersListCapped(count: number): boolean {
+  return count >= MEMBERS_LIMIT;
+}
+
 /** Members and requests: only the owner and the educators may read them (403 otherwise). */
 export function useOrganizationMembers(id: string) {
   return useQuery({
     queryKey: organizationKeys.members(id),
     queryFn: () =>
-      unwrap(api.GET('/api/v1/organizations/{id}/memberships', { params: { path: { id } } })),
+      unwrap(
+        api.GET('/api/v1/organizations/{id}/memberships', {
+          params: { path: { id }, query: { limit: MEMBERS_LIMIT } },
+        }),
+      ),
     retry: false,
   });
 }
@@ -67,12 +83,15 @@ export function organizingOrganizations(mine: MyOrganization[] | undefined) {
   );
 }
 
-/** Refreshes every view of organisations: search, detail, members, my list. */
-export function organizationsChanged(queryClient: QueryClient) {
-  return Promise.all([
-    queryClient.invalidateQueries({ queryKey: organizationKeys.all }),
-    queryClient.invalidateQueries({ queryKey: organizationKeys.mine }),
-  ]);
+/**
+ * Refreshes every view of organisations: search, detail, members, my list, and
+ * the walks that show an organisation's name or that its members may join.
+ * Not awaited, like `walksChanged`.
+ */
+export function organizationsChanged(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: organizationKeys.all });
+  void queryClient.invalidateQueries({ queryKey: organizationKeys.mine });
+  walksChanged(queryClient);
 }
 
 // ---- Writing

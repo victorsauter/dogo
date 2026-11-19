@@ -3,6 +3,7 @@
 - **Statut :** Accepté
 - **Date :** 18/11/2026
 - **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
+- **Précisé par :** [ADR 0032](0032-nettoyage-des-photos.md) et [ADR 0038](0038-image-et-migrations-en-production.md) : HEIC refusé, nettoyage des images, cache privé (0032), volume du disque en production (0038).
 
 ## Contexte
 

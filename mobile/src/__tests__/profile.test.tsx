@@ -59,10 +59,10 @@ describe('profile tab', () => {
     mockApi({
       'GET /api/v1/me/organizations': () => ok([]),
       'GET /api/v1/me': () => ok(testUser),
-      'GET /api/v1/me/dogs': () => problemResponse(403, 'account.suspended'),
+      'GET /api/v1/me/dogs': () => problemResponse(429, 'rate_limit.exceeded'),
     });
     await openProfile();
-    expect(await screen.findByText(t.errors['account.suspended'])).toBeTruthy();
+    expect(await screen.findByText(t.errors.tooManyRequests)).toBeTruthy();
     expect(screen.getByRole('button', { name: t.common.retry })).toBeTruthy();
   });
 
@@ -198,9 +198,44 @@ describe('first-run nudge', () => {
     await fireEvent.changeText(screen.getByLabelText(t.profile.displayName), 'Léa');
     await fireEvent.press(screen.getByRole('button', { name: t.common.save }));
 
+    // No dog yet, and no registering without one: the next step is the first dog.
+    expect(await screen.findByText(t.dog.welcome)).toBeTruthy();
+    expect(screen).toHavePathname('/dogs/new');
+    expect(screen.queryByText(t.profile.welcome)).toBeNull();
+  });
+
+  it('goes back to the app after the welcome edit when the member already has a dog', async () => {
+    mockApi({
+      'GET /api/v1/me': () => ok({ ...testUser, ...newMember }),
+      'GET /api/v1/me/dogs': () => ok([testDog]),
+      'PATCH /api/v1/me': () => ok({ ...testUser, displayName: 'Léa' }),
+    });
+    await sessionStore.set(authResponse({ user: newMember }));
+    await renderRouter(APP_DIR, { initialUrl: '/' });
+    await screen.findByText(t.profile.welcome);
+
+    await fireEvent.changeText(screen.getByLabelText(t.profile.displayName), 'Léa');
+    await fireEvent.press(screen.getByRole('button', { name: t.common.save }));
+
     expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
     expect(screen).toHavePathname('/');
-    expect(screen.queryByText(t.profile.welcome)).toBeNull();
+    expect(screen.queryByText(t.dog.welcome)).toBeNull();
+  });
+
+  it('does not push a dog on someone editing their profile later', async () => {
+    mockApi({
+      'GET /api/v1/me': () => ok(testUser),
+      'GET /api/v1/me/dogs': () => ok([]),
+      'PATCH /api/v1/me': () => ok({ ...testUser, displayName: 'Léa M.' }),
+    });
+    await sessionStore.set(authResponse());
+    await renderRouter(APP_DIR, { initialUrl: '/profile' });
+    await fireEvent.press(await screen.findByRole('button', { name: t.profile.editButton }));
+    await fireEvent.changeText(await screen.findByDisplayValue('Léa Martin'), 'Léa M.');
+    await fireEvent.press(screen.getByRole('button', { name: t.common.save }));
+
+    await waitFor(() => expect(screen).toHavePathname('/profile'));
+    expect(screen.queryByText(t.dog.welcome)).toBeNull();
   });
 
   it('does not open again once dismissed', async () => {
@@ -253,5 +288,7 @@ describe('public profile', () => {
     await sessionStore.set(authResponse());
     await renderRouter(APP_DIR, { initialUrl: `/users/${other}` });
     expect(await screen.findByText(t.errors['user.not_found'])).toBeTruthy();
+    expect(screen.getByText(t.profile.notFoundTitle)).toBeTruthy();
+    expect(screen.queryByText(t.states.errorTitle)).toBeNull();
   });
 });

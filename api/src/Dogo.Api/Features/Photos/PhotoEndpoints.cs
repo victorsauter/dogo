@@ -30,11 +30,11 @@ public static class PhotoEndpoints
 
         group.MapPut("/me/photo", UploadMyPhoto)
             .WithName("uploadMyPhoto")
-            .WithSummary("Upload or replace the signed-in user's photo (JPEG, PNG, WebP or HEIC, 5 MB max).");
+            .WithSummary("Upload or replace the signed-in user's photo (JPEG, PNG or WebP, 5 MB max, metadata removed).");
 
         group.MapPut("/dogs/{id:guid}/photo", UploadDogPhoto)
             .WithName("uploadDogPhoto")
-            .WithSummary("Upload or replace a dog's photo (JPEG, PNG, WebP or HEIC, 5 MB max).")
+            .WithSummary("Upload or replace a dog's photo (JPEG, PNG or WebP, 5 MB max, metadata removed).")
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         return routes;
@@ -58,6 +58,7 @@ public static class PhotoEndpoints
         DogoDbContext db,
         IPhotoStorage storage,
         IOptions<AdminOptions> admin,
+        IOptions<PhotoProcessingOptions> processing,
         CancellationToken cancellationToken)
     {
         var user = await db.Users.FindAsync([principal.GetUserId()], cancellationToken);
@@ -66,7 +67,7 @@ public static class PhotoEndpoints
             return Problems.Unauthorized(ErrorCodes.Unauthenticated, "The account no longer exists.");
         }
 
-        var (fileName, problem) = await SaveAsync(file, storage, cancellationToken);
+        var (fileName, problem) = await SaveAsync(file, storage, processing, cancellationToken);
         if (fileName is null)
         {
             return problem!;
@@ -85,6 +86,7 @@ public static class PhotoEndpoints
         ClaimsPrincipal principal,
         DogoDbContext db,
         IPhotoStorage storage,
+        IOptions<PhotoProcessingOptions> processing,
         CancellationToken cancellationToken)
     {
         var (dog, ownershipProblem) = await DogEndpoints.FindOwnedDogAsync(db, id, principal, cancellationToken);
@@ -93,7 +95,7 @@ public static class PhotoEndpoints
             return ownershipProblem!;
         }
 
-        var (fileName, problem) = await SaveAsync(file, storage, cancellationToken);
+        var (fileName, problem) = await SaveAsync(file, storage, processing, cancellationToken);
         if (fileName is null)
         {
             return problem!;
@@ -115,14 +117,21 @@ public static class PhotoEndpoints
             return Problems.NotFound(ErrorCodes.PhotoNotFound, "The photo does not exist.");
         }
 
-        // A file name is never reused: the content behind a URL never changes.
-        context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        // Private cache, one day: a deleted photo (account deleted, photo replaced) must not stay
+        // served for long by a shared cache. A file name is never reused, so a short life costs little.
+        var headers = context.Response.Headers;
+        headers.CacheControl = "private, max-age=86400";
+        headers.XContentTypeOptions = "nosniff";
+        headers.ContentSecurityPolicy = "default-src 'none'; sandbox";
         return TypedResults.Stream(stream, PhotoFormat.ContentTypeForFileName(fileName));
     }
 
-    /// <summary>Checks size and real format, then stores the file. Returns the stored name or a problem.</summary>
+    /// <summary>
+    /// Checks the size, then cleans the image (real format, decoding, dimensions, no metadata: ADR 0032)
+    /// and stores the result. Returns the stored name or a problem.
+    /// </summary>
     private static async Task<(string? FileName, ProblemHttpResult? Problem)> SaveAsync(
-        IFormFile? file, IPhotoStorage storage, CancellationToken cancellationToken)
+        IFormFile? file, IPhotoStorage storage, IOptions<PhotoProcessingOptions> processing, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
         {
@@ -134,20 +143,30 @@ public static class PhotoEndpoints
             return (null, Problems.Create(StatusCodes.Status413PayloadTooLarge, ErrorCodes.PhotoTooLarge, "The photo exceeds 5 MB."));
         }
 
-        await using var stream = file.OpenReadStream();
-        var header = new byte[PhotoFormat.HeaderLength];
-        var read = await stream.ReadAtLeastAsync(header, header.Length, throwOnEndOfStream: false, cancellationToken);
-        var format = PhotoFormat.Detect(header.AsSpan(0, read));
-        if (format is null)
+        var content = new byte[file.Length];
+        await using (var stream = file.OpenReadStream())
         {
-            return (null, Problems.Create(
-                StatusCodes.Status415UnsupportedMediaType,
-                ErrorCodes.PhotoUnsupportedType,
-                "The photo must be a JPEG, PNG, WebP or HEIC image."));
+            var read = await stream.ReadAtLeastAsync(content, content.Length, throwOnEndOfStream: false, cancellationToken);
+            if (read != content.Length)
+            {
+                return (null, Problems.Validation("file", "A photo file is required."));
+            }
         }
 
-        stream.Position = 0;
-        return (await storage.SaveAsync(stream, format.Extension, cancellationToken), null);
+        var processor = new PhotoProcessor(processing.Value);
+        var (photo, rejection) = await processor.ProcessAsync(content, cancellationToken);
+        if (photo is null)
+        {
+            return (null, rejection == PhotoRejection.TooManyPixels
+                ? Problems.Create(StatusCodes.Status413PayloadTooLarge, ErrorCodes.PhotoTooLarge, "The photo has too many pixels.")
+                : Problems.Create(
+                    StatusCodes.Status415UnsupportedMediaType,
+                    ErrorCodes.PhotoUnsupportedType,
+                    "The photo must be a valid JPEG, PNG or WebP image."));
+        }
+
+        await using var cleaned = new MemoryStream(photo.Content, writable: false);
+        return (await storage.SaveAsync(cleaned, photo.Format.Extension, cancellationToken), null);
     }
 
     private static async Task DeletePreviousAsync(IPhotoStorage storage, string? previous, CancellationToken cancellationToken)

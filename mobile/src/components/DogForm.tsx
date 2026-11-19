@@ -5,6 +5,7 @@ import { errorMessage } from '@/api/errors';
 import type { PickedPhoto } from '@/api/photoUpload';
 import {
   dogFields,
+  isFieldRefusal,
   limits,
   serverFieldErrors,
   validateDog,
@@ -68,7 +69,7 @@ export function DogForm({ initial, photoUrl, submitLabel, onSubmit }: DogFormPro
     } catch (error) {
       const serverErrors = serverFieldErrors(error, dogFields);
       setErrors(serverErrors);
-      setFormError(errorMessage(error));
+      setFormError(isFieldRefusal(error) ? null : errorMessage(error));
       void scrollToFirstError(serverErrors);
     } finally {
       setSubmitting(false);

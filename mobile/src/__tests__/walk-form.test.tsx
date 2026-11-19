@@ -19,6 +19,13 @@ afterEach(async () => {
   jest.restoreAllMocks();
 });
 
+/** The person touches the map: the meeting point is now a deliberate choice. */
+async function placePin(coordinate = { latitude: 47.5287, longitude: 7.1912 }) {
+  await fireEvent(screen.getByTestId('meeting-point-map'), 'press', {
+    nativeEvent: { coordinate },
+  });
+}
+
 async function openNewWalk() {
   await sessionStore.set(authResponse());
   await renderRouter(APP_DIR, { initialUrl: '/walks/new' });
@@ -64,6 +71,23 @@ describe('validateWalk', () => {
     });
   });
 
+  it('measures the title without its leading and trailing spaces, like the API', () => {
+    const titleError = (title: string) => validateWalk({ ...valid, title }, now).title;
+    expect(titleError('  ab  ')).toBe('Entre 3 et 80 caractères.');
+    expect(titleError('   abc   ')).toBeUndefined();
+    expect(titleError(`  ${'x'.repeat(80)}  `)).toBeUndefined();
+    expect(titleError('x'.repeat(81))).toBe('Entre 3 et 80 caractères.');
+    expect(titleError('     ')).toBe(t.common.required);
+  });
+
+  it('refuses a start more than a year ahead, accepts exactly one year', () => {
+    const startsAtError = (startsAt: Date) => validateWalk({ ...valid, startsAt }, now).startsAt;
+    expect(startsAtError(new Date('2027-11-18T08:00:00Z'))).toBeUndefined();
+    expect(startsAtError(new Date('2027-11-18T08:00:01Z'))).toBe(t.walk.startsAtTooFar);
+    expect(startsAtError(new Date('2062-11-19T09:00:00Z'))).toBe(t.walk.startsAtTooFar);
+    expect(startsAtError(new Date('2026-11-18T07:59:00Z'))).toBe(t.walk.startsAtPast);
+  });
+
   it('builds the request with trimmed texts and sizes in order', () => {
     expect(
       toCreateWalkRequest({ ...valid, title: ' Tour ', allowedSizes: ['Large', 'Small'] }),
@@ -90,6 +114,49 @@ describe('create a walk', () => {
     expect(calls.filter((c) => c.method !== 'GET')).toHaveLength(0);
   });
 
+  async function fillRequiredFields() {
+    await fireEvent.changeText(screen.getByLabelText(t.walk.title), 'Balade du soir');
+    await fireEvent.changeText(screen.getByLabelText(t.walk.locationLabel), 'Fontaine');
+  }
+
+  it('refuses to create a walk whose pin was never placed, whatever the position', async () => {
+    const { calls } = mockApi({});
+    await openNewWalk();
+    await fillRequiredFields();
+    await fireEvent.press(screen.getByRole('button', { name: t.walk.create }));
+
+    expect(screen.getByText(t.walk.meetingPointRequired)).toBeTruthy();
+    expect(calls.filter((c) => c.method !== 'GET')).toHaveLength(0);
+
+    // Placing the pin clears the message and lets the form through.
+    await placePin();
+    expect(screen.queryByText(t.walk.meetingPointRequired)).toBeNull();
+  });
+
+  it('warns when the position is refused, and still needs a placed pin', async () => {
+    const location = jest.requireMock('expo-location') as {
+      requestForegroundPermissionsAsync: jest.Mock;
+    };
+    location.requestForegroundPermissionsAsync.mockResolvedValueOnce({
+      granted: false,
+      status: 'denied',
+    });
+    const { calls } = mockApi({});
+    await openNewWalk();
+
+    expect(await screen.findByText(t.walk.meetingPointNoLocation)).toBeTruthy();
+    await fillRequiredFields();
+    await fireEvent.press(screen.getByRole('button', { name: t.walk.create }));
+    expect(screen.getByText(t.walk.meetingPointRequired)).toBeTruthy();
+    expect(calls.filter((c) => c.method !== 'GET')).toHaveLength(0);
+  });
+
+  it('does not warn when the position is known', async () => {
+    mockApi({});
+    await openNewWalk();
+    expect(screen.queryByText(t.walk.meetingPointNoLocation)).toBeNull();
+  });
+
   it('creates the walk, then opens its detail', async () => {
     const { calls } = mockApi({
       'POST /api/v1/walks': () => ok(created),
@@ -100,9 +167,7 @@ describe('create a walk', () => {
 
     await fireEvent.changeText(screen.getByLabelText(t.walk.title), ' Balade du soir ');
     await fireEvent.changeText(screen.getByLabelText(t.walk.locationLabel), 'Fontaine');
-    await fireEvent(screen.getByTestId('meeting-point-map'), 'press', {
-      nativeEvent: { coordinate: { latitude: 47.5287, longitude: 7.1912 } },
-    });
+    await placePin();
     await fireEvent.press(
       screen.getByRole('button', { name: `Augmenter ${t.walk.maxDogs.toLowerCase()}` }),
     );
@@ -137,6 +202,7 @@ describe('create a walk', () => {
     await openNewWalk();
     await fireEvent.changeText(screen.getByLabelText(t.walk.title), 'Balade');
     await fireEvent.changeText(screen.getByLabelText(t.walk.locationLabel), 'Fontaine');
+    await placePin();
     await fireEvent.press(screen.getByRole('button', { name: t.walk.create }));
 
     expect(await screen.findAllByText(t.common.fieldInvalid)).toHaveLength(2);

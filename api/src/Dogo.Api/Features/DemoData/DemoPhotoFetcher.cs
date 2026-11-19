@@ -19,12 +19,13 @@ internal sealed record DemoPhotoResult(IReadOnlyList<string> StoredFiles, int Fa
 /// <item>dogs: the lead photo of the breed's English Wikipedia article, kept only when hosted on
 /// Wikimedia Commons under a free licence (CC0, public domain, CC BY, CC BY-SA, « copyrighted free use »).</item>
 /// </list>
-/// Requests carry no user data. Each image goes through the checks of uploaded photos (size,
-/// real format) before being stored. Any failure only skips that photo.
+/// Requests carry no user data. Each image goes through the checks and the cleaning of uploaded photos (size,
+/// real format, decoding and re-encoding without metadata, ADR 0032) before being stored. Any failure only skips that photo.
 /// </summary>
 public sealed partial class DemoPhotoFetcher(
     IHttpClientFactory httpClientFactory,
     IPhotoStorage storage,
+    IOptions<PhotoProcessingOptions> processing,
     IOptions<DemoDataOptions> options,
     ILogger<DemoPhotoFetcher> logger)
 {
@@ -140,7 +141,7 @@ public sealed partial class DemoPhotoFetcher(
                 return null;
             }
 
-            // Same checks as an uploaded photo: 5 MB at most, a real JPEG, PNG, WebP or HEIC image.
+            // Same checks and cleaning as an uploaded photo: 5 MB at most, a real JPEG, PNG or WebP image, decoded and re-encoded.
             await using var source = await response.Content.ReadAsStreamAsync(budget);
             var content = await ReadAtMostAsync(source, PhotoFormat.MaxSizeBytes, budget);
             if (content is null || content.Length == 0)
@@ -149,15 +150,16 @@ public sealed partial class DemoPhotoFetcher(
                 return null;
             }
 
-            var format = PhotoFormat.Detect(content.GetBuffer().AsSpan(0, (int)Math.Min(content.Length, PhotoFormat.HeaderLength)));
-            if (format is null)
+            var (photo, rejection) = await new PhotoProcessor(processing.Value)
+                .ProcessAsync(content.ToArray(), cancellationToken);
+            if (photo is null)
             {
-                LogDownloadFailed(url, "not a supported image");
+                LogDownloadFailed(url, $"not a supported image ({rejection})");
                 return null;
             }
 
-            content.Position = 0;
-            return await storage.SaveAsync(content, format.Extension, cancellationToken);
+            await using var cleaned = new MemoryStream(photo.Content, writable: false);
+            return await storage.SaveAsync(cleaned, photo.Format.Extension, cancellationToken);
         }
         catch (Exception e) when ((e is HttpRequestException or OperationCanceledException or IOException) && !cancellationToken.IsCancellationRequested)
         {

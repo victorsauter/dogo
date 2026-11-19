@@ -2,6 +2,7 @@
 
 - **Statut :** Accepté
 - **Date :** 18/11/2026
+- **Précisé par :** [ADR 0018](0018-connexion-native-chargee-a-la-demande.md) : la connexion Google native est tranchée.
 
 ## Contexte
 

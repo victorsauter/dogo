@@ -1,7 +1,7 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, RefreshControl, View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import type { MyWalksPeriod, MyWalksRole } from '@/api/enums';
 import { useMyWalks } from '@/api/walks';
 import {
@@ -27,7 +27,7 @@ const whenOptions: { value: MyWalksPeriod; label: string }[] = [
 
 /** « Mes balades »: walks I organize or joined, upcoming or past (`GET /me/walks`). */
 export default function MyWalksScreen() {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { colors, spacing } = useTheme();
   const [role, setRole] = useState<MyWalksRole>('Organizer');
   const [when, setWhen] = useState<MyWalksPeriod>('Upcoming');

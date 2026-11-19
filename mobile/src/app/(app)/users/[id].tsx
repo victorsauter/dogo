@@ -1,7 +1,8 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { useBlockedUsers, useBlockUser, useUnblockUser } from '@/api/blocks';
 import { errorMessage } from '@/api/errors';
 import { usePublicUser } from '@/api/profile';
@@ -15,7 +16,7 @@ import { useTheme } from '@/theme';
 export default function PublicProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { spacing } = useTheme();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { user: me } = useSession();
   const user = usePublicUser(id);
   const blocks = useBlockedUsers();
@@ -32,7 +33,11 @@ export default function PublicProfileScreen() {
   if (user.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={user.error} onRetry={() => user.refetch()} />
+        <ErrorState
+          error={user.error}
+          notFoundTitle={t.profile.notFoundTitle}
+          onRetry={() => user.refetch()}
+        />
       </Screen>
     );
   }

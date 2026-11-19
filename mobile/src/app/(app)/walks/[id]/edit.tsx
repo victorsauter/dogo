@@ -1,15 +1,16 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 
 import { useUpdateWalk, useWalk } from '@/api/walks';
 import { ErrorState, LoadingState, Screen, WalkForm } from '@/components';
 import { walkTiming } from '@/lib/dates';
 import { toUpdateWalkRequest, walkFormFrom } from '@/lib/forms';
+import { useFocusedRouter } from '@/lib/hooks';
 import { t } from '@/strings';
 
 /** Edit a walk: organizer only, before it starts (spec §4.2). */
 export default function EditWalkScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const router = useFocusedRouter();
   const walk = useWalk(id);
   const updateWalk = useUpdateWalk(id);
 
@@ -23,7 +24,11 @@ export default function EditWalkScreen() {
   if (walk.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={walk.error} onRetry={() => walk.refetch()} />
+        <ErrorState
+          error={walk.error}
+          notFoundTitle={t.walk.notFoundTitle}
+          onRetry={() => walk.refetch()}
+        />
       </Screen>
     );
   }
@@ -41,6 +46,7 @@ export default function EditWalkScreen() {
       <WalkForm
         key={walk.data.id}
         initial={walkFormFrom(walk.data)}
+        pinPlaced
         submitLabel={t.common.save}
         onSubmit={async (values) => {
           await updateWalk.mutateAsync(toUpdateWalkRequest(values));

@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Platform, View } from 'react-native';
 
 import { formatDay, formatTime } from '@/lib/dates';
-import { useTheme } from '@/theme';
+import { useLargeText, useTheme } from '@/theme';
 
 import { Button } from './Button';
 import { FieldAnchor } from './FormScroll';
@@ -18,6 +18,8 @@ export interface DateTimeFieldProps {
   onChange: (value: Date) => void;
   /** Earliest selectable day (a walk starts in the future). */
   minimumDate?: Date;
+  /** Latest selectable day (a walk starts within a year). */
+  maximumDate?: Date;
   dateA11yLabel: string;
   timeA11yLabel: string;
   error?: string;
@@ -45,6 +47,7 @@ export function DateTimeField({
   value,
   onChange,
   minimumDate,
+  maximumDate,
   dateA11yLabel,
   timeA11yLabel,
   error,
@@ -52,6 +55,8 @@ export function DateTimeField({
   name,
 }: DateTimeFieldProps) {
   const { spacing } = useTheme();
+  // With enlarged text the two buttons no longer fit side by side (« 10:0 » cut short): stack them.
+  const stacked = useLargeText();
   const [open, setOpen] = useState<Mode | null>(null);
   const day = formatDay(value);
   const time = formatTime(value);
@@ -70,6 +75,7 @@ export function DateTimeField({
         mode,
         is24Hour: true,
         minimumDate: mode === 'date' ? minimumDate : undefined,
+        maximumDate: mode === 'date' ? maximumDate : undefined,
         onChange: handleChange(mode),
       });
     } else {
@@ -80,8 +86,8 @@ export function DateTimeField({
   return (
     <FieldAnchor name={name} style={{ gap: spacing.xs }}>
       <Text variant="label">{label}</Text>
-      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-        <View style={{ flex: 3 }}>
+      <View style={{ flexDirection: stacked ? 'column' : 'row', gap: spacing.sm }}>
+        <View style={{ flex: stacked ? undefined : 3 }}>
           <Button
             label={day}
             variant="secondary"
@@ -89,7 +95,7 @@ export function DateTimeField({
             onPress={() => openPicker('date')}
           />
         </View>
-        <View style={{ flex: 2 }}>
+        <View style={{ flex: stacked ? undefined : 2 }}>
           <Button
             label={time}
             variant="secondary"
@@ -105,6 +111,7 @@ export function DateTimeField({
           display={open === 'date' ? 'inline' : 'spinner'}
           locale="fr-FR"
           minimumDate={open === 'date' ? minimumDate : undefined}
+          maximumDate={open === 'date' ? maximumDate : undefined}
           minuteInterval={5}
           onChange={handleChange(open)}
         />

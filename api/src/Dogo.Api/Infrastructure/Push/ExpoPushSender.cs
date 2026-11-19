@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 
 namespace Dogo.Api.Infrastructure.Push;
@@ -23,6 +24,9 @@ public sealed partial class ExpoPushSender(
     public const int MaxBatchSize = 100;
 
     private const string DeviceNotRegistered = "DeviceNotRegistered";
+
+    /// <summary>Longest excerpt of a response body written to the log.</summary>
+    internal const int MaxLoggedBodyLength = 500;
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -58,21 +62,49 @@ public sealed partial class ExpoPushSender(
         if (!response.IsSuccessStatusCode)
         {
             // 400 (malformed), 401 (access token), 429 and 5xx (temporary): best effort, no retry.
-            LogRequestFailed((int)response.StatusCode, batch.Length, body);
+            LogRequestFailed((int)response.StatusCode, batch.Length, ForLog(body));
             return [];
         }
 
-        return ReadUnregisteredTokens(batch, body);
+        return ReadUnregisteredTokens(batch, (int)response.StatusCode, body);
+    }
+
+    /// <summary>
+    /// Masks push tokens (Expo repeats them in error messages; a token lets anyone notify the
+    /// device) and shortens the text before it is logged.
+    /// </summary>
+    internal static string ForLog(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return "";
+        }
+
+        var masked = PushTokenRegex().Replace(text, "$1[***]");
+        return masked.Length <= MaxLoggedBodyLength ? masked : masked[..MaxLoggedBodyLength] + "…";
     }
 
     /// <summary>Tickets come back in the order of the messages: ticket i belongs to batch[i].</summary>
-    private List<string> ReadUnregisteredTokens(PushMessage[] batch, string body)
+    private List<string> ReadUnregisteredTokens(PushMessage[] batch, int status, string body)
     {
         var unregistered = new List<string>();
-        using var document = JsonDocument.Parse(body);
-        if (!document.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+        JsonDocument document;
+        try
         {
-            LogUnexpectedResponse(body);
+            document = JsonDocument.Parse(body);
+        }
+        catch (JsonException)
+        {
+            // E.g. an HTML error page of a proxy with a 200 status: the batch is treated as failed.
+            LogRequestFailed(status, batch.Length, ForLog(body));
+            return unregistered;
+        }
+
+        using var _ = document;
+        if (document.RootElement.ValueKind != JsonValueKind.Object
+            || !document.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+        {
+            LogUnexpectedResponse(ForLog(body));
             return unregistered;
         }
 
@@ -85,12 +117,14 @@ public sealed partial class ExpoPushSender(
             }
 
             var message = batch[index++];
-            if (ticket.TryGetProperty("status", out var status) && status.GetString() == "error")
+            if (ticket.ValueKind == JsonValueKind.Object
+                && ticket.TryGetProperty("status", out var ticketStatus) && ticketStatus.ValueKind == JsonValueKind.String
+                && ticketStatus.GetString() == "error")
             {
                 var error = ticket.TryGetProperty("details", out var details) && details.ValueKind == JsonValueKind.Object
-                    && details.TryGetProperty("error", out var code) ? code.GetString() : null;
-                var text = ticket.TryGetProperty("message", out var m) ? m.GetString() : null;
-                LogTicketError(message.UserId, error ?? "unknown", text ?? "");
+                    && details.TryGetProperty("error", out var code) && code.ValueKind == JsonValueKind.String ? code.GetString() : null;
+                var text = ticket.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String ? m.GetString() : null;
+                LogTicketError(message.UserId, error ?? "unknown", ForLog(text));
                 if (error == DeviceNotRegistered)
                 {
                     unregistered.Add(message.Token);
@@ -100,6 +134,9 @@ public sealed partial class ExpoPushSender(
 
         return unregistered;
     }
+
+    [GeneratedRegex(@"(ExponentPushToken|ExpoPushToken)\[[^\]]*\]")]
+    private static partial Regex PushTokenRegex();
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Expo push request failed with status {Status} for {Count} messages: {Body}")]
     private partial void LogRequestFailed(int status, int count, string body);

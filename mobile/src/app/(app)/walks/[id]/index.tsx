@@ -1,9 +1,10 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Linking, Platform, RefreshControl, View } from 'react-native';
+import { Alert, Platform, RefreshControl, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
-import { errorMessage } from '@/api/errors';
+import { useGuardedRouter } from '@/lib/navigation';
+import { ApiError, errorMessage } from '@/api/errors';
 import type { Participant, WalkDetail } from '@/api/types';
 import {
   useAcceptRegistration,
@@ -32,20 +33,17 @@ import {
 } from '@/components';
 import { formatDuration, formatWalkStart, walkTiming } from '@/lib/dates';
 import { regionAround } from '@/lib/geo';
+import { openMapsAt } from '@/lib/linking';
 import { reportHref } from '@/lib/report';
 import { canUseThread } from '@/lib/thread';
 import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
 
-/** Opens the meeting point in the device's maps app. */
-function openInMaps(walk: WalkDetail) {
-  const { latitude, longitude } = walk.location;
-  const label = encodeURIComponent(walk.locationLabel);
-  const url =
-    Platform.OS === 'ios'
-      ? `https://maps.apple.com/?ll=${latitude},${longitude}&q=${label}`
-      : `geo:${latitude},${longitude}?q=${latitude},${longitude}(${label})`;
-  void Linking.openURL(url);
+/** Opens the meeting point in the device's maps app, or says it could not. */
+async function openInMaps(walk: WalkDetail) {
+  if (!(await openMapsAt(walk.location, walk.locationLabel))) {
+    Alert.alert(t.walk.openInMapsFailed);
+  }
 }
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -77,7 +75,11 @@ export default function WalkDetailScreen() {
   if (walk.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={walk.error} onRetry={() => walk.refetch()} />
+        <ErrorState
+          error={walk.error}
+          notFoundTitle={t.walk.notFoundTitle}
+          onRetry={() => walk.refetch()}
+        />
       </Screen>
     );
   }
@@ -110,9 +112,9 @@ export default function WalkDetailScreen() {
 }
 
 function WalkDetailContent({ walk }: { walk: WalkDetail }) {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { user } = useSession();
-  const { radii, spacing } = useTheme();
+  const { radii, spacing, dark } = useTheme();
   const accept = useAcceptRegistration(walk.id);
   const decline = useDeclineRegistration(walk.id);
   const cancelWalk = useCancelWalk(walk.id);
@@ -132,6 +134,13 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
     router.push({ pathname: '/organizations/[id]', params: { id: organizationId } });
 
   const onError = (error: unknown) => setOrganizerError(errorMessage(error));
+  // Accepting a request of someone who has left the organisation of a members-only walk.
+  const onAcceptError = (error: unknown) =>
+    setOrganizerError(
+      error instanceof ApiError && error.code === 'walk.members_only'
+        ? t.walk.acceptNotMember
+        : errorMessage(error),
+    );
 
   function confirmRemove(participant: Participant) {
     setOrganizerError(null);
@@ -249,6 +258,7 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
         <View style={{ height: 180, borderRadius: radii.md, overflow: 'hidden' }}>
           <MapView
             testID="walk-map"
+            userInterfaceStyle={dark ? 'dark' : 'light'}
             style={{ flex: 1 }}
             initialRegion={regionAround(walk.location, 0.01)}
             scrollEnabled={false}
@@ -266,7 +276,7 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
         <Button
           label={Platform.OS === 'ios' ? t.walk.openInMaps : t.walk.openInMapsAndroid}
           variant="secondary"
-          onPress={() => openInMaps(walk)}
+          onPress={() => void openInMaps(walk)}
         />
       </Card>
 
@@ -348,7 +358,7 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
                             }
                             onPress={() => {
                               setOrganizerError(null);
-                              accept.mutate(request.registrationId, { onError });
+                              accept.mutate(request.registrationId, { onError: onAcceptError });
                             }}
                           />
                         </View>

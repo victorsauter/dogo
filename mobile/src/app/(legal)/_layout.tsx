@@ -1,13 +1,14 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { Pressable } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { Text } from '@/components';
 import { t } from '@/strings';
 import { useTheme } from '@/theme';
 
 /** The legal stack is the first screen of its own navigator: it brings its own « Retour ». */
 function BackButton() {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { minTouchSize } = useTheme();
   return (
     <Pressable

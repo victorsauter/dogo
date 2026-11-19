@@ -10,7 +10,8 @@ import { devLog, loadNotifications, notificationsAvailable } from './native';
 /** `unavailable`: no push on this build (no module or no EAS project). */
 export type PermissionState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
 
-const ASKED_KEY = 'dogo.notifications.asked';
+// `uzu.` prefix, like the other storage keys (ADR 0041).
+const ASKED_KEY = 'uzu.notifications.asked';
 const ANDROID_CHANNEL = 'default';
 
 /** Token registered by this process, so sign-out can remove it without asking again. */
@@ -61,16 +62,31 @@ export async function getPushToken(): Promise<string | null> {
   }
 }
 
-/** Registers this device for the signed-in user when permission is granted and a token exists. Best effort. */
-export async function registerDevice(): Promise<void> {
-  try {
-    const token = await getPushToken();
-    if (!token) return;
-    await putDevice(token, Platform.OS === 'ios' ? 'Ios' : 'Android');
-    registeredToken = token;
-  } catch (error) {
-    devLog('device registration failed', error);
-  }
+let registering: Promise<void> | null = null;
+
+/**
+ * Registers this device for the signed-in user when permission is granted and a
+ * token exists. Best effort. When the token differs from the one registered
+ * before (the system rolled it), the old one is removed. Calls overlapping a
+ * registration in progress share it: reading the token can itself raise a
+ * token event.
+ */
+export function registerDevice(): Promise<void> {
+  registering ??= (async () => {
+    try {
+      const token = await getPushToken();
+      if (!token) return;
+      await putDevice(token, Platform.OS === 'ios' ? 'Ios' : 'Android');
+      const previous = registeredToken;
+      registeredToken = token;
+      if (previous && previous !== token) await deleteDevice(previous).catch(() => undefined);
+    } catch (error) {
+      devLog('device registration failed', error);
+    } finally {
+      registering = null;
+    }
+  })();
+  return registering;
 }
 
 /** Removes this device from the signed-in user (call before the session is cleared). Best effort. */

@@ -1,6 +1,8 @@
 /** @type {import('jest').Config} */
 module.exports = {
   preset: 'jest-expo',
+  // Fixes the time zone (TZ=Europe/Paris) for every test, whatever the machine.
+  globalSetup: '<rootDir>/jest.global-setup.js',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   // Reanimated (pressed controls, menus) runs on its JavaScript implementation in tests.
   resolver: 'react-native-reanimated/jest/resolver',

@@ -57,6 +57,31 @@ public sealed class InFutureAttribute : ValidationAttribute
         context.MemberName is null ? [] : [context.MemberName];
 }
 
+/// <summary>
+/// Rejects a <see cref="DateTimeOffset"/> more than <paramref name="years"/> years ahead. Null is valid.
+/// Not in the specification: a guard against typos (2062 for 2026) and far-future walks.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
+public sealed class WithinYearsAttribute(int years) : ValidationAttribute
+{
+    public int Years { get; } = years;
+
+    protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
+    {
+        if (value is not DateTimeOffset date)
+        {
+            return ValidationResult.Success;
+        }
+
+        var time = validationContext.GetService(typeof(TimeProvider)) as TimeProvider ?? TimeProvider.System;
+        return date <= time.GetUtcNow().AddYears(Years)
+            ? ValidationResult.Success
+            : new ValidationResult(
+                $"The date cannot be more than {Years} year(s) ahead.",
+                validationContext.MemberName is null ? [] : [validationContext.MemberName]);
+    }
+}
+
 /// <summary>Rejects a collection containing the same item twice. Null is valid.</summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter)]
 public sealed class DistinctItemsAttribute : ValidationAttribute

@@ -9,7 +9,7 @@ import { legalFr } from './legal';
  */
 export const fr = {
   app: {
-    name: 'dogo',
+    name: 'Uzu',
     tagline: 'Des balades tranquilles entre chiens, près de chez toi.',
   },
   common: {
@@ -17,11 +17,11 @@ export const fr = {
     loading: 'Chargement…',
     cancel: 'Annuler',
     save: 'Enregistrer',
-    close: 'Fermer',
     required: 'Ce champ est obligatoire.',
     delete: 'Supprimer',
     edit: 'Modifier',
     back: 'Retour',
+    openSettings: 'Ouvrir les réglages',
     fieldInvalid: 'Valeur invalide : vérifie ce champ.',
     tooLong: 'Maximum {max} caractères.',
     /** Pill opening a menu of choices: what is chosen, then the current choice. */
@@ -42,6 +42,8 @@ export const fr = {
     devDefaultDisplayName: 'Camille Test',
     signOut: 'Se déconnecter',
     sessionExpired: 'Ta session a expiré. Reconnecte-toi.',
+    accountSuspended:
+      'Ton compte a été suspendu par l’équipe Uzu : tu ne peux plus te connecter pour l’instant.',
     noMethodTitle: 'Aucune méthode de connexion disponible',
     noMethodMessage:
       'La connexion Apple et Google demande une version de développement de l’application.',
@@ -109,6 +111,13 @@ export const fr = {
     emptyAction: 'Créer une balade',
     resultCount: '{count} balade|{count} balades',
     zoneCount: '{count} balade dans cette zone|{count} balades dans cette zone',
+    /** The search stopped at its maximum: the list is partial. */
+    zoneCountPartial: '{count} balades affichées : zoome pour affiner',
+    resultCountPartial: '{count} balades affichées : choisis une distance plus courte pour affiner',
+    /** The refresh failed (server unreachable) while earlier walks are still shown. */
+    staleNotice: 'Impossible d’actualiser : ces balades datent de {time}.',
+    /** Header of the panel when the search failed and nothing is shown. */
+    panelError: 'Impossible de charger les balades',
     radius: 'Distance',
     radiusOption: '{km} km',
     listLocationDenied:
@@ -159,6 +168,8 @@ export const fr = {
   },
   walk: {
     detailTitle: 'Balade',
+    /** Title of the walk screens when the walk does not exist (404). */
+    notFoundTitle: 'Balade introuvable',
     newTitle: 'Nouvelle balade',
     editTitle: 'Modifier la balade',
     when: '{day} à {time}',
@@ -185,6 +196,7 @@ export const fr = {
     meetingPoint: 'Point de rendez-vous',
     openInMaps: 'Ouvrir dans Plans',
     openInMapsAndroid: 'Ouvrir dans Maps',
+    openInMapsFailed: 'Impossible d’ouvrir une application de cartes sur cet appareil.',
     organizer: 'Organisée par',
     organizerA11y: 'Voir le profil de {name}',
     organizerDeleted: 'Compte supprimé',
@@ -221,6 +233,9 @@ export const fr = {
     membersOnlyMessage:
       'Seuls les membres de son organisation peuvent y inscrire leur chien. Demande à la rejoindre pour pouvoir t’inscrire.',
     membersOnlyAction: 'Voir l’organisation',
+    /** Organizer accepting a request whose author has left the organisation of a members-only walk. */
+    acceptNotMember:
+      'Cette personne ne fait plus partie de l’organisation : sa demande ne peut pas être acceptée.',
     organizeFor: 'Organiser pour',
     organizeForHint: 'Une balade d’organisation est marquée « Pro » et réservée à ses membres.',
     organizeForMe: 'Moi',
@@ -251,8 +266,13 @@ export const fr = {
     pickDate: 'Choisir la date',
     pickTime: 'Choisir l’heure',
     startsAtPast: 'La balade doit commencer dans le futur.',
+    startsAtTooFar: 'La balade ne peut pas commencer dans plus d’un an.',
     meetingPointHint: 'Touche la carte ou fais glisser le repère pour placer le rendez-vous.',
     meetingPointMap: 'Carte du point de rendez-vous',
+    meetingPointRequired:
+      'Place le repère sur le point de rendez-vous : touche la carte ou fais glisser le repère.',
+    meetingPointNoLocation:
+      'Position non disponible : la carte affiche une zone par défaut, ce n’est pas ton rendez-vous. Place le repère à la main avant de créer la balade.',
     locationLabel: 'Repère du rendez-vous',
     locationLabelHint: 'Par exemple : devant l’entrée du parc, côté fontaine.',
     maxDogs: 'Nombre maximum de chiens',
@@ -274,7 +294,6 @@ export const fr = {
     stopSeriesMessage:
       'Cette balade reste prévue, mais aucune nouvelle balade ne sera créée chaque semaine.',
     stopSeriesConfirm: 'Arrêter la répétition',
-    seriesStopped: 'La répétition est arrêtée.',
   },
   thread: {
     title: 'Discussion',
@@ -285,7 +304,6 @@ export const fr = {
     emptyTitle: 'Aucun message pour l’instant',
     emptyMessage: 'Lance la discussion : dis bonjour ou précise un détail pour la balade.',
     loadOlder: 'Charger les messages précédents',
-    loadingOlder: 'Chargement…',
     deletedAccount: 'Compte supprimé',
     authorA11y: 'Voir le profil de {name}',
     placeholder: 'Écrire un message…',
@@ -326,13 +344,14 @@ export const fr = {
     channelName: 'Balades et messages',
   },
   profile: {
-    title: 'Profil',
+    /** Title of a public profile when the person does not exist (404). */
+    notFoundTitle: 'Profil introuvable',
     greeting: 'Bonjour {name} !',
     later: 'Plus tard',
     noBio: 'Pas encore de présentation.',
     editButton: 'Modifier mon profil',
     editTitle: 'Modifier mon profil',
-    welcome: 'Bienvenue sur dogo ! Dis-nous comment t’appeler et présente-toi en quelques mots.',
+    welcome: 'Bienvenue sur Uzu ! Dis-nous comment t’appeler et présente-toi en quelques mots.',
     displayName: 'Nom affiché',
     bio: 'Présentation',
     bioHint: 'Quelques mots sur toi et tes balades (facultatif).',
@@ -340,23 +359,25 @@ export const fr = {
     publicTitle: 'Profil',
     dogsOf: 'Les chiens de {name}',
     noDogsPublic: 'Aucun chien pour l’instant.',
-    saved: 'Profil enregistré.',
     photoSaveFailed:
       'Ton profil est enregistré, mais la photo n’a pas pu être envoyée. Choisis-la de nouveau.',
   },
   photo: {
-    change: 'Changer la photo',
-    add: 'Ajouter une photo',
     fromLibrary: 'Choisir dans la photothèque',
     takePhoto: 'Prendre une photo',
-    remove: 'Annuler la photo choisie',
     cameraDenied:
       'L’accès à l’appareil photo est refusé. Autorise-le dans les réglages du téléphone.',
     pickFailed: 'Impossible de récupérer cette photo. Essaie-en une autre.',
   },
   dog: {
+    /** Title of the dog screens when the dog does not exist (404). */
+    notFoundTitle: 'Chien introuvable',
+    limitTitle: 'Maximum de chiens atteint',
     myDogsEmptyTitle: 'Ajoute ton premier chien',
     myDogsEmptyMessage: 'Présente ton chien pour pouvoir l’inscrire à des balades.',
+    /** Shown on the new-dog screen right after the welcome profile edit. */
+    welcome:
+      'Dernière étape : présente ton chien. Sans lui, tu ne pourras pas t’inscrire à une balade.',
     add: 'Ajouter un chien',
     addTitle: 'Nouveau chien',
     editTitle: 'Modifier le chien',
@@ -379,7 +400,6 @@ export const fr = {
     noDescription: 'Pas de description.',
     noBirthDate: 'Âge inconnu',
     birthDateFuture: 'La date de naissance ne peut pas être dans le futur.',
-    birthDateInvalid: 'Date de naissance invalide.',
     ageYears: '{count} an|{count} ans',
     ageMonths: '{count} mois',
     ageNewborn: 'Moins d’un mois',
@@ -387,7 +407,6 @@ export const fr = {
     summary: '{size} · {sociability}',
     deleteConfirmTitle: 'Supprimer {name} ?',
     deleteConfirmMessage: 'Ses inscriptions à venir seront annulées. Cette action est définitive.',
-    deleteFailed: 'Le chien n’a pas pu être supprimé.',
     updatedPhotoFailed:
       'Les modifications sont enregistrées, mais la photo n’a pas pu être envoyée.',
     photoRetry: 'Renvoyer la photo',
@@ -405,7 +424,15 @@ export const fr = {
   },
   states: {
     errorTitle: 'Oups, un problème est survenu',
-    emptyDefaultTitle: 'Rien à afficher',
+    /** Title of an error that is a 404 when the screen gives no more precise one. */
+    missingTitle: 'Introuvable',
+    /** Last-resort screen (render error caught by the root error boundary). */
+    crashTitle: 'Oups, Uzu a rencontré un problème',
+    crashMessage:
+      "Quelque chose s'est mal passé. Tu peux réessayer ; si le problème revient, ferme puis rouvre l'application.",
+    notFoundTitle: 'Page introuvable',
+    notFoundMessage: "Ce lien ne mène à aucune page de l'application.",
+    notFoundHome: "Retour à l'accueil",
   },
   permissions: {
     // iOS and Android permission texts live in app.config.ts; this one is shown
@@ -414,6 +441,8 @@ export const fr = {
       'Active les notifications pour être prévenu des inscriptions, des changements de balade, des messages et des rappels.',
   },
   organization: {
+    /** Title of the organisation screens when it does not exist (404). */
+    notFoundTitle: 'Organisation introuvable',
     findTitle: 'Trouver une organisation',
     find: 'Trouver une organisation',
     createTitle: 'Créer une organisation',
@@ -427,7 +456,7 @@ export const fr = {
     searchHint: 'Club canin, éducateur, ville…',
     searchEmptyTitle: 'Aucune organisation trouvée',
     searchEmptyMessage:
-      'Essaie un autre nom ou une autre ville. Seules les organisations validées par l’équipe dogo apparaissent ici.',
+      'Essaie un autre nom ou une autre ville. Seules les organisations validées par l’équipe Uzu apparaissent ici.',
     memberCount: '{count} membre|{count} membres',
     name: 'Nom',
     nameHint: 'Entre 3 et 80 caractères.',
@@ -437,13 +466,12 @@ export const fr = {
     city: 'Ville',
     cityHint: 'Facultatif.',
     createExplanation:
-      'L’équipe dogo valide chaque organisation avant qu’elle devienne visible des autres membres. Tant qu’elle n’est pas validée, tu es la seule personne à la voir et elle ne peut pas proposer de balades. Tu es prévenu dès qu’elle l’est.',
+      'L’équipe Uzu valide chaque organisation avant qu’elle devienne visible des autres membres. Tant qu’elle n’est pas validée, tu es la seule personne à la voir et elle ne peut pas proposer de balades. Tu es prévenu dès qu’elle l’est.',
     createSubmit: 'Envoyer la demande',
-    saved: 'Organisation enregistrée.',
     statusBanner: {
       Pending:
-        'En attente de validation : l’équipe dogo examine ta demande. Pour l’instant, seuls ses membres la voient et elle ne peut pas encore proposer de balades.',
-      Rejected: 'Cette organisation n’a pas été validée par l’équipe dogo.',
+        'En attente de validation : l’équipe Uzu examine ta demande. Pour l’instant, seuls ses membres la voient et elle ne peut pas encore proposer de balades.',
+      Rejected: 'Cette organisation n’a pas été validée par l’équipe Uzu.',
       Closed: 'Cette organisation est fermée.',
     },
     pendingBadge: 'En attente de validation',
@@ -473,8 +501,12 @@ export const fr = {
     membersTitle: 'Membres',
     requests: 'Demandes en attente',
     noRequests: 'Aucune demande en attente.',
+    /** A list reached the page limit of the API (100): the screen cannot show the rest. */
+    requestsPartial:
+      'Les {count} demandes les plus anciennes sont affichées. Réponds-y pour voir les suivantes.',
     members: 'Membres',
     noMembers: 'Aucun membre pour l’instant.',
+    membersPartial: 'Seuls {count} membres sont affichés : la liste est partielle.',
     accept: 'Accepter',
     decline: 'Refuser',
     acceptA11y: 'Accepter {name}',
@@ -512,7 +544,7 @@ export const fr = {
     subjectDog: 'Tu signales le chien : {name}',
     subjectWalk: 'Tu signales la balade : {name}',
     explanation:
-      'Ton signalement est privé : il n’est lu que par l’équipe dogo, par une personne et jamais par un programme. Il ne déclenche aucune sanction automatique, et la personne concernée peut répondre avant toute décision.',
+      'Ton signalement est privé : il n’est lu que par l’équipe Uzu, par une personne et jamais par un programme. Il ne déclenche aucune sanction automatique, et la personne concernée peut répondre avant toute décision.',
     type: 'Type de signalement',
     typeRequired: 'Choisis le type de signalement.',
     facts: 'Les faits',
@@ -522,7 +554,7 @@ export const fr = {
     submit: 'Envoyer le signalement',
     sentTitle: 'Signalement envoyé',
     sentMessage:
-      'Merci. L’équipe dogo va lire ton signalement. Il reste privé et aucune sanction n’est décidée automatiquement.',
+      'Merci. L’équipe Uzu va lire ton signalement. Il reste privé et aucune sanction n’est décidée automatiquement.',
     done: 'Terminer',
   },
   settings: {
@@ -533,7 +565,7 @@ export const fr = {
     deleteAccount: 'Supprimer mon compte',
     suspendedTitle: 'Compte suspendu',
     suspendedMessage:
-      'Ton compte est suspendu : tu peux consulter l’application, mais les actions (s’inscrire, organiser, écrire, modifier) sont désactivées. Si tu penses à une erreur, contacte l’équipe dogo.',
+      'Ton compte est suspendu : tu peux consulter l’application et supprimer ton compte, mais les autres actions (s’inscrire, organiser, écrire, modifier) sont désactivées. Si tu penses à une erreur, contacte l’équipe Uzu.',
   },
   deleteAccount: {
     title: 'Supprimer mon compte',
@@ -592,13 +624,23 @@ export const fr = {
   /** Messages for the stable `code` extension of API problem responses (spec §1, §4). */
   errors: {
     'photo.too_large': 'Cette photo est trop lourde (5 Mo au maximum).',
-    'photo.unsupported_type':
-      'Ce format n’est pas accepté. Utilise une photo JPEG, PNG, WebP ou HEIC.',
+    'photo.unsupported_type': 'Ce format n’est pas accepté. Utilise une photo JPEG, PNG ou WebP.',
     'photo.missing': 'Aucune photo n’a été envoyée.',
     'photo.not_found': 'Cette photo n’existe plus.',
-    'request.too_large': 'Le fichier envoyé est trop volumineux.',
+    'request.too_large':
+      'Ce que tu essaies d’envoyer est trop volumineux. Raccourcis tes textes et réessaie.',
+    'request.invalid':
+      'La demande n’a pas pu être comprise. Vérifie ce que tu as saisi et réessaie ; si le problème revient, mets l’application à jour.',
+    'request.unsupported_media_type': 'Ce type de fichier n’est pas accepté.',
+    'rate_limit.exceeded': 'Trop de demandes d’un coup. Réessaie dans un instant.',
+    'auth.forbidden': 'Tu n’as pas accès à cette action.',
+    'health.database_unavailable': 'Le service rencontre un problème. Réessaie dans un instant.',
     'dog.not_found': 'Ce chien n’existe pas ou plus.',
     'dog.forbidden': 'Ce chien ne t’appartient pas.',
+    'dog.size_in_use':
+      'Ce chien est inscrit à une balade à venir qui n’accepte pas ce gabarit. Annule d’abord son inscription à cette balade, puis change sa taille.',
+    'dog.limit_reached':
+      'Tu as atteint le maximum de 20 chiens. Supprime un chien avant d’en ajouter un autre.',
     'user.not_found': 'Cette personne n’existe pas ou plus.',
     'auth.invalid_token': 'La connexion a été refusée. Réessaie.',
     'auth.unauthenticated': 'Ta session a expiré. Reconnecte-toi.',
@@ -612,8 +654,8 @@ export const fr = {
     'walk.full': 'Cette balade est complète.',
     'walk.size_not_allowed': 'Le gabarit de ce chien n’est pas admis sur cette balade.',
     'registration.duplicate': 'Ce chien est déjà inscrit à cette balade.',
-    'walk.not_open': 'Les inscriptions à cette balade ne sont pas ouvertes.',
-    'walk.not_allowed': 'L’inscription à cette balade n’est pas possible.',
+    'walk.not_open':
+      'Cette balade n’accepte plus d’inscription : elle est annulée, déjà commencée, ou son organisation n’est plus validée.',
     'walk.members_only': 'Cette balade est réservée aux membres de l’organisation.',
     'walk.organization_forbidden':
       'Tu ne peux pas organiser de balade au nom de cette organisation : il faut en être le responsable ou un éducateur, et qu’elle soit validée.',
@@ -635,7 +677,7 @@ export const fr = {
     'block.self': 'Tu ne peux pas te bloquer toi-même.',
     'report.self': 'Tu ne peux pas te signaler toi-même.',
     'report.not_found': 'Ce signalement n’existe pas.',
-    'admin.forbidden': 'Cette action est réservée à l’équipe dogo.',
+    'admin.forbidden': 'Cette action est réservée à l’équipe Uzu.',
     'admin.self_suspension': 'Tu ne peux pas suspendre ton propre compte.',
     'walk.not_in_series': 'Cette balade ne fait pas partie d’une série hebdomadaire.',
     'message.forbidden':
@@ -648,14 +690,35 @@ export const fr = {
     forbidden: 'Tu n’as pas accès à cette action.',
     server: 'Le service rencontre un problème. Réessaie dans un instant.',
     network: 'Impossible de joindre le serveur. Vérifie ta connexion internet.',
+    timeout: 'Le serveur met trop de temps à répondre. Vérifie ta connexion et réessaie.',
+    tooManyRequests: 'Trop de demandes d’un coup. Réessaie dans un instant.',
+    /** `Retry-After` of a 429, in seconds. */
+    tooManyRequestsIn: 'Trop de demandes d’un coup. Réessaie dans {seconds} s.',
     unexpected:
       'Un problème est survenu dans l’application. Réessaie ; s’il persiste, redémarre-la.',
     generic: 'Une erreur est survenue. Réessaie.',
+    /** Startup screen of a distribution build whose API address is missing or not https. */
+    configTitle: 'Application mal configurée',
+    configMissingApiUrl:
+      'L’adresse du serveur Uzu n’est pas renseignée dans cette version de l’application. Elle ne peut rien charger : installe une version corrigée.',
+    configInsecureApiUrl:
+      'L’adresse du serveur Uzu de cette version n’est pas sécurisée (https). Par prudence, l’application ne s’y connecte pas : installe une version corrigée.',
   },
 } as const;
 
 export type Strings = typeof fr;
 export type ApiErrorCode = Exclude<
   keyof Strings['errors'],
-  'notFound' | 'forbidden' | 'server' | 'network' | 'unexpected' | 'generic'
+  | 'notFound'
+  | 'forbidden'
+  | 'server'
+  | 'network'
+  | 'timeout'
+  | 'tooManyRequests'
+  | 'tooManyRequestsIn'
+  | 'unexpected'
+  | 'generic'
+  | 'configTitle'
+  | 'configMissingApiUrl'
+  | 'configInsecureApiUrl'
 >;

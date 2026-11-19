@@ -32,6 +32,19 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0028](0028-balades-carte-et-panneau-coulissant.md) | Onglet Balades : deux vues au choix, panneau coulissant par défaut | Accepté |
 | [0029](0029-menus-ancres-et-finition-native.md) | Filtres en pastilles-menus ancrées, menu natif d'iOS par `@expo/ui`, matériaux et retour haptique | Accepté |
 | [0030](0030-charte-graphique-uzu.md) | Charte graphique « Uzu » : blanc cassé, fauve et noir, couleurs du pelage d'un Jack Russell | Accepté |
+| [0031](0031-durcissement-de-l-api.md) | Durcissement de l'API : environnements en liste blanche, limitation de débit, en-têtes transférés | Proposé |
+| [0032](0032-nettoyage-des-photos.md) | Nettoyage des photos : décodage et réencodage côté serveur (SkiaSharp), HEIC refusé, cache privé ; précise l'ADR 0010 | Proposé |
+| [0033](0033-fin-de-session-et-delais-reseau.md) | Mobile : fin de session expliquée, persistance sûre de la session, délais réseau et configuration de distribution (précise 0014 et 0022) | Proposé |
+| [0034](0034-robustesse-des-ecrans.md) | Robustesse des écrans : cache cumulatif du fil, écritures sans attente, navigation conditionnée au focus | Proposé |
+| [0035](0035-rotation-des-jetons-delai-de-grace.md) | Rotation des jetons de rafraîchissement : familles, délai de grâce, révocation par famille et purge ; précise l'ADR 0009 | Proposé |
+| [0036](0036-suspension-et-signalements.md) | Suspension d'un compte (geler, annuler, laisser partir) et notification push des signalements ; précise les ADR 0020 et 0023 | Proposé |
+| [0037](0037-organisations-gelees-et-blocage-indiscernable.md) | Organisation non validée : balades gelées sans annulation ; blocage indiscernable d'une balade complète (`walk.full`) ; écritures concurrentes par conditions sur le statut et verrous de lignes (chiens puis balade) ; précise l'ADR 0015 | Proposé |
+| [0038](0038-image-et-migrations-en-production.md) | Image de l'API et migrations en production : image .NET Ubuntu non root, bundle EF Core lancé à chaque déploiement | Proposé |
+| [0039](0039-profils-de-build-eas.md) | Profils de build EAS : variables d'environnement EAS, numéros de build distants, TestFlight par le profil `preview`, garde-fou de distribution | Proposé |
+| [0040](0040-navigation-gardee-et-rafraichissement-apres-refus.md) | Navigation gardée contre les appuis répétés, rafraîchissement après un refus 404 ou 409, mise en page qui suit la taille du texte | Proposé |
+| [0041](0041-nom-de-l-application-uzu.md) | Nom de l'application : Uzu (`com.victorsauter.uzu`, schéma `uzu://`, slug `uzu`) ; le dépôt et le code gardent `dogo` | Accepté |
+
+Les numéros 0016 et 0024 n'ont jamais été attribués : il n'y a pas d'ADR manquant.
 
 ## Statuts
 
@@ -46,3 +59,5 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 3. Ajouter la ligne au tableau ci-dessus.
 
 Un ADR accepté ne se réécrit pas. Pour changer d'avis, on en ajoute un nouveau qui remplace l'ancien.
+
+Pour garder cette règle sans laisser un lecteur sur une information périmée, on peut ajouter sous l'en-tête d'un ADR ancien une ligne « Précisé par » (un ADR plus récent complète ou corrige un point) ou « Remplacé en partie par » (il révise une partie de la décision). C'est le seul changement permis à un ADR accepté ; le texte de la décision reste tel qu'il a été écrit. Les ADR 0031 à 0040 sont « Proposé » tant que le porteur du projet ne les a pas validés, sauf 0033 et 0034, déjà « Accepté » dans leur fichier (à confirmer).

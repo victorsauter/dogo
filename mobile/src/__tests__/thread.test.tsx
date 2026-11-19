@@ -161,6 +161,14 @@ describe('staying on the newest message', () => {
     expect(scrollToEnd).toHaveBeenCalled();
   });
 
+  it('scrolls again on the next frame, once the scroll view knows the new height (Android)', async () => {
+    const { scrollToEnd, list } = await openLongThread();
+    scrollToEnd.mockClear();
+    await fireEvent(list, 'contentSizeChange', 400, 3400);
+    expect(scrollToEnd).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(scrollToEnd).toHaveBeenCalledTimes(2));
+  });
+
   it('stops following once the person scrolls up to read', async () => {
     const { scrollToEnd, list } = await openLongThread();
     await fireEvent(list, 'scrollEndDrag', farFromBottom);
@@ -365,6 +373,123 @@ describe('polling', () => {
         await jest.advanceTimersByTimeAsync(16_000);
       });
       await waitFor(() => expect(count()).toBeGreaterThan(initial));
+      await unmount();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+describe('a long thread kept whole', () => {
+  /** A thread of `count` messages, one per minute, ids `m1`… in order. */
+  const thread = (count: number) =>
+    Array.from({ length: count }, (_, i) => message(`m${i + 1}`, `Message ${i + 1}`, at(0, 8, i)));
+
+  /** The API's paging over `all`: the latest `limit`, or those before `before`. */
+  const page = (all: ReturnType<typeof thread>, path: string) => {
+    const before = /before=([^&]+)/.exec(path)?.[1];
+    const end = before ? all.findIndex((m) => m.id === before) : all.length;
+    const items = all.slice(Math.max(0, end - 50), end);
+    return ok({ items, hasMore: end - 50 > 0 });
+  };
+
+  const shownIds = () =>
+    (screen.getByTestId('thread-list').props.data as { kind: string; key: string }[])
+      .filter((row) => row.kind === 'message')
+      .map((row) => row.key);
+
+  async function poll() {
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(16_000);
+    });
+  }
+
+  it('keeps the messages at the junction when new ones arrive after loading older ones', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask'] });
+    try {
+      let all = thread(70);
+      mockApi({
+        [`GET ${walkPath}`]: () => ok(organizerWalk()),
+        [`GET ${messagesPath}`]: ({ path }) => page(all, path),
+      });
+      const { unmount } = await openThread();
+      await screen.findByText(t.thread.loadOlder);
+      expect(shownIds()).toHaveLength(50); // m21 … m70
+
+      await fireEvent.press(screen.getByRole('button', { name: t.thread.loadOlder }));
+      await waitFor(() => expect(shownIds()).toHaveLength(70));
+
+      // 20 messages arrive: the latest page is now m41 … m90, and m21 … m40 only
+      // exist in what was already received.
+      all = thread(90);
+      await poll();
+      await waitFor(() => expect(shownIds()).toHaveLength(90));
+      expect(shownIds()).toEqual(all.map((m) => m.id));
+      await unmount();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('reads back the messages in between when more than a page arrived at once', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask'] });
+    try {
+      let all = thread(20);
+      mockApi({
+        [`GET ${walkPath}`]: () => ok(organizerWalk()),
+        [`GET ${messagesPath}`]: ({ path }) => page(all, path),
+      });
+      const { unmount } = await openThread();
+      await waitFor(() => expect(shownIds()).toHaveLength(20));
+
+      all = thread(130);
+      await poll();
+      await waitFor(() => expect(shownIds()).toHaveLength(130));
+      expect(shownIds()).toEqual(all.map((m) => m.id));
+      await unmount();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps the message I just sent when a poll started before the answer comes back', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'queueMicrotask'] });
+    try {
+      const mine = message('m9', 'Tout juste envoyé', new Date().toISOString(), {
+        isMine: true,
+        author: { ...otherUser, id: testUser.id },
+      });
+      let releasePoll: (response: Response) => void = () => {};
+      let polls = 0;
+      mockApi({
+        [`GET ${walkPath}`]: () => ok(organizerWalk()),
+        [`GET ${messagesPath}`]: () => {
+          polls += 1;
+          // The first read is immediate; the second one (the poll) is held.
+          return polls === 2
+            ? new Promise<Response>((resolve) => (releasePoll = resolve))
+            : ok({ hasMore: false, items: [message('m1', 'Avant', at(0, 8))] });
+        },
+        [`POST ${messagesPath}`]: () => jsonResponse(mine, 201),
+      });
+      const { unmount } = await openThread();
+      await screen.findByText('Avant');
+
+      await poll(); // the poll leaves, and waits
+      expect(polls).toBe(2);
+      await fireEvent.changeText(
+        screen.getByLabelText(t.thread.composerLabel),
+        'Tout juste envoyé',
+      );
+      await fireEvent.press(screen.getByRole('button', { name: t.thread.send }));
+      await waitFor(() => expect(shownIds()).toContain('m9'));
+
+      // The held poll answers with a thread that does not know the message yet.
+      await act(async () =>
+        releasePoll(ok({ hasMore: false, items: [message('m1', 'Avant', at(0, 8))] })),
+      );
+      expect(shownIds()).toContain('m9');
+      expect(screen.getAllByText('Tout juste envoyé')).toHaveLength(1);
       await unmount();
     } finally {
       jest.useRealTimers();

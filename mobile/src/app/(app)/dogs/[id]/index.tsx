@@ -1,12 +1,14 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { useDeleteDog, useDog } from '@/api/dogs';
 import { errorMessage } from '@/api/errors';
 import { useSession } from '@/auth';
 import { Avatar, Button, Card, ErrorState, LoadingState, Screen, Text } from '@/components';
 import { formatAge } from '@/lib/age';
+import { useFocusedRouter } from '@/lib/hooks';
 import { reportHref } from '@/lib/report';
 import { enumLabel, format, t } from '@/strings';
 import { useTheme } from '@/theme';
@@ -27,7 +29,8 @@ export default function DogDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useSession();
   const { spacing } = useTheme();
-  const router = useRouter();
+  const router = useGuardedRouter();
+  const focusedRouter = useFocusedRouter();
   const dog = useDog(id);
   const deleteDog = useDeleteDog();
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -41,7 +44,11 @@ export default function DogDetailScreen() {
   if (dog.isError) {
     return (
       <Screen scroll={false}>
-        <ErrorState error={dog.error} onRetry={() => dog.refetch()} />
+        <ErrorState
+          error={dog.error}
+          notFoundTitle={t.dog.notFoundTitle}
+          onRetry={() => dog.refetch()}
+        />
       </Screen>
     );
   }
@@ -58,7 +65,7 @@ export default function DogDetailScreen() {
         style: 'destructive',
         onPress: () => {
           deleteDog.mutate(data.id, {
-            onSuccess: () => router.back(),
+            onSuccess: () => focusedRouter.back(),
             onError: (error) => setDeleteError(errorMessage(error)),
           });
         },

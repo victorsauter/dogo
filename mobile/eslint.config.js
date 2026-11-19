@@ -8,7 +8,27 @@ module.exports = defineConfig([
   expoConfig,
   prettierConfig,
   {
-    files: ['scripts/**/*.mjs', 'jest.config.js', 'eslint.config.js'],
+    // Navigations triggered by a press go through one guard against repeated taps (src/lib/navigation.ts).
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/navigation.ts', 'src/**/__tests__/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'expo-router',
+              importNames: ['useRouter'],
+              message:
+                "Use useGuardedRouter from '@/lib/navigation': it ignores a repeated tap on the same destination.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['scripts/**/*.mjs', 'jest.config.js', 'jest.global-setup.js', 'eslint.config.js'],
     languageOptions: {
       globals: {
         process: 'readonly',

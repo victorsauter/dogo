@@ -25,6 +25,10 @@ async function fillNewWalk() {
   await screen.findByLabelText(t.walk.title);
   await fireEvent.changeText(screen.getByLabelText(t.walk.title), 'Balade du dimanche');
   await fireEvent.changeText(screen.getByLabelText(t.walk.locationLabel), 'Fontaine');
+  // The meeting point must be placed by the person.
+  await fireEvent(screen.getByTestId('meeting-point-map'), 'press', {
+    nativeEvent: { coordinate: { latitude: 47.5287, longitude: 7.1912 } },
+  });
 }
 
 describe('weekly repeat in the walk form', () => {
