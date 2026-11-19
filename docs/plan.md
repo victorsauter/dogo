@@ -1,14 +1,14 @@
 # dogo — Plan de développement
 
-**Version :** 0.3 · 18/11/2026
+**Version :** 0.4 · 19/11/2026
 
 La V1 se développe en quatre lots, découpés en 31 tâches réparties sur six vagues de travail. Chaque tâche a une difficulté, et chaque groupe de tâches est confié à un sous-agent dont le modèle est choisi selon cette difficulté.
 
 Ce plan applique le [périmètre V1](perimetre-v1.md) et la [spécification technique](specification-v1.md). Les choix techniques sont justifiés dans les [ADR](adr/README.md).
 
-## État au 18/11/2026
+## État au 19/11/2026
 
-Les 31 tâches sont réalisées et fusionnées dans `main`. La V1 tourne en local et a été recettée dans le simulateur iOS ; elle n'est ni hébergée ni publiée.
+Les 31 tâches sont réalisées et fusionnées dans `main`, avec les données de démonstration, les deux vues de l'onglet Balades et la charte graphique « Uzu ». La V1 tourne en local ; elle n'est ni hébergée ni publiée.
 
 | Groupe | Contenu | Modèle | Demande de fusion |
 | --- | --- | --- | --- |
@@ -22,18 +22,35 @@ Les 31 tâches sont réalisées et fusionnées dans `main`. La V1 tourne en loca
 | M4 | Fil de balade, notifications, répétition | Sonnet | [#9](https://github.com/victorsauter/dogo/pull/9) |
 | M5 | Organisations, blocage, signalement, compte, textes légaux | Sonnet | [#10](https://github.com/victorsauter/dogo/pull/10) |
 | Recette | Parcours complet dans le simulateur et correctifs | Opus | [#11](https://github.com/victorsauter/dogo/pull/11) |
+| Suites | Guide de démarrage, données de démonstration, onglet Balades en Panneau et en Liste ([plan dédié](plan-panneau-balades.md)), charte « Uzu » | — | [#12](https://github.com/victorsauter/dogo/pull/12) à [#16](https://github.com/victorsauter/dogo/pull/16) |
 
-**Vérifications :** 414 tests côté API sur une vraie base PostGIS, 415 tests côté mobile, CI verte sur `main`. Deux recettes dans le simulateur iOS, la seconde avec un compte neuf, en mode clair, en mode sombre et avec un texte agrandi.
+### Revue générale avant mise en test
 
-**Défauts connus, non corrigés :**
+Une revue générale (sécurité, règles métier, application mobile, documentation, recette) a suivi. Ses constats, ses corrections et son verdict sont dans [`revue-v1.md`](revue-v1.md).
 
-- Après la première modification du profil, rien n'invite à ajouter un chien.
-- Quitter une organisation ne retire pas les inscriptions aux balades réservées aux membres ; la spécification ne tranche pas.
-- Sans temps réel, un changement fait par quelqu'un d'autre n'apparaît qu'au retour sur l'écran, en tirant pour rafraîchir, ou toutes les 15 secondes dans le fil.
+Les corrections sont réunies sur la branche `integration/revue-v1`, en attente de fusion dans `main` :
 
-**Jamais essayé, faute de comptes ou d'appareil :** la connexion Apple et Google, la réception d'une notification, l'application sur Android, l'appareil photo, la création automatique de la balade suivante d'une série dans la durée.
+| Lot | Contenu | ADR |
+| --- | --- | --- |
+| 1 | Durcissement de l'API : environnements en liste blanche, limitation de débit, en-têtes, contrôles au démarrage | 0031 |
+| 2 | Photos réécrites sans métadonnées | 0032 |
+| 3 | Sessions et robustesse : mobile (session, réseau, écrans, synchronisation avec l'API) et API (jetons, suspension, signalements, règles métier) | 0033 à 0037, 0040 |
+| 4 | Préparation du déploiement : image Docker, migrations, `eas.json`, [marche à suivre](deploiement.md) | 0038, 0039 |
+| 5 | Documentation : spécification 0.2, anciens ADR annotés | — |
+| 6 | Renommage en Uzu : à faire, attend l'identifiant de bundle et le schéma de lien | — |
+| 7 | Défauts trouvés par la recette finale | — |
 
-**Suite planifiée :** l'onglet Balades proposera deux vues au choix, un panneau coulissant sur la carte par défaut et une liste. Le détail est dans le [plan dédié](plan-panneau-balades.md) ; rien n'est encore développé.
+**Vérifications sur `integration/revue-v1` :** __TESTS__. Recette rejouée en entier sur simulateur iOS et, pour la première fois, sur émulateur Android. L'image Docker de l'API a été construite et lancée en local.
+
+**Défauts connus de la version précédente de ce plan :**
+
+- L'invitation à ajouter un chien après le premier profil : corrigé.
+- Les inscriptions d'un membre qui quitte une organisation : tranché (elles sont annulées) et corrigé.
+- Sans temps réel, un changement fait par quelqu'un d'autre n'apparaît qu'au retour sur l'écran, en tirant pour rafraîchir, ou toutes les 15 secondes dans le fil : inchangé, c'est le fonctionnement prévu en V1. L'application signale désormais quand un rafraîchissement échoue.
+
+**Ce qui reste avant les premiers testeurs** (détail dans [`revue-v1.md`](revue-v1.md) et [`deploiement.md`](deploiement.md)) : fusionner la branche, choisir l'hébergeur, créer les comptes Apple, Google et Expo, fournir les textes légaux, fixer le nom et les identifiants définitifs de l'application.
+
+**Jamais essayé, faute de comptes ou d'appareil :** la connexion Apple et Google, la réception d'une notification, l'appareil photo, l'application sur un appareil physique, la création automatique de la balade suivante d'une série dans la durée.
 
 ## Organisation du travail
 
