@@ -3,6 +3,7 @@
 - **Statut :** Accepté
 - **Date :** 18/11/2026
 - **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
+- **Précisé par :** [ADR 0041](0041-nom-de-l-application-uzu.md) : le schéma de lien est `uzu://`.
 - **Précisé par :** [ADR 0017](0017-ecrans-empiles-sur-les-onglets.md), [ADR 0025](0025-pages-legales-hors-garde.md) et [ADR 0026](0026-ordre-de-declaration-des-ecrans.md) : structure des écrans, adresse `/mine`.
 
 ## Contexte

@@ -3,6 +3,7 @@
 - **Statut :** Accepté
 - **Date :** 18/11/2026
 - **Note :** décidé par l'agent mobile M2, sur délégation ; à confirmer.
+- **Précisé par :** [ADR 0041](0041-nom-de-l-application-uzu.md) : le schéma de lien est `uzu://`.
 
 ## Contexte
 

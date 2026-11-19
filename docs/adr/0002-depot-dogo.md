@@ -2,6 +2,7 @@
 
 - **Statut :** Accepté
 - **Date :** 18/11/2026
+- **Précisé par :** [ADR 0041](0041-nom-de-l-application-uzu.md) : le produit s'appelle désormais Uzu ; le dépôt garde le nom `dogo`.
 - **Précisé par :** l'arborescence proposée (`api/`, `mobile/`, `docs/`) est en place depuis le 18/11/2026.
 
 ## Contexte

@@ -1,4 +1,4 @@
-# dogo — Plan : onglet Balades, vues Panneau et Liste
+# Uzu — Plan : onglet Balades, vues Panneau et Liste
 
 **Version :** 0.2 · 18/11/2026 · **État :** premier lot livré sur iPhone (demandes de fusion #15 et #16) ; Android, lecteur d'écran et essais restent à faire
 

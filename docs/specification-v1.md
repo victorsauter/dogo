@@ -1,4 +1,4 @@
-# dogo — Spécification technique V1
+# Uzu — Spécification technique V1
 
 **Version :** 0.2 · 19/11/2026
 
@@ -276,7 +276,8 @@ Ces points n'étaient pas tranchés dans le périmètre. Ils sont faciles à cha
 | Photos | Fichiers sur le disque du serveur | L'hébergement n'est pas choisi |
 | Alerte de signalement | Notification push aux administrateurs, sans e-mail (ADR 0036) | Aucun fournisseur d'e-mails n'est choisi |
 | Administration | Points d'entrée `/admin`, sans écran | Suffisant à l'échelle d'un pilote |
-| Identifiant de l'application | `com.victorsauter.dogo` | Provisoire ; à confirmer avant toute publication, car il est figé au premier envoi à un store (ADR 0039) |
+| Nom de l'application | Uzu (nom affiché), slug Expo `uzu` | Décision du porteur du projet (ADR 0041) ; le dépôt et le code gardent le nom `dogo` |
+| Identifiant de l'application | `com.victorsauter.uzu` (bundle iOS et paquet Android), schéma de lien `uzu://` | Figé au premier envoi à un store (ADR 0039, 0041) |
 | Fuseau des séries | `Europe/Paris` | Le pilote est en France |
 | Centre de la carte par défaut | Seppois-le-Haut, réglable par configuration | C'est la zone pilote |
 | Données de démonstration | Jeu fictif autour de Seppois-le-Haut, activable en développement seulement (ADR 0027) | Essayer l'application sans attendre de vrais utilisateurs |
