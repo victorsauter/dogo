@@ -29,6 +29,7 @@ import {
   type ChoiceOption,
   type IconName,
 } from '@/components';
+import { formatTime } from '@/lib/dates';
 import { regionAround, type MapRegion } from '@/lib/geo';
 import { useDebouncedValue, useDelayedFlag, useRefetchOnFocusIfStale } from '@/lib/hooks';
 import { openAppSettings } from '@/lib/linking';
@@ -329,6 +330,35 @@ export function locationNoticeAction(
   return location.status === 'denied'
     ? { label: t.common.openSettings, onPress: () => void openAppSettings() }
     : undefined;
+}
+
+/**
+ * A discreet line when the refresh of the search failed while walks fetched
+ * earlier are still on screen (the API is out of reach): without it the list
+ * would look current. Nothing when the refresh worked, or when nothing is shown
+ * (the screens then show their error state).
+ */
+export function StaleNotice({
+  isRefetchError,
+  dataUpdatedAt,
+  style,
+}: {
+  isRefetchError: boolean;
+  dataUpdatedAt: number;
+  style?: ViewStyle;
+}) {
+  if (!isRefetchError || dataUpdatedAt <= 0) return null;
+  return (
+    <Text
+      testID="stale-notice"
+      variant="caption"
+      color="warning"
+      accessibilityLiveRegion="polite"
+      style={style}
+    >
+      {format(t.discover.staleNotice, { time: formatTime(new Date(dataUpdatedAt)) })}
+    </Text>
+  );
 }
 
 /** Walks by start date, soonest first. */

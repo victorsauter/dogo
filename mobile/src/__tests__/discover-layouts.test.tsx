@@ -190,7 +190,8 @@ describe('« Panneau » view — map and sliding panel', () => {
 
     walks = [];
     await fireEvent.press(screen.getByRole('button', { name: t.discover.refresh }));
-    expect(await screen.findAllByText(t.discover.emptyTitle)).toHaveLength(2);
+    // Said once, in the handle: the empty state under it has no title of its own.
+    expect(await screen.findAllByText(t.discover.emptyTitle)).toHaveLength(1);
     expect(screen.getByTestId('panel-handle')).toHaveAccessibleName(
       `${t.discover.emptyTitle}. ${t.discover.panelExpand}`,
     );
@@ -677,5 +678,99 @@ describe('a search that is full, or that failed', () => {
     );
     // The empty-area title is only for an area that really is empty.
     expect(screen.queryByText(t.discover.emptyTitle)).toBeNull();
+  });
+});
+
+describe('API out of reach while earlier walks are shown', () => {
+  /** A search that works once, then fails like a refused or unreachable server (no retry for a 429). */
+  function flaky() {
+    let failing = false;
+    mockApi({
+      'GET /api/v1/walks': () =>
+        failing ? problemResponse(429, 'rate_limit.exceeded') : ok([lake]),
+    });
+    return (value: boolean) => {
+      failing = value;
+    };
+  }
+  const stale = /^Impossible d’actualiser : ces balades datent de \d{2}:\d{2}\.$/;
+
+  it('panel: says the walks are old when the refresh fails, and forgets it once it works', async () => {
+    const setFailing = flaky();
+    await open('panel');
+    await screen.findByText(lake.title);
+    expect(screen.queryByTestId('stale-notice')).toBeNull();
+
+    setFailing(true);
+    await fireEvent.press(screen.getByRole('button', { name: t.discover.refresh }));
+    expect(await screen.findByText(stale)).toBeTruthy();
+    // The old walks stay: the notice does not replace them.
+    expect(screen.getByText(lake.title)).toBeTruthy();
+    expect(screen.queryByText(t.discover.panelError)).toBeNull();
+
+    setFailing(false);
+    await fireEvent.press(screen.getByRole('button', { name: t.discover.refresh }));
+    await waitFor(() => expect(screen.queryByTestId('stale-notice')).toBeNull());
+  });
+
+  it('list: says the walks are old when the refresh fails, and forgets it once it works', async () => {
+    const setFailing = flaky();
+    await open('list');
+    await screen.findByText(lake.title);
+    expect(screen.queryByTestId('stale-notice')).toBeNull();
+
+    const onRefresh = () => {
+      const { refreshControl } = screen.getByTestId('walks-list').props as {
+        refreshControl: { props: { onRefresh: () => Promise<void> } };
+      };
+      return act(() => refreshControl.props.onRefresh());
+    };
+    setFailing(true);
+    await onRefresh();
+    expect(await screen.findByText(stale)).toBeTruthy();
+    expect(screen.getByText(lake.title)).toBeTruthy();
+
+    setFailing(false);
+    await onRefresh();
+    await waitFor(() => expect(screen.queryByTestId('stale-notice')).toBeNull());
+  });
+
+  it('shows no such notice when nothing was ever loaded (the error state speaks)', async () => {
+    mockApi({ 'GET /api/v1/walks': () => problemResponse(429, 'rate_limit.exceeded') });
+    await open('panel');
+    expect(await screen.findByText(t.discover.panelError)).toBeTruthy();
+    expect(screen.queryByTestId('stale-notice')).toBeNull();
+  });
+});
+
+describe('empty area (panel)', () => {
+  it('says « Aucune balade dans cette zone » once, in the handle, not again as a title', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([]) });
+    await open('panel');
+    expect(await screen.findByText(t.discover.emptyMessage)).toBeTruthy();
+    expect(screen.getAllByText(t.discover.emptyTitle)).toHaveLength(1);
+    expect(
+      within(screen.getByTestId('panel-handle')).getByText(t.discover.emptyTitle),
+    ).toBeTruthy();
+  });
+});
+
+describe('enlarged text (list view)', () => {
+  it('keeps the last card clear of the « Carte » button, whatever its height', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('list');
+    await screen.findByText(lake.title);
+    const padding = () =>
+      StyleSheet.flatten(screen.getByTestId('walks-list').props.contentContainerStyle)
+        .paddingBottom as number;
+    const initial = padding();
+    // 52 + two margins at the normal size.
+    expect(initial).toBe(52 + 32);
+
+    // Enlarged text makes the button taller: the list follows its measured height.
+    await fireEvent(screen.getByTestId('map-button-anchor'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 110 } },
+    });
+    await waitFor(() => expect(padding()).toBe(110 + 32));
   });
 });

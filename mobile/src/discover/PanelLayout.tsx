@@ -44,6 +44,7 @@ import {
   locationNoticeAction,
   locationUnknown,
   MapTopControls,
+  StaleNotice,
   useDiscoverNavigation,
   useMapAreaSearch,
   type DiscoverFilterState,
@@ -172,9 +173,9 @@ export function PanelLayout({
     ) : search.isError ? (
       <ErrorState error={search.error} onRetry={() => search.refetch()} />
     ) : (
+      // No title of its own: the handle above already says « Aucune balade dans cette zone ».
       <EmptyState
         icon="paw"
-        title={t.discover.emptyTitle}
         message={t.discover.emptyMessage}
         action={{ label: t.discover.emptyAction, onPress: createWalk }}
       />
@@ -298,6 +299,11 @@ export function PanelLayout({
             {/* Beside the handle, not inside it: a button cannot nest in a button. */}
             <RefreshButton busy={search.isFetching} onPress={() => void refresh()} />
           </View>
+          <StaleNotice
+            isRefetchError={search.isRefetchError}
+            dataUpdatedAt={search.dataUpdatedAt}
+            style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}
+          />
         </View>
         {/* No pull-to-refresh here: at the high position it captures the downward
             drag meant to lower the panel. The refresh button next to the handle, coming
