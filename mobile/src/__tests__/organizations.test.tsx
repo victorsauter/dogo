@@ -507,6 +507,61 @@ describe('members screen', () => {
     ).toBeNull();
   });
 
+  it('asks for 100 people per list, not the default 50', async () => {
+    const { calls } = open('Owner');
+    await openAt(`/organizations/${orgId}/members`);
+    await screen.findByText('Paul Petit');
+    expect(calls.find((c) => c.path.startsWith(membersPath))!.path).toBe(
+      `${membersPath}?limit=100`,
+    );
+    expect(screen.queryByText(/la liste est partielle/)).toBeNull();
+  });
+
+  it('says the lists are partial when the API stopped at 100', async () => {
+    const many = (prefix: string, status: 'Accepted' | 'Pending') =>
+      Array.from({ length: 100 }, (_, index) =>
+        membership({
+          id: `${prefix}-${index}`,
+          status,
+          user: { ...otherUser, id: `u-${prefix}-${index}`, displayName: `${prefix} ${index}` },
+        }),
+      );
+    mockApi({
+      [`GET ${orgPath}`]: () => ok(organizationDetail({ myMembership: myMembership('Owner') })),
+      [`GET ${membersPath}`]: () =>
+        ok({ members: many('Membre', 'Accepted'), requests: many('Demande', 'Pending') }),
+    });
+    await openAt(`/organizations/${orgId}/members`);
+    expect(
+      await screen.findByText(format(t.organization.membersPartial, { count: 100 })),
+    ).toBeTruthy();
+    expect(screen.getByText(format(t.organization.requestsPartial, { count: 100 }))).toBeTruthy();
+  });
+
+  it('a membership gone meanwhile (membership.not_found) is explained and the lists are read again', async () => {
+    let requests = [pendingRequest];
+    const { calls } = mockApi({
+      [`GET ${orgPath}`]: () => ok(organizationDetail({ myMembership: myMembership('Owner') })),
+      [`GET ${membersPath}`]: () => ok({ members: [owner], requests }),
+      [`POST ${membersPath}/req-1/accept`]: () => {
+        // The person withdrew their request while the screen was open.
+        requests = [];
+        return problemResponse(404, 'membership.not_found');
+      },
+    });
+    await openAt(`/organizations/${orgId}/members`);
+    await fireEvent.press(
+      await screen.findByRole('button', {
+        name: format(t.organization.acceptA11y, { name: 'Paul Petit' }),
+      }),
+    );
+    expect(await screen.findByText(t.errors['membership.not_found'])).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText('Paul Petit')).toBeNull());
+    expect(calls.filter((c) => c.method === 'GET' && c.path.startsWith(membersPath))).toHaveLength(
+      2,
+    );
+  });
+
   it('shows an API refusal of a role change', async () => {
     open('Owner', {
       [`PATCH ${membersPath}/mem-1`]: () => problemResponse(409, 'membership.not_accepted'),

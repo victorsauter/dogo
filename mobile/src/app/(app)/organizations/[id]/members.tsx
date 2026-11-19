@@ -4,6 +4,7 @@ import { Alert, View } from 'react-native';
 
 import { ApiError, errorMessage } from '@/api/errors';
 import {
+  isMembersListCapped,
   useChangeRole,
   useDecideMembership,
   useOrganization,
@@ -178,6 +179,12 @@ export default function MembersScreen() {
         })
       )}
 
+      {isMembersListCapped(members.data.requests.length) ? (
+        <Text color="textMuted" accessibilityLiveRegion="polite">
+          {format(t.organization.requestsPartial, { count: members.data.requests.length })}
+        </Text>
+      ) : null}
+
       <Text variant="heading">{t.organization.members}</Text>
       {members.data.members.length === 0 ? (
         <Text color="textMuted">{t.organization.noMembers}</Text>
@@ -231,6 +238,12 @@ export default function MembersScreen() {
           );
         })
       )}
+
+      {isMembersListCapped(members.data.members.length) ? (
+        <Text color="textMuted" accessibilityLiveRegion="polite">
+          {format(t.organization.membersPartial, { count: members.data.members.length })}
+        </Text>
+      ) : null}
 
       {error ? (
         <Text color="danger" accessibilityLiveRegion="polite">
