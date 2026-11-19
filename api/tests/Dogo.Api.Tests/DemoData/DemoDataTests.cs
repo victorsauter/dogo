@@ -13,15 +13,20 @@ namespace Dogo.Api.Tests.DemoData;
 public sealed class DemoDataTests(ApiFixture fixture) : DemoDataTestBase(fixture)
 {
     [Fact]
-    public async Task Routes_answer_404_when_demo_data_is_disabled()
+    public async Task Routes_do_not_exist_when_demo_data_is_disabled()
     {
+        var signedIn = await SignInDevAsync("bob", "Bob");
         await using var factory = new DogoApiFactory(Fixture.ConnectionString, new Dictionary<string, string?> { ["DemoData:Enabled"] = "false" });
+        var anonymous = factory.CreateClient();
         var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", signedIn.AccessToken);
 
+        // Like any unknown route (see ErrorHandlingTests): 401 without a token, 404 with one.
+        await AssertProblemAsync(await anonymous.PostAsJsonAsync(Url, new { photos = false }, Ct), HttpStatusCode.Unauthorized, "auth.unauthenticated");
         await AssertProblemAsync(await client.PostAsJsonAsync(Url, new { photos = false }, Ct), HttpStatusCode.NotFound, "not_found");
         await AssertProblemAsync(await client.GetAsync(Url, Ct), HttpStatusCode.NotFound, "not_found");
         await AssertProblemAsync(await client.DeleteAsync(Url, Ct), HttpStatusCode.NotFound, "not_found");
-        Assert.Equal(0, await WithDbAsync(db => db.Users.CountAsync(Ct)));
+        Assert.Equal(1, await WithDbAsync(db => db.Users.CountAsync(Ct)));
     }
 
     [Fact]

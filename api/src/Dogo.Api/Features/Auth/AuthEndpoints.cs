@@ -8,7 +8,7 @@ namespace Dogo.Api.Features.Auth;
 
 public static class AuthEndpoints
 {
-    public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder routes)
+    public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder routes, bool includeDevSignIn)
     {
         var group = routes.MapGroup("/auth")
             .WithTags("Auth")
@@ -27,11 +27,16 @@ public static class AuthEndpoints
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
-        group.MapPost("/dev", SignInDev)
-            .WithName("signInDev")
-            .WithSummary("Session for a test account. Only available when Auth:AllowDevLogin is true (404 otherwise).")
-            .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+        // Not declared at all when disabled: the route then answers 404 like any unknown route, whatever
+        // the body or the caller (a handler check would run after body binding and authentication).
+        if (includeDevSignIn)
+        {
+            group.MapPost("/dev", SignInDev)
+                .WithName("signInDev")
+                .WithSummary("Session for a test account. Only available when Auth:AllowDevLogin is true (404 otherwise).")
+                .ProducesProblem(StatusCodes.Status403Forbidden)
+                .ProducesProblem(StatusCodes.Status404NotFound);
+        }
 
         group.MapPost("/refresh", Refresh)
             .WithName("refreshSession")
@@ -65,16 +70,8 @@ public static class AuthEndpoints
     }
 
     private static async Task<Results<Ok<SessionResponse>, ProblemHttpResult>> SignInDev(
-        DevSignInRequest request, IOptions<AuthOptions> options, SessionService sessions, CancellationToken cancellationToken)
-    {
-        // Mapped unconditionally so that it appears in openapi.json; answers 404 when disabled.
-        if (!options.Value.AllowDevLogin)
-        {
-            return Problems.NotFound(ErrorCodes.NotFound, "Not Found");
-        }
-
-        return await sessions.SignInAsync(IdentityProvider.Dev, request.Subject.Trim(), request.Email?.Trim(), request.DisplayName, cancellationToken);
-    }
+        DevSignInRequest request, SessionService sessions, CancellationToken cancellationToken) =>
+        await sessions.SignInAsync(IdentityProvider.Dev, request.Subject.Trim(), request.Email?.Trim(), request.DisplayName, cancellationToken);
 
     private static Task<Results<Ok<SessionResponse>, ProblemHttpResult>> Refresh(
         RefreshTokenRequest request, SessionService sessions, CancellationToken cancellationToken) =>

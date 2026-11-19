@@ -93,3 +93,49 @@ public static class EnumQueryValidation
         };
     }
 }
+
+/// <summary>
+/// Query parameters of type <see cref="DateTimeOffset"/> follow the same rule as dates in bodies
+/// (<see cref="ExplicitOffsetDateTimeOffsetConverter"/>): without an explicit offset the default binding would
+/// read the value in the server's time zone, so it is refused (400 <c>validation.failed</c> on the parameter).
+/// A value that is not a date at all already fails the binding with 400 <c>request.invalid</c>.
+/// </summary>
+public static class ExplicitOffsetQueryValidation
+{
+    /// <summary>Adds the check to every endpoint of <paramref name="builder"/> that has date query parameters.</summary>
+    public static TBuilder RequireExplicitOffsetDateQueryValues<TBuilder>(this TBuilder builder)
+        where TBuilder : IEndpointConventionBuilder =>
+        builder.AddEndpointFilterFactory(CreateFilter);
+
+    private static EndpointFilterDelegate CreateFilter(EndpointFilterFactoryContext context, EndpointFilterDelegate next)
+    {
+        var names = context.MethodInfo.GetParameters()
+            .Where(p => (Nullable.GetUnderlyingType(p.ParameterType) ?? p.ParameterType) == typeof(DateTimeOffset)
+                && p.GetCustomAttribute<FromBodyAttribute>() is null
+                && p.GetCustomAttribute<FromRouteAttribute>() is null
+                && p.GetCustomAttribute<FromServicesAttribute>() is null)
+            .Select(p => p.GetCustomAttribute<FromQueryAttribute>()?.Name ?? p.Name!)
+            .ToArray();
+        if (names.Length == 0)
+        {
+            return next;
+        }
+
+        return async invocation =>
+        {
+            var query = invocation.HttpContext.Request.Query;
+            var errors = new Dictionary<string, string[]>();
+            foreach (var name in names)
+            {
+                if (query.TryGetValue(name, out var values)
+                    && values.Any(v => !string.IsNullOrEmpty(v) && !ExplicitOffsetDateTimeOffsetConverter.HasExplicitOffset(v)))
+                {
+                    errors[JsonNamingPolicy.CamelCase.ConvertName(name)] =
+                        ["The value must be an ISO 8601 date and time with an explicit offset (Z or ±hh:mm), e.g. 2030-05-01T09:00:00Z."];
+                }
+            }
+
+            return errors.Count > 0 ? Problems.Validation(errors) : await next(invocation);
+        };
+    }
+}
