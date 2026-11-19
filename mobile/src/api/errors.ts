@@ -1,4 +1,4 @@
-import { t, type ApiErrorCode } from '@/strings';
+import { format, t, type ApiErrorCode } from '@/strings';
 
 import type { ProblemDetails } from './types';
 
@@ -21,6 +21,8 @@ export class ApiError extends Error {
   readonly problem?: ProblemDetails;
   /** `network` failure because the request took longer than its time limit. */
   readonly timedOut: boolean;
+  /** Seconds to wait before trying again, from the `Retry-After` header of a 429. */
+  readonly retryAfterSeconds?: number;
 
   constructor(init: {
     kind: ApiErrorKind;
@@ -28,11 +30,12 @@ export class ApiError extends Error {
     problem?: ProblemDetails;
     cause?: unknown;
     timedOut?: boolean;
+    retryAfterSeconds?: number;
   }) {
     const timedOut = init.kind === 'network' && init.timedOut === true;
     const message = timedOut
       ? t.errors.timeout
-      : messageFor(init.kind, init.status, init.problem?.code);
+      : messageFor(init.kind, init.status, init.problem?.code, init.retryAfterSeconds);
     super(message, { cause: init.cause });
     this.name = 'ApiError';
     this.kind = init.kind;
@@ -41,6 +44,7 @@ export class ApiError extends Error {
     this.problem = init.problem;
     this.code = init.problem?.code;
     this.fieldErrors = init.problem?.errors ?? {};
+    this.retryAfterSeconds = init.retryAfterSeconds;
   }
 
   /** True for 4xx responses: retrying the same request will not help. */
@@ -53,14 +57,36 @@ function isKnownCode(code: string | undefined): code is ApiErrorCode {
   return code !== undefined && Object.hasOwn(t.errors, code) && code.includes('.');
 }
 
-function messageFor(kind: ApiErrorKind, status?: number, code?: string): string {
+/** Longest wait worth announcing; beyond it the vague message is clearer. */
+const MAX_ANNOUNCED_RETRY_SECONDS = 300;
+
+/**
+ * Delay of a `Retry-After` header given in seconds (the API sends seconds; an
+ * HTTP date is ignored). `undefined` when absent or not a positive number.
+ */
+export function parseRetryAfter(value: string | null | undefined): number | undefined {
+  if (!value || !/^\s*\d+\s*$/.test(value)) return undefined;
+  const seconds = Number.parseInt(value, 10);
+  return seconds > 0 ? seconds : undefined;
+}
+
+function messageFor(
+  kind: ApiErrorKind,
+  status?: number,
+  code?: string,
+  retryAfterSeconds?: number,
+): string {
   if (kind === 'network') return t.errors.network;
   if (kind === 'client') return t.errors.unexpected;
+  // Rate limiting (problem+json `rate_limit.exceeded` with `Retry-After`), or a proxy doing the same.
+  if (status === 429) {
+    return retryAfterSeconds !== undefined && retryAfterSeconds <= MAX_ANNOUNCED_RETRY_SECONDS
+      ? format(t.errors.tooManyRequestsIn, { seconds: retryAfterSeconds })
+      : t.errors.tooManyRequests;
+  }
   if (isKnownCode(code)) return t.errors[code];
   if (status === 404) return t.errors.notFound;
   if (status === 403) return t.errors.forbidden;
-  // Rate limiting (problem+json with `Retry-After`), or a proxy doing the same.
-  if (status === 429) return t.errors.tooManyRequests;
   if (status !== undefined && status >= 500) return t.errors.server;
   return t.errors.generic;
 }
@@ -82,6 +108,7 @@ export async function apiErrorFromResponse(response: Response): Promise<ApiError
     kind: 'http',
     status: response.status,
     problem: await readProblem(response),
+    retryAfterSeconds: parseRetryAfter(response.headers.get('Retry-After')),
   });
 }
 
@@ -122,7 +149,12 @@ export function toApiError(error: unknown, response?: Response): ApiError {
   if (response && !response.ok) {
     const problem =
       error !== null && typeof error === 'object' ? (error as ProblemDetails) : undefined;
-    return new ApiError({ kind: 'http', status: response.status, problem });
+    return new ApiError({
+      kind: 'http',
+      status: response.status,
+      problem,
+      retryAfterSeconds: parseRetryAfter(response.headers.get('Retry-After')),
+    });
   }
   if (isNetworkFailure(error)) return new ApiError({ kind: 'network', cause: error });
   if (__DEV__) console.warn('Unexpected error during an API call', error);

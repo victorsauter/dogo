@@ -251,6 +251,40 @@ describe('dog form', () => {
     });
   });
 
+  it('shows dog.size_in_use on the size field, with its own message, not « Valeur invalide »', async () => {
+    const { calls } = mockApi({
+      [`GET ${dogPath}`]: () => ok(testDog),
+      [`PATCH ${dogPath}`]: () => problemResponse(409, 'dog.size_in_use'),
+    });
+    await signIn();
+    await renderRouter(APP_DIR, { initialUrl: `/dogs/${testDog.id}/edit` });
+    await screen.findByDisplayValue('Biscotte');
+    await fireEvent.press(screen.getByRole('radio', { name: 'Grand' }));
+    await fireEvent.press(screen.getByRole('button', { name: t.common.save }));
+
+    // On the field, once: the form shows no second copy under the button.
+    expect(await screen.findAllByText(t.errors['dog.size_in_use'])).toHaveLength(1);
+    expect(screen.queryByText(t.common.fieldInvalid)).toBeNull();
+    expect(screen.queryByText(t.errors['validation.failed'])).toBeNull();
+    expect(screen).toHavePathname(`/dogs/${testDog.id}/edit`);
+    // The dog is read again: the screens behind show what the server now knows.
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === 'GET' && c.path === dogPath).length).toBeGreaterThan(
+        1,
+      ),
+    );
+  });
+
+  it('says clearly that 20 dogs is the maximum when the server refuses another one', async () => {
+    mockApi({ 'POST /api/v1/dogs': () => problemResponse(409, 'dog.limit_reached') });
+    await signIn();
+    await renderRouter(APP_DIR, { initialUrl: '/dogs/new' });
+    await screen.findByLabelText(t.dog.name);
+    await fillValid();
+    await fireEvent.press(screen.getByRole('button', { name: t.dog.add }));
+    expect(await screen.findByText(t.errors['dog.limit_reached'])).toBeTruthy();
+  });
+
   it('shows a paw, not the initial of « Chien », while the new dog has no name (defect D3)', async () => {
     mockApi({});
     await signIn();

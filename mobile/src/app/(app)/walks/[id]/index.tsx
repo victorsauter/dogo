@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Alert, Platform, RefreshControl, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
-import { errorMessage } from '@/api/errors';
+import { ApiError, errorMessage } from '@/api/errors';
 import type { Participant, WalkDetail } from '@/api/types';
 import {
   useAcceptRegistration,
@@ -129,6 +129,13 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
     router.push({ pathname: '/organizations/[id]', params: { id: organizationId } });
 
   const onError = (error: unknown) => setOrganizerError(errorMessage(error));
+  // Accepting a request of someone who has left the organisation of a members-only walk.
+  const onAcceptError = (error: unknown) =>
+    setOrganizerError(
+      error instanceof ApiError && error.code === 'walk.members_only'
+        ? t.walk.acceptNotMember
+        : errorMessage(error),
+    );
 
   function confirmRemove(participant: Participant) {
     setOrganizerError(null);
@@ -345,7 +352,7 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
                             }
                             onPress={() => {
                               setOrganizerError(null);
-                              accept.mutate(request.registrationId, { onError });
+                              accept.mutate(request.registrationId, { onError: onAcceptError });
                             }}
                           />
                         </View>

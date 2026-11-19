@@ -241,6 +241,33 @@ describe('ErrorState', () => {
   });
 });
 
+describe('ErrorState: retry or leave', () => {
+  it.each([404, 403, 409])(
+    'offers « Retour », not « Réessayer », for a definitive %s',
+    async (status) => {
+      const onRetry = jest.fn();
+      await renderWithTheme(
+        <ErrorState error={new ApiError({ kind: 'http', status })} onRetry={onRetry} />,
+      );
+      expect(screen.queryByRole('button', { name: t.common.retry })).toBeNull();
+      expect(screen.getByRole('button', { name: t.common.back })).toBeTruthy();
+    },
+  );
+
+  it.each([
+    ['a network failure', new ApiError({ kind: 'network' })],
+    ['a server fault', new ApiError({ kind: 'http', status: 503 })],
+    ['a timeout', new ApiError({ kind: 'http', status: 408 })],
+    ['rate limiting', new ApiError({ kind: 'http', status: 429 })],
+  ])('keeps « Réessayer » for %s', async (_name, error) => {
+    const onRetry = jest.fn();
+    await renderWithTheme(<ErrorState error={error} onRetry={onRetry} />);
+    await fireEvent.press(screen.getByRole('button', { name: t.common.retry }));
+    expect(onRetry).toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: t.common.back })).toBeNull();
+  });
+});
+
 describe('ErrorState icon', () => {
   it('shows « hors ligne » only when the server could not be reached', () => {
     expect(errorIcon(new ApiError({ kind: 'network' }))).toBe('offline');

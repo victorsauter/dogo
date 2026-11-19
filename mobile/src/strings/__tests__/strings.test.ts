@@ -2,6 +2,16 @@ import { enumValues, type EnumName } from '@/api/enums';
 
 import { enumLabel, format, t } from '..';
 
+// The project has no Node type definitions: only what this test uses is declared.
+declare const __dirname: string;
+/* eslint-disable @typescript-eslint/no-require-imports */
+const fs = require('node:fs') as {
+  existsSync(path: string): boolean;
+  readFileSync(path: string, encoding: 'utf8'): string;
+};
+const path = require('node:path') as { join(...parts: string[]): string };
+/* eslint-enable @typescript-eslint/no-require-imports */
+
 /** Labels of spec §2, copied from the specification table. */
 const specLabels: Record<EnumName, string[]> = {
   DogSize: ['Petit', 'Moyen', 'Grand'],
@@ -46,7 +56,6 @@ describe('error messages', () => {
     'walk.size_not_allowed',
     'registration.duplicate',
     'walk.not_open',
-    'walk.not_allowed',
     'walk.members_only',
     'walk.organization_forbidden',
     'organization.not_found',
@@ -83,8 +92,12 @@ describe('error messages', () => {
 });
 
 describe('refusals that must not reveal anything', () => {
-  it('the message of walk.not_allowed does not suggest a block', () => {
-    expect(t.errors['walk.not_allowed']).not.toMatch(/bloqu|interdit|banni|refus/i);
+  it('walk.not_allowed is gone: a blocked person gets the answer of a full walk (ADR 0037)', () => {
+    expect(t.errors).not.toHaveProperty('walk.not_allowed');
+  });
+
+  it('the message of walk.full does not suggest a block', () => {
+    expect(t.errors['walk.full']).not.toMatch(/bloqu|interdit|banni|refus/i);
   });
 });
 
@@ -103,7 +116,6 @@ describe('API error codes of walks and registrations', () => {
     'walk.size_not_allowed',
     'walk.capacity_below_registered',
     'walk.size_in_use',
-    'walk.not_allowed',
     'walk.members_only',
     'registration.not_found',
     'registration.forbidden',
@@ -111,5 +123,63 @@ describe('API error codes of walks and registrations', () => {
     'registration.not_active',
   ])('%s has a French message', (code) => {
     expect((t.errors as Record<string, string>)[code]).toEqual(expect.any(String));
+  });
+});
+
+describe('codes of the API (api/src/Dogo.Api/Common/ErrorCodes.cs)', () => {
+  /**
+   * Codes the app needs no message of their own for: the HTTP status decides
+   * (`t.errors.notFound`, `server`, `generic`…) or the user cannot meet them (405).
+   */
+  const decidedByStatus = ['error', 'not_found', 'method_not_allowed', 'server.error'];
+  const codesFile = path.join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    'api',
+    'src',
+    'Dogo.Api',
+    'Common',
+    'ErrorCodes.cs',
+  );
+  // The whole repository is checked out in CI and by agents; a standalone copy of `mobile/` skips these tests.
+  const apiCodes = fs.existsSync(codesFile)
+    ? [...fs.readFileSync(codesFile, 'utf8').matchAll(/const string \w+ = "([^"]+)"/g)].map(
+        (match) => match[1]!,
+      )
+    : [];
+
+  it('reads the list of codes', () => {
+    if (fs.existsSync(codesFile)) expect(apiCodes.length).toBeGreaterThan(40);
+  });
+
+  it.each(apiCodes.filter((code) => !decidedByStatus.includes(code)))(
+    '%s has a French message',
+    (code) => {
+      expect((t.errors as Record<string, string>)[code]).toMatch(/\S/);
+    },
+  );
+
+  it('keeps no message for a code the API no longer sends', () => {
+    if (apiCodes.length === 0) return;
+    const known = Object.keys(t.errors).filter((key) => key.includes('.'));
+    expect(known.filter((code) => !apiCodes.includes(code))).toEqual([]);
+  });
+});
+
+describe('new codes of the review', () => {
+  it.each([
+    ['dog.size_in_use', /inscrit/],
+    ['dog.limit_reached', /20 chiens/],
+    ['request.too_large', /volumineux/],
+    ['rate_limit.exceeded', /Trop de demandes/],
+  ])('%s is explained in plain words', (code, pattern) => {
+    expect((t.errors as Record<string, string>)[code]).toMatch(pattern);
+  });
+
+  it('walk.not_open covers a walk whose organisation is no longer validated', () => {
+    expect(t.errors['walk.not_open']).toMatch(/organisation/);
   });
 });

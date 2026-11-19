@@ -45,6 +45,28 @@ describe('apiErrorFromResponse', () => {
     );
   });
 
+  it('announces the wait of a 429 when the API gives its Retry-After', async () => {
+    const limited = new Response(JSON.stringify({ status: 429, code: 'rate_limit.exceeded' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/problem+json', 'Retry-After': '12' },
+    });
+    const error = await apiErrorFromResponse(limited);
+    expect(error.code).toBe('rate_limit.exceeded');
+    expect(error.retryAfterSeconds).toBe(12);
+    expect(error.message).toBe('Trop de demandes d’un coup. Réessaie dans 12 s.');
+    expect(error.isClientError).toBe(true);
+  });
+
+  it('keeps the vague message when Retry-After is absent, unreadable or very long', async () => {
+    for (const value of [undefined, 'soon', '0', '-3', '86400']) {
+      const response = new Response('', {
+        status: 429,
+        headers: value === undefined ? {} : { 'Retry-After': value },
+      });
+      expect((await apiErrorFromResponse(response)).message).toBe(t.errors.tooManyRequests);
+    }
+  });
+
   it('does not mistake fallback keys for API codes', async () => {
     const error = await apiErrorFromResponse(problemResponse(400, 'network'));
     expect(error.message).toBe(t.errors.generic);

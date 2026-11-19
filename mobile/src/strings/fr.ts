@@ -229,6 +229,9 @@ export const fr = {
     membersOnlyMessage:
       'Seuls les membres de son organisation peuvent y inscrire leur chien. Demande à la rejoindre pour pouvoir t’inscrire.',
     membersOnlyAction: 'Voir l’organisation',
+    /** Organizer accepting a request whose author has left the organisation of a members-only walk. */
+    acceptNotMember:
+      'Cette personne ne fait plus partie de l’organisation : sa demande ne peut pas être acceptée.',
     organizeFor: 'Organiser pour',
     organizeForHint: 'Une balade d’organisation est marquée « Pro » et réservée à ses membres.',
     organizeForMe: 'Moi',
@@ -259,6 +262,7 @@ export const fr = {
     pickDate: 'Choisir la date',
     pickTime: 'Choisir l’heure',
     startsAtPast: 'La balade doit commencer dans le futur.',
+    startsAtTooFar: 'La balade ne peut pas commencer dans plus d’un an.',
     meetingPointHint: 'Touche la carte ou fais glisser le repère pour placer le rendez-vous.',
     meetingPointMap: 'Carte du point de rendez-vous',
     meetingPointRequired:
@@ -484,8 +488,12 @@ export const fr = {
     membersTitle: 'Membres',
     requests: 'Demandes en attente',
     noRequests: 'Aucune demande en attente.',
+    /** A list reached the page limit of the API (100): the screen cannot show the rest. */
+    requestsPartial:
+      'Les {count} demandes les plus anciennes sont affichées. Réponds-y pour voir les suivantes.',
     members: 'Membres',
     noMembers: 'Aucun membre pour l’instant.',
+    membersPartial: 'Seuls {count} membres sont affichés : la liste est partielle.',
     accept: 'Accepter',
     decline: 'Refuser',
     acceptA11y: 'Accepter {name}',
@@ -606,9 +614,20 @@ export const fr = {
     'photo.unsupported_type': 'Ce format n’est pas accepté. Utilise une photo JPEG, PNG ou WebP.',
     'photo.missing': 'Aucune photo n’a été envoyée.',
     'photo.not_found': 'Cette photo n’existe plus.',
-    'request.too_large': 'Le fichier envoyé est trop volumineux.',
+    'request.too_large':
+      'Ce que tu essaies d’envoyer est trop volumineux. Raccourcis tes textes et réessaie.',
+    'request.invalid':
+      'La demande n’a pas pu être comprise. Vérifie ce que tu as saisi et réessaie ; si le problème revient, mets l’application à jour.',
+    'request.unsupported_media_type': 'Ce type de fichier n’est pas accepté.',
+    'rate_limit.exceeded': 'Trop de demandes d’un coup. Réessaie dans un instant.',
+    'auth.forbidden': 'Tu n’as pas accès à cette action.',
+    'health.database_unavailable': 'Le service rencontre un problème. Réessaie dans un instant.',
     'dog.not_found': 'Ce chien n’existe pas ou plus.',
     'dog.forbidden': 'Ce chien ne t’appartient pas.',
+    'dog.size_in_use':
+      'Ce chien est inscrit à une balade à venir qui n’accepte pas ce gabarit. Annule d’abord son inscription à cette balade, puis change sa taille.',
+    'dog.limit_reached':
+      'Tu as atteint le maximum de 20 chiens. Supprime un chien avant d’en ajouter un autre.',
     'user.not_found': 'Cette personne n’existe pas ou plus.',
     'auth.invalid_token': 'La connexion a été refusée. Réessaie.',
     'auth.unauthenticated': 'Ta session a expiré. Reconnecte-toi.',
@@ -622,8 +641,8 @@ export const fr = {
     'walk.full': 'Cette balade est complète.',
     'walk.size_not_allowed': 'Le gabarit de ce chien n’est pas admis sur cette balade.',
     'registration.duplicate': 'Ce chien est déjà inscrit à cette balade.',
-    'walk.not_open': 'Les inscriptions à cette balade ne sont pas ouvertes.',
-    'walk.not_allowed': 'L’inscription à cette balade n’est pas possible.',
+    'walk.not_open':
+      'Cette balade n’accepte plus d’inscription : elle est annulée, déjà commencée, ou son organisation n’est plus validée.',
     'walk.members_only': 'Cette balade est réservée aux membres de l’organisation.',
     'walk.organization_forbidden':
       'Tu ne peux pas organiser de balade au nom de cette organisation : il faut en être le responsable ou un éducateur, et qu’elle soit validée.',
@@ -660,6 +679,8 @@ export const fr = {
     network: 'Impossible de joindre le serveur. Vérifie ta connexion internet.',
     timeout: 'Le serveur met trop de temps à répondre. Vérifie ta connexion et réessaie.',
     tooManyRequests: 'Trop de demandes d’un coup. Réessaie dans un instant.',
+    /** `Retry-After` of a 429, in seconds. */
+    tooManyRequestsIn: 'Trop de demandes d’un coup. Réessaie dans {seconds} s.',
     unexpected:
       'Un problème est survenu dans l’application. Réessaie ; s’il persiste, redémarre-la.',
     generic: 'Une erreur est survenue. Réessaie.',
@@ -681,6 +702,7 @@ export type ApiErrorCode = Exclude<
   | 'network'
   | 'timeout'
   | 'tooManyRequests'
+  | 'tooManyRequestsIn'
   | 'unexpected'
   | 'generic'
   | 'configTitle'

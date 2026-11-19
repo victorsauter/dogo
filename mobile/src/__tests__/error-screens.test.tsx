@@ -5,7 +5,7 @@ import { ErrorBoundary } from '@/app/_layout';
 import { sessionStore } from '@/auth/sessionStore';
 import { t } from '@/strings';
 import { authResponse } from '@/test/fixtures';
-import { mockApi, ok } from '@/test/mockApi';
+import { mockApi, ok, problemResponse } from '@/test/mockApi';
 
 describe('root error boundary', () => {
   it('shows a French message and renders the route again on « Réessayer »', async () => {
@@ -16,6 +16,31 @@ describe('root error boundary', () => {
     expect(screen.queryByText('boom')).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: t.common.retry }));
     expect(retry).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('a walk that does not exist, opened by a link', () => {
+  afterEach(async () => {
+    await act(() => sessionStore.clear());
+  });
+
+  it('says so with the warning, no « Réessayer », and leads back to the home screen', async () => {
+    const { fetchMock } = mockApi({
+      'GET /api/v1/me': () => ok({}),
+      'GET /api/v1/walks/unknown': () => problemResponse(404, 'walk.not_found'),
+    });
+    await sessionStore.set(authResponse());
+    await renderRouter('./src/app', { initialUrl: '/walks/unknown' });
+
+    expect(await screen.findByText(t.errors['walk.not_found'])).toBeTruthy();
+    expect(screen.queryByRole('button', { name: t.common.retry })).toBeNull();
+    const calls = fetchMock.mock.calls.length;
+
+    // A deep link has no screen behind it: « Retour » goes to the home screen.
+    await fireEvent.press(screen.getByRole('button', { name: t.common.back }));
+    expect(await screen.findByLabelText(t.discover.mapLabel)).toBeTruthy();
+    expect(screen).toHavePathname('/');
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(calls);
   });
 });
 
