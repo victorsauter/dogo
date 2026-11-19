@@ -1,6 +1,6 @@
 # ADR 0034 — Robustesse des écrans : cache cumulatif du fil, écritures sans attente, navigation conditionnée au focus
 
-- **Statut :** Accepté
+- **Statut :** Proposé
 - **Date :** 18/11/2026
 - **Note :** décidé par l'agent mobile du lot « robustesse des écrans », sur délégation ; à confirmer.
 

@@ -1,6 +1,6 @@
 # ADR 0033 — Fin de session expliquée, persistance sûre et délais réseau sur mobile
 
-- **Statut :** Accepté
+- **Statut :** Proposé
 - **Date :** 18/11/2026
 - **Note :** décidé par l'agent mobile, sur délégation, après une revue de la session et du réseau ; à confirmer. Précise l'[ADR 0014](0014-session-mobile.md) (fin de session, déconnexion) et l'[ADR 0022](0022-notifications-push-mobile.md) (ordre de la déconnexion).
 
