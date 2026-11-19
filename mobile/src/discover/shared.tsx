@@ -1,10 +1,10 @@
-import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { ActivityIndicator, ScrollView, View, type TextStyle, type ViewStyle } from 'react-native';
 import type MapView from 'react-native-maps';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { enumValues, type DogSize } from '@/api/enums';
 import type { WalkSearchResult } from '@/api/types';
 import {
@@ -64,7 +64,7 @@ const radiusOptions = SEARCH_RADII_KM.map((km) => ({
 }));
 
 export function useDiscoverNavigation() {
-  const router = useRouter();
+  const router = useGuardedRouter();
   return {
     openWalk: (id: string) => router.push({ pathname: '/walks/[id]', params: { id } }),
     createWalk: () => router.push('/walks/new'),

@@ -1,7 +1,8 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { useDeleteDog, useDog } from '@/api/dogs';
 import { errorMessage } from '@/api/errors';
 import { useSession } from '@/auth';
@@ -28,7 +29,7 @@ export default function DogDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useSession();
   const { spacing } = useTheme();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const focusedRouter = useFocusedRouter();
   const dog = useDog(id);
   const deleteDog = useDeleteDog();

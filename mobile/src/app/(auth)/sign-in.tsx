@@ -1,7 +1,7 @@
-import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { Banner, Button, Card, Screen, Text, TextField } from '@/components';
 import { isAppleSignInAvailable } from '@/auth/providers/apple';
 import { isGoogleSignInAvailable } from '@/auth/providers/google';
@@ -22,7 +22,7 @@ function showDevTools(): boolean {
 
 export default function SignInScreen() {
   const { spacing } = useTheme();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const notice = useSignInNotice();
   const apple = useAppleSignIn();
   const google = useGoogleSignIn();

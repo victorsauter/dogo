@@ -1,7 +1,8 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useRouter, type Href } from 'expo-router';
+import { type Href } from 'expo-router';
 import { useEffect, useRef } from 'react';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { organizationsChanged } from '@/api/organizations';
 import { walksChanged } from '@/api/walks';
 import { useSession } from '@/auth';
@@ -24,7 +25,7 @@ import { targetForNotification } from './routing';
  */
 export function NotificationsEffects() {
   const { status } = useSession();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const queryClient = useQueryClient();
   const signedIn = status === 'signedIn';
   const signedInRef = useRef(signedIn);

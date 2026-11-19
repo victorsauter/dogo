@@ -1,4 +1,4 @@
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
@@ -8,6 +8,7 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { ApiError } from '@/api/errors';
 import { useSendMessage, useWalkMessages } from '@/api/messages';
 import type { WalkDetail } from '@/api/types';
@@ -58,7 +59,7 @@ export default function WalkThreadScreen() {
 }
 
 function Thread({ walk }: { walk: WalkDetail }) {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { colors, spacing } = useTheme();
   const [focused, setFocused] = useState(false);
   const { latest, items, hasMore, loadOlder, loadingOlder, olderError } = useWalkMessages(

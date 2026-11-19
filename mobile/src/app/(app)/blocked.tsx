@@ -1,7 +1,7 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { useBlockedUsers, useUnblockUser } from '@/api/blocks';
 import { errorMessage } from '@/api/errors';
 import {
@@ -19,7 +19,7 @@ import { useTheme } from '@/theme';
 
 /** « Personnes bloquées »: the people I blocked, each with « Débloquer ». */
 export default function BlockedUsersScreen() {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { minTouchSize, spacing } = useTheme();
   const blocked = useBlockedUsers();
   const unblock = useUnblockUser();

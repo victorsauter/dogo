@@ -1,5 +1,4 @@
-import { useRouter } from 'expo-router';
-
+import { useGuardedRouter } from '@/lib/navigation';
 import { EmptyState, Screen } from '@/components';
 import { t } from '@/strings';
 
@@ -9,7 +8,7 @@ import { t } from '@/strings';
  * the sign-in screen from `/`, the auth gate sends them there.
  */
 export default function NotFoundScreen() {
-  const router = useRouter();
+  const router = useGuardedRouter();
   return (
     <Screen scroll={false}>
       <EmptyState

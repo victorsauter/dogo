@@ -1,11 +1,12 @@
 import {
+  emptyWalkForm,
   toCreateDogRequest,
   toCreateWalkRequest,
   toUpdateDogRequest,
   toUpdateWalkRequest,
+  type DogFormValues,
+  type WalkFormValues,
 } from '@/lib/forms';
-import type { DogFormValues, WalkFormValues } from '@/lib/forms';
-import { emptyWalkForm } from '@/lib/forms';
 import { jsonResponse } from '@/test/fixtures';
 import { mockApi } from '@/test/mockApi';
 

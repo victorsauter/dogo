@@ -1,7 +1,8 @@
-import { useRouter, type Href } from 'expo-router';
+import { type Href } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { useMyDogs } from '@/api/dogs';
 import { useMyOrganizations } from '@/api/organizations';
 import { useMe } from '@/api/profile';
@@ -48,7 +49,7 @@ const settingsEntries: Entry[] = [
 
 /** Rows with a chevron in one card: the compact way to list entry points on a small phone. */
 function EntryList({ entries }: { entries: Entry[] }) {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { colors } = useTheme();
   return (
     <Card style={{ padding: 0, overflow: 'hidden', gap: 0 }}>
@@ -72,7 +73,7 @@ function EntryList({ entries }: { entries: Entry[] }) {
 export default function ProfileScreen() {
   const { user, signOut } = useSession();
   const { spacing } = useTheme();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const me = useMe();
   const dogs = useMyDogs();
   const organizations = useMyOrganizations();

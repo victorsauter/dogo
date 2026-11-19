@@ -1,5 +1,7 @@
 import { timeoutManager } from '@tanstack/react-query';
 
+import { resetNavigationGuard } from '@/lib/navigation';
+
 // TanStack Query keeps a 5-minute timer per unobserved query (`gcTime`). Left
 // running after a test, it kept Node alive and made Jest report « A worker
 // process has failed to exit gracefully ». Long timers no longer hold the
@@ -29,6 +31,11 @@ jest.mock('expo-secure-store', () => {
       store.delete(key);
     }),
   };
+});
+
+// A destination opened in one test must not count as « just opened » in the next.
+beforeEach(() => {
+  resetNavigationGuard();
 });
 
 beforeEach(() => {

@@ -6,6 +6,7 @@ import { useSessionUserSync } from '@/api/profile';
 import { useSession } from '@/auth';
 import { EmptyState, Screen } from '@/components';
 import { AppProviders } from '@/lib/AppProviders';
+import { useNavigationGuardReset } from '@/lib/navigation';
 import { NotificationsEffects } from '@/notifications';
 import { t } from '@/strings';
 import { ThemeProvider, useTheme } from '@/theme';
@@ -50,6 +51,7 @@ function RootNavigator() {
   const theme = useTheme();
   const signedIn = status === 'signedIn';
   useSessionUserSync();
+  useNavigationGuardReset();
 
   useEffect(() => {
     if (status !== 'loading') SplashScreen.hide();

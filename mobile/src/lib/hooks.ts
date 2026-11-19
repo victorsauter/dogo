@@ -1,5 +1,6 @@
-import { useFocusEffect, useNavigation, useRouter, type Href } from 'expo-router';
+import { useFocusEffect, useNavigation, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useGuardedRouter } from './navigation';
 
 /** `value`, updated only once it has stopped changing for `delayMs` (map panning). */
 export function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -94,7 +95,7 @@ export function useRefetchOnFocusIfStale({
  * The change is saved either way; only the navigation is skipped.
  */
 export function useFocusedRouter() {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const navigation = useNavigation();
   return useMemo(
     () => ({

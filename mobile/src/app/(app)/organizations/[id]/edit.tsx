@@ -1,5 +1,6 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { useOrganization, useUpdateOrganization } from '@/api/organizations';
 import { ErrorState, LoadingState, OrganizationForm, Screen } from '@/components';
 import { t } from '@/strings';
@@ -7,7 +8,7 @@ import { t } from '@/strings';
 /** The owner edits the organisation (name, description, city). */
 export default function EditOrganizationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const organization = useOrganization(id);
   const update = useUpdateOrganization(id);
 

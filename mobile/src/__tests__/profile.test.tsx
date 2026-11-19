@@ -59,10 +59,10 @@ describe('profile tab', () => {
     mockApi({
       'GET /api/v1/me/organizations': () => ok([]),
       'GET /api/v1/me': () => ok(testUser),
-      'GET /api/v1/me/dogs': () => problemResponse(403, 'account.suspended'),
+      'GET /api/v1/me/dogs': () => problemResponse(429, 'rate_limit.exceeded'),
     });
     await openProfile();
-    expect(await screen.findByText(t.errors['account.suspended'])).toBeTruthy();
+    expect(await screen.findByText(t.errors.tooManyRequests)).toBeTruthy();
     expect(screen.getByRole('button', { name: t.common.retry })).toBeTruthy();
   });
 

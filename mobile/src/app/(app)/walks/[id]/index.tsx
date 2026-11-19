@@ -1,8 +1,9 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Platform, RefreshControl, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { ApiError, errorMessage } from '@/api/errors';
 import type { Participant, WalkDetail } from '@/api/types';
 import {
@@ -107,7 +108,7 @@ export default function WalkDetailScreen() {
 }
 
 function WalkDetailContent({ walk }: { walk: WalkDetail }) {
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { user } = useSession();
   const { radii, spacing } = useTheme();
   const accept = useAcceptRegistration(walk.id);

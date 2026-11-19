@@ -1,7 +1,8 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { Alert, View } from 'react-native';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { ApiError, errorMessage } from '@/api/errors';
 import {
   isMembersListCapped,
@@ -69,7 +70,7 @@ function MemberCard({
  */
 export default function MembersScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
+  const router = useGuardedRouter();
   const { spacing } = useTheme();
   const organization = useOrganization(id);
   const members = useOrganizationMembers(id);

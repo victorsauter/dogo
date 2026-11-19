@@ -1,6 +1,7 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 
+import { useGuardedRouter } from '@/lib/navigation';
 import { useSession } from '@/auth';
 import { shouldShowWelcome } from '@/lib/welcomeNudge';
 import { t } from '@/strings';
@@ -18,7 +19,7 @@ import { useTheme } from '@/theme';
 export default function AppLayout() {
   const { colors } = useTheme();
   const { user } = useSession();
-  const router = useRouter();
+  const router = useGuardedRouter();
 
   useEffect(() => {
     if (user && shouldShowWelcome(user)) {
