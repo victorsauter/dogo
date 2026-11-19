@@ -3,7 +3,7 @@ import { EmptyState, Screen } from '@/components';
 import { t } from '@/strings';
 
 /**
- * Shown for any address no route matches (`dogo://nimporte`), in place of
+ * Shown for any address no route matches (`uzu://nimporte`), in place of
  * Expo Router's English « Unmatched route » screen. Signed-out users land on
  * the sign-in screen from `/`, the auth gate sends them there.
  */

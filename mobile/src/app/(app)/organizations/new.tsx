@@ -5,7 +5,7 @@ import { useCreateOrganization } from '@/api/organizations';
 import { OrganizationForm, Screen } from '@/components';
 import { t } from '@/strings';
 
-/** Ask for a new organisation: the dogo team validates it before it becomes visible. */
+/** Ask for a new organisation: the Uzu team validates it before it becomes visible. */
 export default function NewOrganizationScreen() {
   const router = useGuardedRouter();
   const create = useCreateOrganization();

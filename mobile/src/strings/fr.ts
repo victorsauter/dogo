@@ -9,7 +9,7 @@ import { legalFr } from './legal';
  */
 export const fr = {
   app: {
-    name: 'dogo',
+    name: 'Uzu',
     tagline: 'Des balades tranquilles entre chiens, près de chez toi.',
   },
   common: {
@@ -43,7 +43,7 @@ export const fr = {
     signOut: 'Se déconnecter',
     sessionExpired: 'Ta session a expiré. Reconnecte-toi.',
     accountSuspended:
-      'Ton compte a été suspendu par l’équipe dogo : tu ne peux plus te connecter pour l’instant.',
+      'Ton compte a été suspendu par l’équipe Uzu : tu ne peux plus te connecter pour l’instant.',
     noMethodTitle: 'Aucune méthode de connexion disponible',
     noMethodMessage:
       'La connexion Apple et Google demande une version de développement de l’application.',
@@ -351,7 +351,7 @@ export const fr = {
     noBio: 'Pas encore de présentation.',
     editButton: 'Modifier mon profil',
     editTitle: 'Modifier mon profil',
-    welcome: 'Bienvenue sur dogo ! Dis-nous comment t’appeler et présente-toi en quelques mots.',
+    welcome: 'Bienvenue sur Uzu ! Dis-nous comment t’appeler et présente-toi en quelques mots.',
     displayName: 'Nom affiché',
     bio: 'Présentation',
     bioHint: 'Quelques mots sur toi et tes balades (facultatif).',
@@ -427,7 +427,7 @@ export const fr = {
     /** Title of an error that is a 404 when the screen gives no more precise one. */
     missingTitle: 'Introuvable',
     /** Last-resort screen (render error caught by the root error boundary). */
-    crashTitle: 'Oups, dogo a rencontré un problème',
+    crashTitle: 'Oups, Uzu a rencontré un problème',
     crashMessage:
       "Quelque chose s'est mal passé. Tu peux réessayer ; si le problème revient, ferme puis rouvre l'application.",
     notFoundTitle: 'Page introuvable',
@@ -456,7 +456,7 @@ export const fr = {
     searchHint: 'Club canin, éducateur, ville…',
     searchEmptyTitle: 'Aucune organisation trouvée',
     searchEmptyMessage:
-      'Essaie un autre nom ou une autre ville. Seules les organisations validées par l’équipe dogo apparaissent ici.',
+      'Essaie un autre nom ou une autre ville. Seules les organisations validées par l’équipe Uzu apparaissent ici.',
     memberCount: '{count} membre|{count} membres',
     name: 'Nom',
     nameHint: 'Entre 3 et 80 caractères.',
@@ -466,12 +466,12 @@ export const fr = {
     city: 'Ville',
     cityHint: 'Facultatif.',
     createExplanation:
-      'L’équipe dogo valide chaque organisation avant qu’elle devienne visible des autres membres. Tant qu’elle n’est pas validée, tu es la seule personne à la voir et elle ne peut pas proposer de balades. Tu es prévenu dès qu’elle l’est.',
+      'L’équipe Uzu valide chaque organisation avant qu’elle devienne visible des autres membres. Tant qu’elle n’est pas validée, tu es la seule personne à la voir et elle ne peut pas proposer de balades. Tu es prévenu dès qu’elle l’est.',
     createSubmit: 'Envoyer la demande',
     statusBanner: {
       Pending:
-        'En attente de validation : l’équipe dogo examine ta demande. Pour l’instant, seuls ses membres la voient et elle ne peut pas encore proposer de balades.',
-      Rejected: 'Cette organisation n’a pas été validée par l’équipe dogo.',
+        'En attente de validation : l’équipe Uzu examine ta demande. Pour l’instant, seuls ses membres la voient et elle ne peut pas encore proposer de balades.',
+      Rejected: 'Cette organisation n’a pas été validée par l’équipe Uzu.',
       Closed: 'Cette organisation est fermée.',
     },
     pendingBadge: 'En attente de validation',
@@ -544,7 +544,7 @@ export const fr = {
     subjectDog: 'Tu signales le chien : {name}',
     subjectWalk: 'Tu signales la balade : {name}',
     explanation:
-      'Ton signalement est privé : il n’est lu que par l’équipe dogo, par une personne et jamais par un programme. Il ne déclenche aucune sanction automatique, et la personne concernée peut répondre avant toute décision.',
+      'Ton signalement est privé : il n’est lu que par l’équipe Uzu, par une personne et jamais par un programme. Il ne déclenche aucune sanction automatique, et la personne concernée peut répondre avant toute décision.',
     type: 'Type de signalement',
     typeRequired: 'Choisis le type de signalement.',
     facts: 'Les faits',
@@ -554,7 +554,7 @@ export const fr = {
     submit: 'Envoyer le signalement',
     sentTitle: 'Signalement envoyé',
     sentMessage:
-      'Merci. L’équipe dogo va lire ton signalement. Il reste privé et aucune sanction n’est décidée automatiquement.',
+      'Merci. L’équipe Uzu va lire ton signalement. Il reste privé et aucune sanction n’est décidée automatiquement.',
     done: 'Terminer',
   },
   settings: {
@@ -565,7 +565,7 @@ export const fr = {
     deleteAccount: 'Supprimer mon compte',
     suspendedTitle: 'Compte suspendu',
     suspendedMessage:
-      'Ton compte est suspendu : tu peux consulter l’application et supprimer ton compte, mais les autres actions (s’inscrire, organiser, écrire, modifier) sont désactivées. Si tu penses à une erreur, contacte l’équipe dogo.',
+      'Ton compte est suspendu : tu peux consulter l’application et supprimer ton compte, mais les autres actions (s’inscrire, organiser, écrire, modifier) sont désactivées. Si tu penses à une erreur, contacte l’équipe Uzu.',
   },
   deleteAccount: {
     title: 'Supprimer mon compte',
@@ -677,7 +677,7 @@ export const fr = {
     'block.self': 'Tu ne peux pas te bloquer toi-même.',
     'report.self': 'Tu ne peux pas te signaler toi-même.',
     'report.not_found': 'Ce signalement n’existe pas.',
-    'admin.forbidden': 'Cette action est réservée à l’équipe dogo.',
+    'admin.forbidden': 'Cette action est réservée à l’équipe Uzu.',
     'admin.self_suspension': 'Tu ne peux pas suspendre ton propre compte.',
     'walk.not_in_series': 'Cette balade ne fait pas partie d’une série hebdomadaire.',
     'message.forbidden':
@@ -700,9 +700,9 @@ export const fr = {
     /** Startup screen of a distribution build whose API address is missing or not https. */
     configTitle: 'Application mal configurée',
     configMissingApiUrl:
-      'L’adresse du serveur dogo n’est pas renseignée dans cette version de l’application. Elle ne peut rien charger : installe une version corrigée.',
+      'L’adresse du serveur Uzu n’est pas renseignée dans cette version de l’application. Elle ne peut rien charger : installe une version corrigée.',
     configInsecureApiUrl:
-      'L’adresse du serveur dogo de cette version n’est pas sécurisée (https). Par prudence, l’application ne s’y connecte pas : installe une version corrigée.',
+      'L’adresse du serveur Uzu de cette version n’est pas sécurisée (https). Par prudence, l’application ne s’y connecte pas : installe une version corrigée.',
   },
 } as const;
 
