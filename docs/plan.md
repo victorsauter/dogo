@@ -1,4 +1,4 @@
-# dogo — Plan de développement
+# Uzu — Plan de développement
 
 **Version :** 0.4 · 19/11/2026
 
