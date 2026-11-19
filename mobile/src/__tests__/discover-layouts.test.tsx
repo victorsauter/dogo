@@ -13,6 +13,7 @@ import {
 import { config } from '@/lib/config';
 import { t } from '@/strings';
 import { authResponse, testUser, walkResult } from '@/test/fixtures';
+import { setFontScale } from '@/test/fontScale';
 import { mockApi, ok, problemResponse } from '@/test/mockApi';
 
 const APP_DIR = './src/app';
@@ -772,5 +773,24 @@ describe('enlarged text (list view)', () => {
       nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 110 } },
     });
     await waitFor(() => expect(padding()).toBe(110 + 32));
+  });
+
+  it('puts the filter pills on several lines instead of a row cut at the edge', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    setFontScale(2.5);
+    await open('list');
+    await screen.findByText(lake.title);
+    const bar = screen.getByTestId('filter-bar');
+    expect(StyleSheet.flatten(bar.props.style).flexWrap).toBe('wrap');
+    expect(bar.props.horizontal).toBeUndefined();
+    // Every pill is still there.
+    expect(within(bar).getByTestId('filter-radius')).toBeTruthy();
+  });
+
+  it('keeps the sideways row at the normal size', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    await open('list');
+    await screen.findByText(lake.title);
+    expect(screen.getByTestId('filter-bar').props.horizontal).toBe(true);
   });
 });

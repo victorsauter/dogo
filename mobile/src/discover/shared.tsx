@@ -35,7 +35,7 @@ import { useDebouncedValue, useDelayedFlag, useRefetchOnFocusIfStale } from '@/l
 import { openAppSettings } from '@/lib/linking';
 import type { UserLocation } from '@/lib/location';
 import { enumLabel, format, t } from '@/strings';
-import { useTheme } from '@/theme';
+import { useLargeText, useTheme } from '@/theme';
 
 /**
  * Pieces shared by the two views of the « Balades » tab: filters, header, the
@@ -100,12 +100,19 @@ export interface FilterBarProps {
   /** Overrides of the row (by default it bleeds to the screen's edges from a margin). */
   style?: ViewStyle;
   contentContainerStyle?: ViewStyle;
+  /**
+   * The pills go to the next line instead of scrolling sideways. For the list
+   * header with large text: a row cut at the screen's edge hid the last pill,
+   * and nothing said it could scroll.
+   */
+  wrap?: boolean;
 }
 
 /**
  * One row of pills, each opening its menu under itself: period, dog size and,
  * in the list, distance. A pill shows its current value and is filled when it
- * differs from the default. With large text the row scrolls sideways.
+ * differs from the default. With large text the row scrolls sideways, unless it
+ * wraps (`wrap`).
  */
 export function FilterBar({
   filters,
@@ -113,21 +120,11 @@ export function FilterBar({
   radius,
   style,
   contentContainerStyle,
+  wrap = false,
 }: FilterBarProps) {
   const { spacing } = useTheme();
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      // The pills start at the screen's margin and scroll to its edges. Not clipped:
-      // the glass's light and shadow spill past each pill, and a clipped scroll
-      // view would draw them as a rectangle.
-      style={[{ marginHorizontal: -spacing.lg, flexGrow: 0, overflow: 'visible' }, style]}
-      contentContainerStyle={[
-        { paddingHorizontal: spacing.lg, gap: spacing.sm },
-        contentContainerStyle,
-      ]}
-    >
+  const pills = (
+    <>
       <MenuPill
         testID="filter-period"
         label={t.discover.period}
@@ -157,6 +154,37 @@ export function FilterBar({
           onChange={(km) => radius.onChange(Number(km) as SearchRadiusKm)}
         />
       ) : null}
+    </>
+  );
+  if (wrap) {
+    return (
+      <View
+        testID="filter-bar"
+        style={[
+          { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+          style,
+          contentContainerStyle,
+        ]}
+      >
+        {pills}
+      </View>
+    );
+  }
+  return (
+    <ScrollView
+      testID="filter-bar"
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      // The pills start at the screen's margin and scroll to its edges. Not clipped:
+      // the glass's light and shadow spill past each pill, and a clipped scroll
+      // view would draw them as a rectangle.
+      style={[{ marginHorizontal: -spacing.lg, flexGrow: 0, overflow: 'visible' }, style]}
+      contentContainerStyle={[
+        { paddingHorizontal: spacing.lg, gap: spacing.sm },
+        contentContainerStyle,
+      ]}
+    >
+      {pills}
     </ScrollView>
   );
 }
@@ -179,6 +207,7 @@ export function DiscoverHeader({
   style,
 }: DiscoverHeaderProps) {
   const { spacing } = useTheme();
+  const largeText = useLargeText();
   const { createWalk } = useDiscoverNavigation();
   return (
     <View style={[{ gap: spacing.xs }, style]}>
@@ -188,7 +217,12 @@ export function DiscoverHeader({
         </Text>
         <CreateButton onPress={createWalk} />
       </View>
-      <FilterBar filters={filters} onFiltersChange={onFiltersChange} radius={radius} />
+      <FilterBar
+        filters={filters}
+        onFiltersChange={onFiltersChange}
+        radius={radius}
+        wrap={largeText}
+      />
       {notice ? (
         <Text variant="caption" color="textMuted">
           {notice}
