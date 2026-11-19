@@ -40,7 +40,7 @@ Les corrections sont réunies sur la branche `integration/revue-v1`, fusionnée 
 | 6 | Renommage en Uzu : nom affiché, `com.victorsauter.uzu`, liens `uzu://` ; le dépôt et le code gardent le nom `dogo` | 0041 |
 | 7 | Défauts trouvés par la recette finale | 0040 révisé |
 
-**Vérifications sur `integration/revue-v1` :** __TESTS__. Recette rejouée en entier sur simulateur iOS et, pour la première fois, sur émulateur Android. L'image Docker de l'API a été construite et lancée en local.
+**Vérifications sur `integration/revue-v1` :** 631 tests côté API sur une vraie base PostGIS (448 avant la revue), 821 tests côté mobile (541 avant). Recette rejouée en entier sur simulateur iOS et, pour la première fois, sur émulateur Android. L'image Docker de l'API a été construite et lancée en local.
 
 **Défauts connus de la version précédente de ce plan :**
 

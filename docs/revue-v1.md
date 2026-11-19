@@ -234,9 +234,25 @@ Toutes les corrections sont réunies sur la branche `integration/revue-v1`. Rien
 | 7 | `fix/api-recette-finale`, `fix/mobile-recette-finale` | Défauts de la recette finale (RF-2 à RF-10) : garde de navigation levée par la navigation elle-même, fil sur Android, titres « introuvable », délai d'actualisation unique, signal qui s'efface seul, grande police, carte sombre ; routes de développement non déclarées quand elles sont désactivées, date sans décalage refusée en recherche | 0040 révisé |
 | 6 | `chore/renommage-uzu-api`, `chore/renommage-uzu-mobile` | Renommage en Uzu : nom affiché, `com.victorsauter.uzu`, `uzu://`, textes, clés de stockage, documentation | 0041 |
 
-État des tests sur `integration/revue-v1` : __TESTS__.
+État des tests sur `integration/revue-v1` : 631 côté API (448 avant la revue), 821 côté mobile (541 avant).
 
 Un défaut que seule la réunion des lots a fait apparaître a été corrigé : une suspension qui croisait une inscription du même compte provoquait un interblocage et une erreur 500.
+
+### Vérification finale
+
+Faite le 19/11/2026 sur la branche complète, renommage compris (`9a36290`) :
+
+| Contrôle | Résultat |
+| --- | --- |
+| Build de l'API en `Release` | 0 avertissement, `openapi.json` inchangé |
+| Tests de l'API | 631 passés |
+| Types, lint, format, tests du mobile | conformes, 821 tests passés |
+| `expo-doctor` | 20 contrôles sur 20 |
+| Configuration Expo | nom `Uzu`, slug `uzu`, schéma `uzu`, `com.victorsauter.uzu` pour iOS et Android |
+| Client d'API du mobile | à jour après régénération |
+| Liens des notifications | l'API et l'application s'accordent sur `uzu://walks/<id>` et `uzu://organizations/<id>` |
+| Image Docker en `Production` | migrations appliquées par le bundle, `/health` en 200, `nosniff`, utilisateur non root, routes de développement et OpenAPI indiscernables d'une route inconnue, arrêt avec un code d'erreur sur une configuration invalide |
+| Application renommée sur simulateur iPhone | connexion, données de démonstration, Balades en carte et en liste, inscription, message, trois appuis sur « + », lien inconnu : conformes ; aucun « dogo » à l'écran |
 
 ### Ce qui reste ouvert après corrections
 
