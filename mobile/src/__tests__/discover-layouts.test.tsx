@@ -787,6 +787,14 @@ describe('enlarged text (list view)', () => {
     expect(within(bar).getByTestId('filter-radius')).toBeTruthy();
   });
 
+  it('caps the word of the floating « Carte » button, which covers the cards', async () => {
+    mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
+    setFontScale(2.5);
+    await open('list');
+    await screen.findByText(lake.title);
+    expect(screen.getByText(t.discover.showMap).props.maxFontSizeMultiplier).toBe(1.5);
+  });
+
   it('keeps the sideways row at the normal size', async () => {
     mockApi({ 'GET /api/v1/walks': () => ok([lake]) });
     await open('list');

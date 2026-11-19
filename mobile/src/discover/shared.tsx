@@ -483,7 +483,10 @@ export interface FloatingButtonProps {
 
 /**
  * Big capsule with an icon and a word (« Carte », « Liste »), floating over the
- * content, on the material tinted with the primary colour.
+ * content, on the material tinted with the primary colour. Its word grows with
+ * the text size up to `FLOATING_LABEL_MAX_SCALE` only: it floats over the cards
+ * and, at the largest sizes, hid most of a card (ADR 0040: a cap only where the
+ * layout cannot follow).
  */
 export function FloatingButton({
   label,
@@ -515,7 +518,11 @@ export function FloatingButton({
         }}
       >
         <Icon name={icon} color="onPrimary" size={20} />
-        <Text variant="subheading" style={{ color: colors.onPrimary }}>
+        <Text
+          variant="subheading"
+          style={{ color: colors.onPrimary }}
+          maxFontSizeMultiplier={FLOATING_LABEL_MAX_SCALE}
+        >
           {label}
         </Text>
       </Material>
@@ -524,6 +531,9 @@ export function FloatingButton({
 }
 
 export const FLOATING_BUTTON_HEIGHT = 52;
+
+/** Largest text size factor of a floating button's word. */
+export const FLOATING_LABEL_MAX_SCALE = 1.5;
 
 /**
  * Round « Ma position » button over a map, a capsule of the floating material
