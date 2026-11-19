@@ -80,7 +80,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Rotate the refresh token and get a new access token. */
+        /** Rotate the refresh token and get a new access token. A token just replaced is accepted again for a short grace period; any later reuse revokes its session. */
         post: operations["refreshSession"];
         delete?: never;
         options?: never;
@@ -97,7 +97,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revoke a refresh token. */
+        /** Revoke a refresh token and the session it belongs to (every token rotated from the same sign-in). */
         post: operations["logout"];
         delete?: never;
         options?: never;
@@ -135,7 +135,7 @@ export interface paths {
         get: operations["getMe"];
         put?: never;
         post?: never;
-        /** Delete the signed-in user's account: upcoming walks cancelled, dogs, registrations, devices, memberships, blocks and sessions deleted; messages and reports kept without author. */
+        /** Delete the signed-in user's account: upcoming walks cancelled, dogs, registrations, devices, memberships, blocks and sessions deleted; messages and reports kept without author. Allowed to a suspended account (the only write it may do). */
         delete: operations["deleteMe"];
         options?: never;
         head?: never;
@@ -186,7 +186,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create a dog owned by the signed-in user. */
+        /** Create a dog owned by the signed-in user (20 dogs at most per account). */
         post: operations["createDog"];
         delete?: never;
         options?: never;
@@ -209,7 +209,7 @@ export interface paths {
         delete: operations["deleteDog"];
         options?: never;
         head?: never;
-        /** Update one of the signed-in user's dogs. */
+        /** Update one of the signed-in user's dogs. The size cannot change while the dog is registered to an upcoming walk that does not allow the new size. */
         patch: operations["updateDog"];
         trace?: never;
     };
@@ -221,7 +221,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Upload or replace the signed-in user's photo (JPEG, PNG, WebP or HEIC, 5 MB max). */
+        /** Upload or replace the signed-in user's photo (JPEG, PNG or WebP, 5 MB max, metadata removed). */
         put: operations["uploadMyPhoto"];
         post?: never;
         delete?: never;
@@ -238,7 +238,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Upload or replace a dog's photo (JPEG, PNG, WebP or HEIC, 5 MB max). */
+        /** Upload or replace a dog's photo (JPEG, PNG or WebP, 5 MB max, metadata removed). */
         put: operations["uploadDogPhoto"];
         post?: never;
         delete?: never;
@@ -377,7 +377,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Accept a pending registration (organizer only). Capacity is checked again. */
+        /** Accept a pending registration (organizer only). Size, capacity, membership and the organisation's status are checked again. */
         post: operations["acceptRegistration"];
         delete?: never;
         options?: never;
@@ -428,7 +428,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Register the signed-in user's device for push notifications. A token registered by another user moves to this one. */
+        /** Register the signed-in user's device for push notifications. A token registered by another user moves to this one. At most 10 devices per user: the least recently registered ones are removed. */
         put: operations["registerDevice"];
         post?: never;
         delete?: never;
@@ -532,7 +532,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the accepted members and the pending requests of an organisation (owner and educators only). */
+        /** List the accepted members and the pending requests of an organisation (owner and educators only); limit applies to each list. */
         get: operations["listMemberships"];
         put?: never;
         /** Ask to join an approved organisation; the owner and educators decide. */
@@ -587,7 +587,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Leave an organisation or withdraw a request (own membership), or remove a member (owner or educator; only the owner removes an educator). The sole owner cannot leave. */
+        /** Leave an organisation or withdraw a request (own membership), or remove a member (owner or educator; only the owner removes an educator). The sole owner cannot leave. The upcoming registrations of that user to the organisation's walks are cancelled. */
         delete: operations["deleteMembership"];
         options?: never;
         head?: never;
@@ -757,7 +757,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Suspend an account: its writes are refused and its sessions revoked. Idempotent. */
+        /** Suspend an account: writes refused (except deleting the account), sessions revoked, weekly series stopped, upcoming walks cancelled with their registrants notified, push devices removed, upcoming registrations to other walks cancelled. Idempotent. */
         post: operations["adminSuspendUser"];
         delete?: never;
         options?: never;
@@ -774,7 +774,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Lift an account's suspension. Idempotent. */
+        /** Lift an account's suspension. Restores nothing: series stay stopped, walks and registrations cancelled, devices and sessions gone. Idempotent. */
         post: operations["adminUnsuspendUser"];
         delete?: never;
         options?: never;
@@ -1782,15 +1782,6 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
-            /** @description Forbidden */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
         };
     };
     updateMe: {
@@ -1973,6 +1964,15 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
         };
     };
     getDog: {
@@ -2115,6 +2115,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3444,7 +3453,9 @@ export interface operations {
     };
     listMemberships: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+            };
             header?: never;
             path: {
                 id: string;
@@ -3460,6 +3471,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrganizationMembersResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
                 };
             };
             /** @description Unauthorized */
