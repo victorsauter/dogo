@@ -202,12 +202,12 @@ Décidé par le porteur pendant la revue, le 18/11/2026 :
 | Blocage qui se devine (SEC-3) | Répondre exactement comme pour une balade complète |
 | Compte suspendu (SEC-7) | Séries arrêtées, balades à venir annulées, appareils retirés ; le compte peut supprimer son compte |
 | Signalements (SEC-10) | Notification push aux administrateurs |
+| Nom et identifiants définitifs (décidé le 19/11/2026) | Uzu, `com.victorsauter.uzu`, liens `uzu://` (ADR 0041) |
 
 Reste à décider :
 
 | Sujet | Recommandation |
 | --- | --- |
-| Identifiant de bundle et schéma de lien définitifs | À fixer avant la première build de test ; conditionne le renommage en Uzu |
 | Hébergeur | Serveur Hetzner Cloud avec Docker Compose ; comparatif dans `docs/deploiement.md` |
 | Connexion d'un compte suspendu pour supprimer son compte | L'autoriser pour cette seule action |
 | Ajouts faits sans demande explicite (voir « Corrections ») | Les garder |
@@ -231,9 +231,10 @@ Toutes les corrections sont réunies sur la branche `integration/revue-v1`. Rien
 | 4b | `chore/mobile-build-de-test` | `eas.json`, garde-fou de build, charte de l'écran de démarrage, marche à suivre | 0039 |
 | 5 | `docs/mise-a-jour-apres-revue` | Spécification 0.2, anciens ADR annotés, plan de l'onglet Balades | — |
 | 3e | `fix/mobile-synchro-api` | Client régénéré, nouveaux codes d'erreur, règles de formulaire, REC-1 à REC-4, REC-6, clavier et mode sombre Android | 0040 |
-| 6 | — | Renommage en Uzu : attend l'identifiant de bundle et le schéma de lien | — |
+| 7 | `fix/api-recette-finale`, `fix/mobile-recette-finale` | Défauts de la recette finale (RF-2 à RF-10) : garde de navigation levée par la navigation elle-même, fil sur Android, titres « introuvable », délai d'actualisation unique, signal qui s'efface seul, grande police, carte sombre ; routes de développement non déclarées quand elles sont désactivées, date sans décalage refusée en recherche | 0040 révisé |
+| 6 | `chore/renommage-uzu-api`, `chore/renommage-uzu-mobile` | Renommage en Uzu : nom affiché, `com.victorsauter.uzu`, `uzu://`, textes, clés de stockage, documentation | 0041 |
 
-État des tests sur `integration/revue-v1` : 611 côté API (448 avant la revue), 795 côté mobile (541 avant).
+État des tests sur `integration/revue-v1` : __TESTS__.
 
 Un défaut que seule la réunion des lots a fait apparaître a été corrigé : une suspension qui croisait une inscription du même compte provoquait un interblocage et une erreur 500.
 
@@ -245,6 +246,8 @@ Un défaut que seule la réunion des lots a fait apparaître a été corrigé : 
 - **REC-5** (`HEAD /photos/…` en 401) : non traité.
 - **MOB-3** (textes légaux) et **MOB-4** (clé Google Maps et identifiants Google pour Android) : dépendent du porteur.
 - **Volumes Docker** : dix volumes anonymes vides laissés par les essais de l'image, à supprimer à la main.
+- **Android, police à 200 %** : les icônes « + » et carte débordent de leur cadre (comportement de la bibliothèque d'icônes). Mineur, non corrigé.
+- **Appui qui tombe ailleurs** : si le nouvel écran apparaît entre deux appuis, le second appui agit sur ce nouvel écran. La garde ne peut pas le distinguer d'un choix volontaire (ADR 0040).
 
 ### Ajouts faits sans demande explicite, retirables
 
@@ -341,15 +344,15 @@ Faite le 19/11/2026 sur `integration/revue-v1` (`6075561`), sur une base sépar�
 | N° | Gravité | Défaut | Suite |
 | --- | --- | --- | --- |
 | RF-1 | Important | Un compte suspendu ne peut plus se connecter : il ne peut supprimer son compte que pendant les 15 minutes de son jeton en cours | Décision à prendre |
-| RF-2 | Important, à confirmer sur appareil | Trois appuis espacés d'une seconde sur « + » ou sur une carte, avant que l'écran n'apparaisse, empilent deux écrans : la garde de 800 ms ne suffit pas sur une machine lente | Lot 7 |
-| RF-3 | Mineur | Android, fil : le champ de saisie est à moitié masqué par le clavier ; l'affichage du message après envoi n'a pas été confirmé | Lot 7 |
-| RF-4 | Mineur | En `Production`, `POST /auth/dev` avec un corps invalide répond 400 au lieu de 404, et `/dev/demo-data` avec un corps non JSON répond 401 | Lot 7 |
-| RF-5 | Mineur | `GET /walks?from=` accepte une date sans décalage, alors que les écritures la refusent | Lot 7 |
-| RF-6 | Mineur | Le fichier photo servi porte un profil de couleur sRGB standard écrit par la bibliothèque, alors que le README annonçait sa suppression | Lot 7 |
-| RF-7 | Mineur | Balade inexistante : titre générique « Oups, un problème est survenu » | Lot 7 |
-| RF-8 | Mineur | API arrêtée : l'indicateur de rafraîchissement tourne jusqu'à 40 s ; au retour de l'API, le signal « Impossible d'actualiser » ne s'efface qu'au changement d'onglet | Lot 7 |
-| RF-9 | Mineur | Très grande police : rangée de filtres coupée au bord, bouton « Carte » qui recouvre une carte de balade | Lot 7 |
-| RF-10 | Mineur | Android en mode sombre : la carte reste claire | Lot 7 |
+| RF-2 | Important, à confirmer sur appareil | Trois appuis espacés d'une seconde sur « + » ou sur une carte, avant que l'écran n'apparaisse, empilent deux écrans : la garde de 800 ms ne suffit pas sur une machine lente | Corrigé (lot 7) : la garde tient jusqu'à ce que la navigation ait eu lieu, avec un délai de sécurité de 5 s ; vérifié sur iPhone et Android |
+| RF-3 | Mineur | Android, fil : le champ de saisie est à moitié masqué par le clavier ; l'affichage du message après envoi n'a pas été confirmé | Corrigé (lot 7) : deux vrais défauts, le décalage du clavier et un défilement lancé trop tôt ; vérifié sur l'émulateur |
+| RF-4 | Mineur | En `Production`, `POST /auth/dev` avec un corps invalide répond 400 au lieu de 404, et `/dev/demo-data` avec un corps non JSON répond 401 | Corrigé (lot 7) : ces routes ne sont plus déclarées ; elles répondent comme toute route inconnue, 401 sans jeton et 404 avec |
+| RF-5 | Mineur | `GET /walks?from=` accepte une date sans décalage, alors que les écritures la refusent | Corrigé (lot 7) : 400 |
+| RF-6 | Mineur | Le fichier photo servi porte un profil de couleur sRGB standard écrit par la bibliothèque, alors que le README annonçait sa suppression | Documentation corrigée (lot 7) |
+| RF-7 | Mineur | Balade inexistante : titre générique « Oups, un problème est survenu » | Corrigé (lot 7) : « Balade introuvable », et de même pour un chien, une organisation, un profil |
+| RF-8 | Mineur | API arrêtée : l'indicateur de rafraîchissement tourne jusqu'à 40 s ; au retour de l'API, le signal « Impossible d'actualiser » ne s'efface qu'au changement d'onglet | Corrigé (lot 7) : un seul délai de 20 s, nouvel essai toutes les 30 s tant que le signal est affiché |
+| RF-9 | Mineur | Très grande police : rangée de filtres coupée au bord, bouton « Carte » qui recouvre une carte de balade | Corrigé (lot 7) : filtres sur plusieurs lignes, bouton plus petit ; il recouvre encore une fiche au défilement, comme tout bouton flottant |
+| RF-10 | Mineur | Android en mode sombre : la carte reste claire | Corrigé (lot 7) |
 | RF-11 | Mineur | Réponse 429 : `Retry-After` donne toujours la fenêtre entière, sans décompte | Laissé tel quel |
 
 Non testé par la recette finale :

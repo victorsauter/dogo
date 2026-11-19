@@ -28,7 +28,7 @@ Les 31 tâches sont réalisées et fusionnées dans `main`, avec les données de
 
 Une revue générale (sécurité, règles métier, application mobile, documentation, recette) a suivi. Ses constats, ses corrections et son verdict sont dans [`revue-v1.md`](revue-v1.md).
 
-Les corrections sont réunies sur la branche `integration/revue-v1`, en attente de fusion dans `main` :
+Les corrections sont réunies sur la branche `integration/revue-v1`, fusionnée dans `main` par une seule demande de fusion :
 
 | Lot | Contenu | ADR |
 | --- | --- | --- |
@@ -37,8 +37,8 @@ Les corrections sont réunies sur la branche `integration/revue-v1`, en attente 
 | 3 | Sessions et robustesse : mobile (session, réseau, écrans, synchronisation avec l'API) et API (jetons, suspension, signalements, règles métier) | 0033 à 0037, 0040 |
 | 4 | Préparation du déploiement : image Docker, migrations, `eas.json`, [marche à suivre](deploiement.md) | 0038, 0039 |
 | 5 | Documentation : spécification 0.2, anciens ADR annotés | — |
-| 6 | Renommage en Uzu : à faire, attend l'identifiant de bundle et le schéma de lien | — |
-| 7 | Défauts trouvés par la recette finale | — |
+| 6 | Renommage en Uzu : nom affiché, `com.victorsauter.uzu`, liens `uzu://` ; le dépôt et le code gardent le nom `dogo` | 0041 |
+| 7 | Défauts trouvés par la recette finale | 0040 révisé |
 
 **Vérifications sur `integration/revue-v1` :** __TESTS__. Recette rejouée en entier sur simulateur iOS et, pour la première fois, sur émulateur Android. L'image Docker de l'API a été construite et lancée en local.
 
@@ -48,7 +48,7 @@ Les corrections sont réunies sur la branche `integration/revue-v1`, en attente 
 - Les inscriptions d'un membre qui quitte une organisation : tranché (elles sont annulées) et corrigé.
 - Sans temps réel, un changement fait par quelqu'un d'autre n'apparaît qu'au retour sur l'écran, en tirant pour rafraîchir, ou toutes les 15 secondes dans le fil : inchangé, c'est le fonctionnement prévu en V1. L'application signale désormais quand un rafraîchissement échoue.
 
-**Ce qui reste avant les premiers testeurs** (détail dans [`revue-v1.md`](revue-v1.md) et [`deploiement.md`](deploiement.md)) : fusionner la branche, choisir l'hébergeur, créer les comptes Apple, Google et Expo, fournir les textes légaux, fixer le nom et les identifiants définitifs de l'application.
+**Ce qui reste avant les premiers testeurs** (détail dans [`revue-v1.md`](revue-v1.md) et [`deploiement.md`](deploiement.md)) : fusionner la branche, choisir l'hébergeur, créer les comptes Apple, Google et Expo, fournir les textes légaux.
 
 **Jamais essayé, faute de comptes ou d'appareil :** la connexion Apple et Google, la réception d'une notification, l'appareil photo, l'application sur un appareil physique, la création automatique de la balade suivante d'une série dans la durée.
 
