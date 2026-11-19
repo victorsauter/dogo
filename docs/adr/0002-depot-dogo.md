@@ -2,6 +2,7 @@
 
 - **Statut :** Accepté
 - **Date :** 18/11/2026
+- **Précisé par :** l'arborescence proposée (`api/`, `mobile/`, `docs/`) est en place depuis le 18/11/2026.
 
 ## Contexte
 

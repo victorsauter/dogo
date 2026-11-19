@@ -2,6 +2,7 @@
 
 - **Statut :** Accepté
 - **Date :** 18/11/2026
+- **Précisé par :** [ADR 0009](0009-jetons-de-session.md) et [ADR 0035](0035-rotation-des-jetons-delai-de-grace.md) : mécanisme de session (jeton rotatif, familles, délai de grâce).
 
 ## Contexte
 

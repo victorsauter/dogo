@@ -3,6 +3,7 @@
 - **Statut :** Accepté
 - **Date :** 18/11/2026
 - **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
+- **Précisé par :** [ADR 0022](0022-notifications-push-mobile.md) et [ADR 0033](0033-fin-de-session-et-delais-reseau.md).
 
 ## Contexte
 

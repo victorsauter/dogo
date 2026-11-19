@@ -1,8 +1,8 @@
 # ADR 0028 — Onglet Balades : deux vues au choix, panneau coulissant par défaut
 
 - **Statut :** Accepté
-- **Date :** 19/11/2026
-- **Note :** décision prise par le porteur du produit après avoir essayé deux prototypes sur simulateur et sur iPhone. Elle n'est pas encore développée ; voir le [plan](../plan-panneau-balades.md). Le choix d'une vue unique est reporté après les essais avec de vrais utilisateurs.
+- **Date :** 18/11/2026
+- **Note :** décision prise par le porteur du produit après avoir essayé deux prototypes sur simulateur et sur iPhone. Les deux vues ont été livrées par les demandes de fusion #15 et #16 ; restent à faire l'essai sur Android, l'écoute au lecteur d'écran et les essais avec de vrais utilisateurs. Voir le [plan](../plan-panneau-balades.md). Le choix d'une vue unique est reporté après les essais avec de vrais utilisateurs.
 
 ## Contexte
 

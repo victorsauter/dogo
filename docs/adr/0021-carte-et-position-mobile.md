@@ -3,6 +3,7 @@
 - **Statut :** Accepté
 - **Date :** 18/11/2026
 - **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
+- **Précisé par :** [ADR 0039](0039-profils-de-build-eas.md) : la clé Google Maps Android passe par l'option du plugin et les variables d'environnement EAS.
 
 ## Contexte
 

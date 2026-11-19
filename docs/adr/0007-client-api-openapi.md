@@ -3,6 +3,7 @@
 - **Statut :** Accepté
 - **Date :** 18/11/2026
 - **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
+- **Précisé par :** [ADR 0013](0013-client-api-et-donnees.md) : l'outil de génération du client est choisi.
 
 ## Contexte
 

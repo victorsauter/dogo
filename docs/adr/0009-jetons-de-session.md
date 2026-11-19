@@ -3,6 +3,7 @@
 - **Statut :** Accepté
 - **Date :** 18/11/2026
 - **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
+- **Précisé par :** [ADR 0035](0035-rotation-des-jetons-delai-de-grace.md) : délai de grâce et familles de jetons ; la phrase « un seul réussit » ne vaut plus.
 
 ## Contexte
 

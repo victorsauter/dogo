@@ -40,6 +40,8 @@ xcrun simctl openurl booted "exp://127.0.0.1:8081"
 
 L'écran de connexion propose alors une « Connexion de test » : chaque identifiant saisi crée un compte distinct, ce qui permet de jouer plusieurs personnes.
 
+Pour voir l'application avec des balades, des chiens et des messages, la même carte propose des données de démonstration fictives autour de Seppois-le-Haut, à générer et à supprimer d'un geste. Elles ne sont permises qu'en développement ; voir [`mobile/README.md`](mobile/README.md#données-de-démonstration-développement) et [`api/README.md`](api/README.md#données-de-démonstration-développement).
+
 Les organisations se valident avec un compte administrateur de test ; la marche à suivre est dans le [README de l'API](api/README.md#agir-en-administrateur-en-local).
 
 ## Vérifier

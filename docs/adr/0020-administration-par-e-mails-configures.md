@@ -3,6 +3,7 @@
 - **Statut :** Accepté
 - **Date :** 18/11/2026
 - **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
+- **Précisé par :** [ADR 0031](0031-durcissement-de-l-api.md) et [ADR 0036](0036-suspension-et-signalements.md).
 
 ## Contexte
 
