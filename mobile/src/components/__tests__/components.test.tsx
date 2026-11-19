@@ -18,6 +18,7 @@ import {
   MenuPill,
   placeMenu,
   TextField,
+  WalksMap,
 } from '..';
 import { errorIcon } from '../ErrorState';
 
@@ -295,4 +296,27 @@ describe('ErrorState icon', () => {
     expect(errorIcon(new ApiError({ kind: 'client' }))).toBe('warning');
     expect(errorIcon(undefined)).toBe('warning');
   });
+});
+
+describe('WalksMap', () => {
+  it.each(['light', 'dark'] as const)(
+    'draws the map in the %s theme (Android stayed light without it)',
+    async (scheme) => {
+      await renderWithTheme(
+        <WalksMap
+          initialRegion={{
+            latitude: 47.5,
+            longitude: 7.2,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          }}
+          walks={[]}
+          onRegionChange={() => {}}
+          onOpenWalk={() => {}}
+        />,
+        scheme,
+      );
+      expect(screen.getByTestId('walks-map').props.userInterfaceStyle).toBe(scheme);
+    },
+  );
 });

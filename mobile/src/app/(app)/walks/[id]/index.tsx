@@ -114,7 +114,7 @@ export default function WalkDetailScreen() {
 function WalkDetailContent({ walk }: { walk: WalkDetail }) {
   const router = useGuardedRouter();
   const { user } = useSession();
-  const { radii, spacing } = useTheme();
+  const { radii, spacing, dark } = useTheme();
   const accept = useAcceptRegistration(walk.id);
   const decline = useDeclineRegistration(walk.id);
   const cancelWalk = useCancelWalk(walk.id);
@@ -258,6 +258,7 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
         <View style={{ height: 180, borderRadius: radii.md, overflow: 'hidden' }}>
           <MapView
             testID="walk-map"
+            userInterfaceStyle={dark ? 'dark' : 'light'}
             style={{ flex: 1 }}
             initialRegion={regionAround(walk.location, 0.01)}
             scrollEnabled={false}

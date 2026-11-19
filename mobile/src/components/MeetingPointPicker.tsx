@@ -29,7 +29,7 @@ export function MeetingPointPicker({
   error,
   name,
 }: MeetingPointPickerProps) {
-  const { colors, radii, spacing } = useTheme();
+  const { colors, radii, spacing, dark } = useTheme();
   const map = useRef<MapView>(null);
 
   useEffect(() => {
@@ -51,6 +51,7 @@ export function MeetingPointPicker({
         <MapView
           ref={map}
           testID="meeting-point-map"
+          userInterfaceStyle={dark ? 'dark' : 'light'}
           accessibilityLabel={t.walk.meetingPointMap}
           style={{ flex: 1 }}
           initialRegion={regionAround(value, PICKER_DELTA)}
