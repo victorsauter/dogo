@@ -9,7 +9,8 @@ import { useSyncExternalStore } from 'react';
 export type DiscoverLayout = 'panel' | 'list';
 
 export const DEFAULT_DISCOVER_LAYOUT: DiscoverLayout = 'panel';
-export const DISCOVER_LAYOUT_STORAGE_KEY = 'dogo.discoverLayout';
+// `uzu.` prefix, like the other storage keys (ADR 0041).
+export const DISCOVER_LAYOUT_STORAGE_KEY = 'uzu.discoverLayout';
 
 /** A stored value to a layout: anything unknown (including the retired `current`) is the default. */
 export function parseDiscoverLayout(stored: unknown): DiscoverLayout {

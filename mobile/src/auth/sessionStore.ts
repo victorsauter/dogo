@@ -34,7 +34,8 @@ export interface SecureStorage {
   deleteItemAsync(key: string): Promise<void>;
 }
 
-export const SESSION_STORAGE_KEY = 'dogo.session';
+// Storage keys start with `uzu.` (ADR 0041). The old `dogo.` keys are not migrated: no build was ever distributed, and the new bundle identifier makes a new app anyway.
+export const SESSION_STORAGE_KEY = 'uzu.session';
 
 /** Attempts of a secure storage operation before giving up (the keychain can fail transiently). */
 const STORAGE_ATTEMPTS = 3;

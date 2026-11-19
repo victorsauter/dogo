@@ -1,22 +1,24 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 /**
- * Identity of the app. This is the only place to change when the app is renamed
- * (see "Construire une version de test" in mobile/README.md for what else follows:
- * the Apple audience of the API, the OAuth clients of Google, the store listings).
- * The bundle identifier and the package name are frozen once a first build has
- * been sent to TestFlight or Google Play.
+ * Identity of the app (ADR 0041: the product is called Uzu; the repository and the
+ * `dogo` folder keep their name). This is the main place to change when the app is
+ * renamed (see "Construire une version de test" in mobile/README.md for what else
+ * follows: the Apple audience of the API, the OAuth clients of Google, the store
+ * listings; the deep link scheme is also written in `src/lib/appLinks.ts`, which a
+ * test keeps equal to `urlScheme`). The bundle identifier and the package name are
+ * confirmed, and frozen from the first build sent to TestFlight or Google Play.
  */
 export const APP = {
   /** Name shown under the icon and in the permission texts. */
-  displayName: 'dogo',
+  displayName: 'Uzu',
   /** Expo slug, also the project name on expo.dev. */
-  slug: 'dogo',
-  /** Deep link scheme (`dogo://walks/<id>`), also used by push notification links. */
-  urlScheme: 'dogo',
-  /** Provisional identifier, to confirm before any store submission (spec §7). */
-  iosBundleIdentifier: 'com.victorsauter.dogo',
-  androidPackage: 'com.victorsauter.dogo',
+  slug: 'uzu',
+  /** Deep link scheme (`uzu://walks/<id>`), also used by push notification links. */
+  urlScheme: 'uzu',
+  /** Confirmed identifiers (ADR 0041), frozen from the first build sent to a store (spec §7). */
+  iosBundleIdentifier: 'com.victorsauter.uzu',
+  androidPackage: 'com.victorsauter.uzu',
 } as const;
 
 /**
