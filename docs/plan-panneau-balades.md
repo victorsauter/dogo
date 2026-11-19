@@ -1,16 +1,16 @@
 # dogo — Plan : onglet Balades, vues Panneau et Liste
 
-**Version :** 0.1 · 19/11/2026 · **État :** planifié, aucun développement engagé
+**Version :** 0.2 · 18/11/2026 · **État :** premier lot livré sur iPhone (demandes de fusion #15 et #16) ; Android, lecteur d'écran et essais restent à faire
 
-L'onglet Balades proposera deux vues au choix : la carte en plein écran avec un panneau coulissant, par défaut, et une liste en plein écran ([ADR 0028](adr/0028-balades-carte-et-panneau-coulissant.md)). Le choix d'une vue unique attendra les essais avec des utilisateurs. Ce document liste ce qu'il faut faire pour passer du prototype à l'application.
+L'onglet Balades propose deux vues au choix : la carte en plein écran avec un panneau coulissant, par défaut, et une liste en plein écran ([ADR 0028](adr/0028-balades-carte-et-panneau-coulissant.md)). Le choix d'une vue unique attend les essais avec des utilisateurs. Ce document liste ce qu'il fallait faire pour passer du prototype à l'application, et où en est chaque tâche.
 
 ## D'où on part
 
-Un prototype existe sur la branche locale `proto/balades-dispositions`, qui n'est pas poussée sur GitHub.
+Un prototype existait sur la branche locale `proto/balades-dispositions`. Son code est maintenant dans `main`.
 
-- **Contenu :** les vues Panneau et Liste, la disposition actuelle et un sélecteur provisoire en haut de l'onglet. Le code est dans `mobile/src/discover/`.
-- **Vérifié :** 446 tests, dont les 433 existants ; essai sur simulateur iOS en mode clair et sombre ; essai sur un iPhone réel.
-- **Jamais vérifié :** Android, un lecteur d'écran, des personnes extérieures au projet.
+- **Contenu :** les vues Panneau et Liste et le réglage « Affichage des balades » du profil. Le code est dans `mobile/src/discover/`.
+- **Vérifié :** essai sur simulateur iOS en mode clair et sombre ; essai sur un iPhone réel.
+- **Jamais vérifié :** Android, un lecteur d'écran, un petit écran avec un texte agrandi, des personnes extérieures au projet.
 
 ## Ce qui est déjà tranché
 
@@ -26,21 +26,21 @@ Un prototype existe sur la branche locale `proto/balades-dispositions`, qui n'es
 
 ## Travaux
 
-| N° | Tâche | Difficulté |
-| --- | --- | --- |
-| 1 | Reprendre les vues Panneau et Liste du prototype ; retirer la disposition actuelle et le sélecteur provisoire | Moyenne |
-| 1 bis | Réglage « Affichage des balades » dans le profil : deux choix illustrés, Panneau par défaut, effet immédiat | Faible |
-| 2 | Vue Panneau : actualiser sans tirer, au retour sur l'onglet et par un moyen explicite | Faible |
-| 3 | Filtres compacts, communs aux deux vues : une seule rangée, le reste derrière un bouton « Filtres » | Moyenne |
-| 4 | Bouton « Ma position » pour recentrer la carte | Faible |
-| 5 | Vue Panneau : dire que la liste dépend de la carte, « N balades dans cette zone », et un état vide qui invite à déplacer la carte | Faible |
-| 6 | Petits écrans et texte agrandi : règles de repli quand le milieu laisse trop peu de carte | Moyenne |
-| 7 | Android : émulateur et appareil réel, gestes du panneau, bouton retour de la carte vers la liste, carte Google | Élevée |
-| 8 | Lecteur d'écran : en-tête du panneau, fiches, ordre de lecture entre carte et liste | Moyenne |
-| 9 | Essai des deux vues avec des personnes peu à l'aise avec un téléphone, sans aide, puis règle définitive | Hors code |
-| 10 | Nettoyage : tests, README mobile, suppression de la branche du prototype ; retrait de la vue non retenue si une seule est gardée | Faible |
+| N° | Tâche | Difficulté | État |
+| --- | --- | --- | --- |
+| 1 | Reprendre les vues Panneau et Liste du prototype ; retirer la disposition actuelle et le sélecteur provisoire | Moyenne | Faite |
+| 1 bis | Réglage « Affichage des balades » dans le profil : deux choix illustrés, Panneau par défaut, effet immédiat | Faible | Faite |
+| 2 | Vue Panneau : actualiser sans tirer, au retour sur l'onglet et par un moyen explicite | Faible | Faite |
+| 3 | Filtres compacts, communs aux deux vues : une seule rangée, le reste derrière un bouton « Filtres » | Moyenne | Faite autrement : une rangée de pastilles-menus (ADR 0029), sans bouton « Filtres » |
+| 4 | Bouton « Ma position » pour recentrer la carte | Faible | Faite |
+| 5 | Vue Panneau : dire que la liste dépend de la carte, « N balades dans cette zone », et un état vide qui invite à déplacer la carte | Faible | Faite ; le plafond de 100 résultats est maintenant signalé |
+| 6 | Petits écrans et texte agrandi : règles de repli quand le milieu laisse trop peu de carte | Moyenne | Partielle : jamais vérifiée sur petit écran avec un texte agrandi ; une recette a relevé des textes tronqués en très grande police |
+| 7 | Android : émulateur et appareil réel, gestes du panneau, bouton retour de la carte vers la liste, carte Google | Élevée | Non faite : Android n'a jamais été validé |
+| 8 | Lecteur d'écran : en-tête du panneau, fiches, ordre de lecture entre carte et liste | Moyenne | Partielle : libellés posés, jamais écoutés avec un lecteur d'écran |
+| 9 | Essai des deux vues avec des personnes peu à l'aise avec un téléphone, sans aide, puis règle définitive | Hors code | Non faite |
+| 10 | Nettoyage : tests, README mobile, suppression de la branche du prototype ; retrait de la vue non retenue si une seule est gardée | Faible | Non faite |
 
-Les tâches 1 à 5 forment un premier lot livrable sur iPhone, avec les deux vues. Les tâches 6 à 8 demandent des appareils ou des réglages qu'on n'a pas encore. La tâche 9 peut se faire dès la fin du premier lot.
+Les tâches 1 à 5 formaient le premier lot, livré sur iPhone avec les deux vues. Les tâches 6 à 8 demandent des appareils ou des réglages qu'on n'a pas encore. La tâche 9 peut se faire dès maintenant.
 
 ### Détail de l'essai (tâche 9)
 
