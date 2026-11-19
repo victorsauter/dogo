@@ -38,6 +38,7 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0034](0034-robustesse-des-ecrans.md) | Robustesse des écrans : cache cumulatif du fil, écritures sans attente, navigation conditionnée au focus | Accepté |
 | [0035](0035-rotation-des-jetons-delai-de-grace.md) | Rotation des jetons de rafraîchissement : familles, délai de grâce, révocation par famille et purge ; précise l'ADR 0009 | Proposé |
 | [0036](0036-suspension-et-signalements.md) | Suspension d'un compte (geler, annuler, laisser partir) et notification push des signalements ; précise les ADR 0020 et 0023 | Proposé |
+| [0038](0038-image-et-migrations-en-production.md) | Image de l'API et migrations en production : image .NET Ubuntu non root, bundle EF Core lancé à chaque déploiement | Proposé |
 | [0039](0039-profils-de-build-eas.md) | Profils de build EAS : variables d'environnement EAS, numéros de build distants, TestFlight par le profil `preview`, garde-fou de distribution | Proposé |
 
 ## Statuts

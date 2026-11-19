@@ -49,3 +49,18 @@ jobs:
       # Integration tests start PostGIS with Testcontainers (Docker is available on ubuntu-latest).
       - name: Test
         run: dotnet test --no-build --configuration Release
+
+  # Builds the production image (not published) so that a broken Dockerfile is seen before a deployment.
+  docker-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the image
+        run: docker build --tag dogo-api:ci api
+
+      - name: Check the image (non-root user, migration bundle)
+        run: |
+          test "$(docker run --rm --entrypoint id dogo-api:ci -u)" != "0"
+          docker run --rm --entrypoint ./efbundle dogo-api:ci --help

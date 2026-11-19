@@ -5,10 +5,12 @@ on:
     branches: [main]
     paths:
       - 'mobile/**'
+      - 'api/openapi.json'
       - '.github/workflows/mobile.yml'
   pull_request:
     paths:
       - 'mobile/**'
+      - 'api/openapi.json'
       - '.github/workflows/mobile.yml'
 
 concurrency:
@@ -35,6 +37,15 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      # The client is generated from api/openapi.json (ADR 0007): fail when the committed one is stale.
+      - name: Check that the API client is up to date
+        run: |
+          npm run api:generate
+          if ! git diff --exit-code -- src/api/schema.d.ts; then
+            echo "::error file=mobile/src/api/schema.d.ts::The API client is stale. Run 'npm run api:generate' in mobile/ and commit the result."
+            exit 1
+          fi
 
       - name: Typecheck
         run: npm run typecheck

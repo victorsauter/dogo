@@ -1,0 +1,124 @@
+# EXEMPLE : serveur unique avec Docker Compose (docs/deploiement.md, option « serveur privé virtuel »).
+# À copier et à adapter, pas à lancer tel quel : aucun secret ici, les valeurs viennent du fichier .env
+# placé à côté (modèle : api/.env.example pour les réglages de l'API, plus les trois variables ci-dessous).
+#
+#   POSTGRES_PASSWORD  mot de passe de la base ; des lettres et chiffres seulement (il entre dans une
+#                      chaîne de connexion) : openssl rand -hex 24
+#   API_DOMAIN         nom public de l'API, par exemple api.example.com (enregistrement DNS vers le serveur)
+#   DOGO_VERSION       étiquette de l'image : l'identifiant court du commit, par exemple
+#                      DOGO_VERSION=$(git rev-parse --short HEAD) ; sert aussi au retour arrière
+#
+# Première mise en ligne et mises à jour : docs/deploiement.md. En bref, depuis api/deploy/ :
+#   docker compose -f docker-compose.production.example.yml build api
+#   docker compose -f docker-compose.production.example.yml up -d db
+#   docker compose -f docker-compose.production.example.yml run --rm migrate
+#   docker compose -f docker-compose.production.example.yml up -d api caddy
+#
+# Une seule instance de l'API (photos sur disque, limitation de débit et file de notifications en
+# mémoire : ADR 0010, 0019, 0031) : ne pas ajouter de réplicas.
+
+name: dogo-production
+
+services:
+  db:
+    # Image PostGIS officielle, étiquette fixée comme dans api/docker-compose.yml. Publiée en amd64
+    # seulement : choisir un serveur x86 (pas ARM).
+    image: postgis/postgis:18-3.6
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dogo
+      POSTGRES_USER: dogo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}
+    volumes:
+      - db-data:/var/lib/postgresql
+    # Aucun port publié : seule l'API, sur le réseau interne, joint la base.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dogo -d dogo"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Migrations : tâche ponctuelle, lancée à la main à chaque déploiement, avant de démarrer la nouvelle
+  # API : docker compose run --rm migrate. Même image que l'API (bundle EF Core, ADR 0038).
+  # À terme, l'API peut utiliser un rôle PostgreSQL limité aux données et ce service un rôle
+  # propriétaire du schéma ; pour un pilote, le même rôle sert aux deux.
+  migrate:
+    image: dogo-api:${DOGO_VERSION:?définir DOGO_VERSION dans .env}
+    build:
+      context: ..
+    profiles: ["tools"]
+    entrypoint: ["./efbundle"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Dogo: Host=db;Database=dogo;Username=dogo;Password=${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: dogo-api:${DOGO_VERSION:?définir DOGO_VERSION dans .env}
+    build:
+      context: ..
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Dogo: Host=db;Database=dogo;Username=dogo;Password=${POSTGRES_PASSWORD}
+      AllowedHosts: ${API_DOMAIN:?définir API_DOMAIN dans .env}
+      # Seul le proxy (réseau interne ci-dessous) est cru pour X-Forwarded-For et X-Forwarded-Proto.
+      Proxy__Enabled: "true"
+      Proxy__KnownNetworks__0: 172.30.0.0/24
+    volumes:
+      # Volume nommé : vide à sa création, il reprend les droits de l'utilisateur « app » de l'image.
+      # Avec un dossier de l'hôte à la place : chown 1654:1654 sur ce dossier.
+      - photos:/data/photos
+    depends_on:
+      db:
+        condition: service_healthy
+    # Pas de ports publiés : le proxy y accède par le réseau interne. Le contrôle de santé est celui
+    # de l'image (/api/v1/health).
+    expose:
+      - "8080"
+
+  # Proxy inverse : certificat TLS obtenu et renouvelé automatiquement (Let's Encrypt). Les ports 80 et 443
+  # doivent être ouverts sur le serveur et le DNS de API_DOMAIN pointer dessus avant le premier démarrage.
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?définir API_DOMAIN dans .env}
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - caddy-data:/data   # certificats : à conserver (limites de Let's Encrypt)
+      - caddy-config:/config
+    depends_on:
+      - api
+
+configs:
+  caddyfile:
+    content: |
+      {$$API_DOMAIN} {
+          encode zstd gzip
+          # Les photos font jusqu'à 5 Mo : ne pas limiter le corps en dessous de 6 Mo (nginx, lui, limite à 1 Mo par défaut).
+          reverse_proxy api:8080
+      }
+
+volumes:
+  db-data:
+  photos:
+  caddy-data:
+  caddy-config:
+
+networks:
+  default:
+    # Sous-réseau fixé pour que Proxy__KnownNetworks__0 le désigne sans ambiguïté.
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

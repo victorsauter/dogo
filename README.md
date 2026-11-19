@@ -62,4 +62,5 @@ Les tests de l'API démarrent leur propre base PostgreSQL dans Docker.
 | [Spécification technique](docs/specification-v1.md) | Modèle de données, règles métier, points d'entrée |
 | [Plan de développement](docs/plan.md) | Les tâches, leur état, et ce qu'il reste à faire |
 | [Décisions d'architecture](docs/adr/README.md) | Un fichier par décision technique |
+| [Guide de déploiement](docs/deploiement.md) | Mettre l'API en ligne : image, migrations, sauvegardes, hébergeurs |
 | [API](api/README.md) et [mobile](mobile/README.md) | Commandes, configuration et conventions de chaque partie |

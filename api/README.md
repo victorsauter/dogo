@@ -294,7 +294,13 @@ dotnet tool restore
 dotnet ef migrations add <Nom> --project src/Dogo.Api --output-dir Infrastructure/Persistence/Migrations
 ```
 
-Hors Development, les migrations ne s'appliquent pas au démarrage. Au choix :
+Hors Development, les migrations ne s'appliquent pas au démarrage. **En production, on utilise le bundle de migrations** que contient l'image (`/app/efbundle`, [ADR 0038](../docs/adr/0038-image-et-migrations-en-production.md)) :
+
+```bash
+docker run --rm --entrypoint ./efbundle -e "ConnectionStrings__Dogo=Host=…;Database=dogo;Username=…;Password=…" dogo-api:<étiquette>
+```
+
+Pour une base de développement ou la relecture du SQL, au choix :
 
 ```bash
 # directement sur une base
@@ -304,6 +310,15 @@ ConnectionStrings__Dogo="Host=…;Database=dogo;Username=…;Password=…" \
 # ou un script SQL idempotent à relire puis exécuter
 dotnet ef migrations script --idempotent --project src/Dogo.Api --output migrate.sql
 ```
+
+## Image et déploiement
+
+```bash
+cd api
+docker build -t dogo-api:local .   # image de production : utilisateur « app », port 8080, volume /data/photos
+```
+
+L'image contient l'API et le bundle de migrations. La construction de l'image n'écrit pas `openapi.json` (`OpenApiGenerateDocuments=false` dans le `Dockerfile` seulement). Procédure complète (architecture, variables, sauvegardes, hébergeurs, liste de contrôle) : [guide de déploiement](../docs/deploiement.md). Exemple Docker Compose de production : [`deploy/docker-compose.production.example.yml`](deploy/docker-compose.production.example.yml).
 
 ## Description OpenAPI
 
