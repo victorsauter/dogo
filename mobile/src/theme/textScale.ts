@@ -12,9 +12,20 @@ export function useFontScale(): number {
   return useWindowDimensions().fontScale;
 }
 
+/**
+ * Android reports its « 130 % » setting as 1.2999999523 (a float): compared
+ * exactly, the threshold was never reached there.
+ */
+const FONT_SCALE_TOLERANCE = 0.001;
+
+/** True when `fontScale` is enlarged enough for the layout to give way. */
+export function isLargeText(fontScale: number): boolean {
+  return fontScale >= LARGE_TEXT_SCALE - FONT_SCALE_TOLERANCE;
+}
+
 /** True when text is enlarged enough for the layout to give way: wrap, stack, grow. */
 export function useLargeText(): boolean {
-  return useFontScale() >= LARGE_TEXT_SCALE;
+  return isLargeText(useFontScale());
 }
 
 /**

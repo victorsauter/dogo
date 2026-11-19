@@ -81,6 +81,8 @@ describe('dog detail', () => {
     await signIn();
     await renderRouter(APP_DIR, { initialUrl: `/dogs/${testDog.id}` });
     expect(await screen.findByText(t.errors['dog.not_found'])).toBeTruthy();
+    expect(screen.getByText(t.dog.notFoundTitle)).toBeTruthy();
+    expect(screen.queryByText(t.states.errorTitle)).toBeNull();
   });
 });
 

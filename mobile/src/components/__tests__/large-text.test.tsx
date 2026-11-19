@@ -5,7 +5,7 @@ import { t } from '@/strings';
 import { setFontScale, setFontScaleLive } from '@/test/fontScale';
 import { testDog, walkResult } from '@/test/fixtures';
 import { renderWithTheme } from '@/test/render';
-import { LARGE_TEXT_SCALE, scaledSize } from '@/theme';
+import { isLargeText, LARGE_TEXT_SCALE, scaledSize } from '@/theme';
 
 import { Avatar } from '../Avatar';
 import { DateTimeField } from '../DateTimeField';
@@ -41,6 +41,13 @@ describe('line limits', () => {
     expect(screen.getByText(longTitle).props.numberOfLines).toBe(2);
     await setFontScaleLive(LARGE_TEXT_SCALE);
     expect(screen.getByText(longTitle).props.numberOfLines).toBeUndefined();
+  });
+
+  it('takes Android « 130 % », reported as 1.2999999523, for large text', () => {
+    expect(isLargeText(1.2999999523162842)).toBe(true);
+    expect(isLargeText(LARGE_TEXT_SCALE)).toBe(true);
+    expect(isLargeText(1.15)).toBe(false);
+    expect(isLargeText(LARGE_TEXT_SCALE - 0.01)).toBe(false);
   });
 
   it('shows a dog card and a list row whole when enlarged', async () => {

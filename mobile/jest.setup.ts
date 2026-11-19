@@ -90,6 +90,7 @@ jest.mock('react-native-maps', () => {
           onRegionChangeComplete: props.onRegionChangeComplete,
           onPress: props.onPress,
           mapPadding: props.mapPadding,
+          userInterfaceStyle: props.userInterfaceStyle,
         } as object),
       },
       props.children,

@@ -52,12 +52,15 @@ export const WalksMap = forwardRef<MapView, WalksMapProps>(function WalksMap(
   },
   ref,
 ) {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, dark } = useTheme();
   return (
     <View style={{ flex: 1 }}>
       <MapView
         ref={ref}
         testID="walks-map"
+        // Follows the app's theme. Android's Google Maps only reads it when the map
+        // is created (react-native-maps), and stayed light without it.
+        userInterfaceStyle={dark ? 'dark' : 'light'}
         accessibilityLabel={t.discover.mapLabel}
         style={{ flex: 1 }}
         initialRegion={initialRegion}

@@ -45,6 +45,7 @@ export default function EditDogScreen() {
       <Screen scroll={false}>
         <ErrorState
           error={dog.error}
+          notFoundTitle={t.dog.notFoundTitle}
           message={dog.isError ? undefined : t.errors['dog.forbidden']}
           onRetry={dog.isError ? () => dog.refetch() : undefined}
         />

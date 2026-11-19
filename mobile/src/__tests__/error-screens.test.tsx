@@ -33,6 +33,9 @@ describe('a walk that does not exist, opened by a link', () => {
     await renderRouter('./src/app', { initialUrl: '/walks/unknown' });
 
     expect(await screen.findByText(t.errors['walk.not_found'])).toBeTruthy();
+    // A 404 is not « a problem »: the title says the walk cannot be found.
+    expect(screen.getByText(t.walk.notFoundTitle)).toBeTruthy();
+    expect(screen.queryByText(t.states.errorTitle)).toBeNull();
     expect(screen.queryByRole('button', { name: t.common.retry })).toBeNull();
     const calls = fetchMock.mock.calls.length;
 

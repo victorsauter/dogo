@@ -5,7 +5,8 @@ import { sessionStore } from '@/auth/sessionStore';
 import {
   claimNavigation,
   hrefKey,
-  REPEATED_NAVIGATION_MS,
+  notePathname,
+  PENDING_NAVIGATION_TIMEOUT_MS,
   resetNavigationGuard,
 } from '@/lib/navigation';
 import { t } from '@/strings';
@@ -22,15 +23,44 @@ afterEach(async () => {
 describe('the guard against repeated taps', () => {
   beforeEach(() => resetNavigationGuard());
 
+  beforeEach(() => notePathname('/'));
+
   it('lets a first navigation through and holds back its repeat', () => {
     expect(claimNavigation('/walks/new', 1_000)).toBe(true);
     expect(claimNavigation('/walks/new', 1_100)).toBe(false);
-    expect(claimNavigation('/walks/new', 1_000 + REPEATED_NAVIGATION_MS - 1)).toBe(false);
+    expect(claimNavigation('/walks/new', 1_000 + PENDING_NAVIGATION_TIMEOUT_MS - 1)).toBe(false);
   });
 
-  it('lets the same destination through again once the window has passed', () => {
+  it('holds back taps a second apart while the screen has not changed yet (slow device)', () => {
     expect(claimNavigation('/walks/new', 1_000)).toBe(true);
-    expect(claimNavigation('/walks/new', 1_000 + REPEATED_NAVIGATION_MS)).toBe(true);
+    expect(claimNavigation('/walks/new', 2_000)).toBe(false);
+    expect(claimNavigation('/walks/new', 3_000)).toBe(false);
+  });
+
+  it('holds back the taps that still land on the old screen once the new one is shown', () => {
+    expect(claimNavigation('/walks/new', 1_000)).toBe(true);
+    notePathname('/walks/new');
+    // However late: the person is on the form, the taps were meant for the first one.
+    expect(claimNavigation('/walks/new', 1_000 + PENDING_NAVIGATION_TIMEOUT_MS * 2)).toBe(false);
+  });
+
+  it('lets the same destination through at once after going back to where it started', () => {
+    expect(claimNavigation('/walks/new', 1_000)).toBe(true);
+    notePathname('/walks/new');
+    notePathname('/');
+    expect(claimNavigation('/walks/new', 1_050)).toBe(true);
+  });
+
+  it('lets the same destination through once the person went anywhere else', () => {
+    expect(claimNavigation('/walks/new', 1_000)).toBe(true);
+    notePathname('/walks/new');
+    notePathname('/mine');
+    expect(claimNavigation('/walks/new', 1_050)).toBe(true);
+  });
+
+  it('does not block for good a navigation that never happens', () => {
+    expect(claimNavigation('/walks/new', 1_000)).toBe(true);
+    expect(claimNavigation('/walks/new', 1_000 + PENDING_NAVIGATION_TIMEOUT_MS)).toBe(true);
   });
 
   it('never holds back a different destination, nor the same screen with other params', () => {
@@ -43,11 +73,11 @@ describe('the guard against repeated taps', () => {
   });
 
   it('identifies a destination by its path and its params, whatever their order', () => {
-    expect(hrefKey({ pathname: '/x/[a]', params: { a: '1', b: '2' } })).toBe(
-      hrefKey({ pathname: '/x/[a]', params: { b: '2', a: '1' } }),
+    expect(hrefKey({ pathname: '/walks/[id]', params: { id: '1', welcome: '2' } })).toBe(
+      hrefKey({ pathname: '/walks/[id]', params: { welcome: '2', id: '1' } }),
     );
-    expect(hrefKey({ pathname: '/x/[a]', params: { a: '1' } })).not.toBe(
-      hrefKey({ pathname: '/x/[a]', params: { a: '2' } }),
+    expect(hrefKey({ pathname: '/walks/[id]', params: { id: '1' } })).not.toBe(
+      hrefKey({ pathname: '/walks/[id]', params: { id: '2' } }),
     );
   });
 });
@@ -79,6 +109,35 @@ describe('rapid repeated taps', () => {
     // One « back » is enough to return: the screen was not stacked twice.
     await act(async () => router.back());
     await waitFor(() => expect(screen).toHavePathname('/'));
+  });
+
+  it('open the walk form once from « + », taps a second apart on a slow device', async () => {
+    await openHome();
+    const plus = screen.getByRole('button', { name: t.discover.createA11y });
+    const start = Date.now();
+    const clock = jest.spyOn(Date, 'now');
+
+    // Three taps a second apart, all before the new screen has appeared.
+    await act(async () => {
+      clock.mockReturnValue(start);
+      void fireEvent.press(plus);
+      clock.mockReturnValue(start + 1_000);
+      void fireEvent.press(plus);
+      clock.mockReturnValue(start + 2_000);
+      void fireEvent.press(plus);
+    });
+    await waitFor(() => expect(screen).toHavePathname('/walks/new'));
+    // A tap that lands on the old screen after the form is shown is ignored too.
+    clock.mockReturnValue(start + 3_000);
+    await act(async () => void fireEvent.press(plus));
+    clock.mockRestore();
+
+    await act(async () => router.back());
+    await waitFor(() => expect(screen).toHavePathname('/'));
+
+    // Back on the list: « + » opens the form again at once.
+    await fireEvent.press(screen.getByRole('button', { name: t.discover.createA11y }));
+    await waitFor(() => expect(screen).toHavePathname('/walks/new'));
   });
 
   it('open the walk form once from « + »', async () => {

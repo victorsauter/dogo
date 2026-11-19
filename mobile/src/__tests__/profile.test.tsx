@@ -288,5 +288,7 @@ describe('public profile', () => {
     await sessionStore.set(authResponse());
     await renderRouter(APP_DIR, { initialUrl: `/users/${other}` });
     expect(await screen.findByText(t.errors['user.not_found'])).toBeTruthy();
+    expect(screen.getByText(t.profile.notFoundTitle)).toBeTruthy();
+    expect(screen.queryByText(t.states.errorTitle)).toBeNull();
   });
 });

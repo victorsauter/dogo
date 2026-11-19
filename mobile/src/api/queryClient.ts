@@ -6,8 +6,12 @@ import { ApiError } from './errors';
 
 const MAX_RETRIES = 2;
 
-/** A request that timed out is retried once: two more full waits would keep a spinner up for a minute. */
-const MAX_TIMEOUT_RETRIES = 1;
+/**
+ * A request that timed out is not retried: it already waited the full time limit
+ * (20 s), and one more wait kept a pull-to-refresh spinning 40 s or more against
+ * an API out of reach. The screen says so at once and offers to try again.
+ */
+const MAX_TIMEOUT_RETRIES = 0;
 
 /**
  * Retries network and 5xx failures, never 4xx (429 included: retrying at once

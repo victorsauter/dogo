@@ -190,8 +190,12 @@ export function createAuthFetch(options: AuthFetchOptions) {
     if (session.accessTokenExpiresAt - now() > refreshMarginMs) return session.accessToken;
     try {
       return await refresh();
-    } catch {
-      // Refresh unreachable: try the current token, the call will report the failure.
+    } catch (error) {
+      // Refresh unreachable and the token already expired: the call could only be
+      // refused, and against an API that does not answer it waited a second time
+      // limit (a pull-to-refresh spun 40 s). The refresh failure is the answer.
+      if (session.accessTokenExpiresAt <= now()) throw error;
+      // Token still valid: try it, the call will report the failure.
       return session.accessToken;
     }
   }
