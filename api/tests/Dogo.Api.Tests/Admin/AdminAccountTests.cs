@@ -80,4 +80,32 @@ public sealed class AdminAccountTests(ApiFixture fixture) : ApiTestBase(fixture)
         // Reads stay allowed to a suspended account, but not the administration.
         await AssertProblemAsync(await other.GetAsync("/api/v1/admin/reports", Ct), HttpStatusCode.Forbidden, "admin.forbidden");
     }
+
+    [Fact]
+    public async Task A_suspended_administrator_is_not_shown_as_an_administrator()
+    {
+        var (admin, _) = await AdminAsync("admin");
+        var (other, otherSession) = await AdminAsync("other-admin");
+        Assert.True(otherSession.User.IsAdmin);
+
+        await admin.PostAsync($"/api/v1/admin/users/{otherSession.User.Id}/suspend", null, Ct);
+
+        var me = await ReadJsonAsync(await other.GetAsync("/api/v1/me", Ct));
+        Assert.Equal("Suspended", me.GetProperty("status").GetString());
+        Assert.False(me.GetProperty("isAdmin").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Outside_development_and_testing_a_dev_account_is_not_shown_as_an_administrator()
+    {
+        var devAccount = await InsertUserAsync(IdentityProvider.Dev, "admin");
+        var googleAccount = await InsertUserAsync(IdentityProvider.Google, "google-admin");
+        await using var staging = new DogoApiFactory(Fixture.ConnectionString, environment: "Staging");
+
+        var devMe = await ReadJsonAsync(await ClientFor(staging, devAccount.Id).GetAsync("/api/v1/me", Ct));
+        var googleMe = await ReadJsonAsync(await ClientFor(staging, googleAccount.Id).GetAsync("/api/v1/me", Ct));
+
+        Assert.False(devMe.GetProperty("isAdmin").GetBoolean());
+        Assert.True(googleMe.GetProperty("isAdmin").GetBoolean());
+    }
 }

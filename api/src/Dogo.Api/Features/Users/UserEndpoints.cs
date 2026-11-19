@@ -27,8 +27,8 @@ public static class UserEndpoints
 
         group.MapDelete("/me", DeleteMe)
             .WithName("deleteMe")
-            .WithSummary("Delete the signed-in user's account: upcoming walks cancelled, dogs, registrations, devices, memberships, blocks and sessions deleted; messages and reports kept without author.")
-            .ProducesProblem(StatusCodes.Status403Forbidden);
+            .WithSummary("Delete the signed-in user's account: upcoming walks cancelled, dogs, registrations, devices, memberships, blocks and sessions deleted; messages and reports kept without author. Allowed to a suspended account (the only write it may do).")
+            .AllowWhileSuspended();
 
         group.MapGet("/users/{id:guid}", GetUser)
             .WithName("getUser")

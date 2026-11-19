@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Dogo.Api.Features.Organizations;
+using Dogo.Api.Features.Reports;
 using Dogo.Api.Features.Walks;
 
 namespace Dogo.Api.Features.Notifications;
@@ -46,19 +47,29 @@ public enum NotificationType
 
     /// <summary>To the owner of an organisation an administrator approved.</summary>
     OrganizationApproved,
+
+    /// <summary>
+    /// To the administrators (except the reporter): a report was created (ADR 0036). Not a walk
+    /// notification: sent whatever the preferences, without deep link (no screen in V1).
+    /// </summary>
+    ReportCreated,
 }
 
 /// <summary>What a notification is about; becomes <c>data</c> and the deep link opened by the app.</summary>
 /// <param name="IdKey">Name of the id in <c>data</c>, e.g. <c>walkId</c>.</param>
-/// <param name="Path">Deep link path after <c>dogo://</c>, e.g. <c>walks/{id}</c>.</param>
+/// <param name="Path">Deep link path after <c>dogo://</c>, e.g. <c>walks/{id}</c>; null for no link (no <c>url</c> in <c>data</c>).</param>
 /// <param name="Name">Shown in the texts, e.g. the walk title.</param>
 /// <param name="StartsAt">Start of the walk, for texts that show it.</param>
-public sealed record NotificationSubject(string IdKey, Guid Id, string Path, string Name, DateTimeOffset? StartsAt = null)
+public sealed record NotificationSubject(string IdKey, Guid Id, string? Path, string Name, DateTimeOffset? StartsAt = null)
 {
     public static NotificationSubject ForWalk(Walk walk) => new("walkId", walk.Id, $"walks/{walk.Id}", walk.Title, walk.StartsAt);
 
     public static NotificationSubject ForOrganization(Organization organization) =>
         new("organizationId", organization.Id, $"organizations/{organization.Id}", organization.Name);
+
+    /// <summary>A report: no link, and only its category in the texts (shown on the lock screen).</summary>
+    public static NotificationSubject ForReport(Report report) =>
+        new("reportId", report.Id, null, NotificationTexts.ReportTypeLabel(report.Type));
 }
 
 /// <summary>

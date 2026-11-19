@@ -112,6 +112,9 @@ public sealed class JwksIdentityTokenValidator : IIdentityTokenValidator
             ValidAudiences = audiences,
             IssuerSigningKeys = keys.GetSigningKeys(),
             ValidateIssuerSigningKey = true,
+            // Defence in depth: Apple and Google both sign identity tokens with RS256 only
+            // (id_token_signing_alg_values_supported of their OpenID configurations).
+            ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
             ValidateLifetime = true,
             RequireExpirationTime = true,
             ClockSkew = TimeSpan.FromMinutes(1),

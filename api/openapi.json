@@ -225,7 +225,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Rotate the refresh token and get a new access token.",
+        "summary": "Rotate the refresh token and get a new access token. A token just replaced is accepted again for a short grace period; any later reuse revokes its session.",
         "operationId": "refreshSession",
         "requestBody": {
           "content": {
@@ -286,7 +286,7 @@
         "tags": [
           "Auth"
         ],
-        "summary": "Revoke a refresh token.",
+        "summary": "Revoke a refresh token and the session it belongs to (every token rotated from the same sign-in).",
         "operationId": "logout",
         "requestBody": {
           "content": {
@@ -526,7 +526,7 @@
         "tags": [
           "Users"
         ],
-        "summary": "Delete the signed-in user's account: upcoming walks cancelled, dogs, registrations, devices, memberships, blocks and sessions deleted; messages and reports kept without author.",
+        "summary": "Delete the signed-in user's account: upcoming walks cancelled, dogs, registrations, devices, memberships, blocks and sessions deleted; messages and reports kept without author. Allowed to a suspended account (the only write it may do).",
         "operationId": "deleteMe",
         "responses": {
           "204": {
@@ -534,16 +534,6 @@
           },
           "401": {
             "description": "Unauthorized",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3997,7 +3987,7 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Suspend an account: its writes are refused and its sessions revoked. Idempotent.",
+        "summary": "Suspend an account: writes refused (except deleting the account), sessions revoked, weekly series stopped, upcoming walks cancelled with their registrants notified, push devices removed, upcoming registrations to other walks cancelled. Idempotent.",
         "operationId": "adminSuspendUser",
         "parameters": [
           {
@@ -4074,7 +4064,7 @@
         "tags": [
           "Admin"
         ],
-        "summary": "Lift an account's suspension. Idempotent.",
+        "summary": "Lift an account's suspension. Restores nothing: series stay stopped, walks and registrations cancelled, devices and sessions gone. Idempotent.",
         "operationId": "adminUnsuspendUser",
         "parameters": [
           {

@@ -10,8 +10,11 @@ using Microsoft.Extensions.Options;
 
 namespace Dogo.Api.Features.Auth;
 
-/// <summary>Creates, refreshes and revokes sessions (access token + rotating refresh token, ADR 0009).</summary>
-public sealed class SessionService(
+/// <summary>
+/// Creates, refreshes and revokes sessions: access token + rotating refresh token (ADR 0009),
+/// grouped in families with a short reuse grace period (ADR 0035).
+/// </summary>
+public sealed partial class SessionService(
     DogoDbContext db,
     AccessTokenIssuer accessTokens,
     IOptions<JwtOptions> jwtOptions,
@@ -64,61 +67,129 @@ public sealed class SessionService(
             return Problems.AccountSuspended();
         }
 
-        return TypedResults.Ok(await CreateSessionAsync(user, cancellationToken));
+        // A sign-in starts a new family.
+        return TypedResults.Ok(await CreateSessionAsync(user, familyId: null, cancellationToken));
     }
 
-    /// <summary>Rotates a refresh token. Reusing a revoked token revokes every token of its user.</summary>
+    /// <summary>
+    /// Rotates a refresh token (ADR 0035). A token replaced less than the grace period ago gives
+    /// another token of the same family (lost response, concurrent refreshes); any other reuse
+    /// of a revoked token revokes its family, and only it.
+    /// </summary>
     public async Task<Results<Ok<SessionResponse>, ProblemHttpResult>> RefreshAsync(string refreshToken, CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow();
         var hash = Hash(refreshToken);
-        var stored = await db.RefreshTokens.Include(t => t.User)
+        var stored = await db.RefreshTokens.AsNoTracking().Include(t => t.User)
             .SingleOrDefaultAsync(t => t.TokenHash == hash, cancellationToken);
         if (stored is null || stored.ExpiresAt <= now)
         {
             return InvalidRefreshToken();
         }
 
-        if (stored.RevokedAt is not null)
+        // Everything that changes a family runs under its lock: concurrent refreshes of the same
+        // token are serialised, and a family revocation cannot miss a token issued meanwhile.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await LockFamilyAsync(stored.FamilyId, cancellationToken);
+        var state = await db.RefreshTokens.AsNoTracking()
+            .Where(t => t.Id == stored.Id)
+            .Select(t => new { t.RevokedAt, t.ReplacedAt })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (state is null)
         {
-            await RevokeAllAsync(stored.UserId, now, cancellationToken);
             return InvalidRefreshToken();
         }
 
-        if (stored.User.Status == UserStatus.Suspended)
+        if (state.RevokedAt is null)
         {
-            return Problems.AccountSuspended();
+            if (stored.User.Status == UserStatus.Suspended)
+            {
+                return Problems.AccountSuspended();
+            }
+
+            await db.RefreshTokens
+                .Where(t => t.Id == stored.Id && t.RevokedAt == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now).SetProperty(t => t.ReplacedAt, now), cancellationToken);
+            var session = await CreateSessionAsync(stored.User, stored.FamilyId, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return TypedResults.Ok(session);
         }
 
-        // Conditional update: of two concurrent refreshes with the same token, only one wins.
-        var revoked = await db.RefreshTokens
-            .Where(t => t.Id == stored.Id && t.RevokedAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now), cancellationToken);
-        if (revoked == 0)
+        if (await IsWithinGracePeriodAsync(stored.FamilyId, state.ReplacedAt, now, cancellationToken))
         {
-            await RevokeAllAsync(stored.UserId, now, cancellationToken);
-            return InvalidRefreshToken();
+            if (stored.User.Status == UserStatus.Suspended)
+            {
+                return Problems.AccountSuspended();
+            }
+
+            // The client never got (or lost) the successor: a new token of the same family. The
+            // earlier successor stays valid, so the client may keep whichever response it read.
+            var session = await CreateSessionAsync(stored.User, stored.FamilyId, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            LogGraceReuse(stored.UserId, stored.FamilyId);
+            return TypedResults.Ok(session);
         }
 
-        return TypedResults.Ok(await CreateSessionAsync(stored.User, cancellationToken));
+        var revoked = await RevokeFamilyAsync(stored.FamilyId, now, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        LogReuseDetected(stored.UserId, stored.FamilyId, revoked);
+        return InvalidRefreshToken();
     }
 
-    /// <summary>Revokes a refresh token. Unknown or already revoked tokens are ignored.</summary>
-    public Task RevokeAsync(string refreshToken, CancellationToken cancellationToken)
+    /// <summary>
+    /// Logs out: revokes the token's whole family (the session on that device), so that no
+    /// token issued during a grace period survives. Unknown tokens are ignored.
+    /// </summary>
+    public async Task RevokeAsync(string refreshToken, CancellationToken cancellationToken)
     {
         var now = timeProvider.GetUtcNow();
         var hash = Hash(refreshToken);
-        return db.RefreshTokens
-            .Where(t => t.TokenHash == hash && t.RevokedAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now), cancellationToken);
+        var familyId = await db.RefreshTokens.Where(t => t.TokenHash == hash).Select(t => (Guid?)t.FamilyId).SingleOrDefaultAsync(cancellationToken);
+        if (familyId is null)
+        {
+            return;
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await LockFamilyAsync(familyId.Value, cancellationToken);
+        await RevokeFamilyAsync(familyId.Value, now, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
-    private async Task<SessionResponse> CreateSessionAsync(User user, CancellationToken cancellationToken)
+    /// <summary>
+    /// A rotated token is accepted again for <see cref="JwtOptions.RefreshTokenGracePeriod"/>,
+    /// as long as its family is still alive (not logged out nor revoked).
+    /// </summary>
+    private async Task<bool> IsWithinGracePeriodAsync(Guid familyId, DateTimeOffset? replacedAt, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var grace = jwtOptions.Value.RefreshTokenGracePeriod;
+        return grace > TimeSpan.Zero
+            && replacedAt is { } at
+            && now - at <= grace
+            && await db.RefreshTokens.AnyAsync(t => t.FamilyId == familyId && t.RevokedAt == null && t.ExpiresAt > now, cancellationToken);
+    }
+
+    private Task<int> RevokeFamilyAsync(Guid familyId, DateTimeOffset now, CancellationToken cancellationToken) =>
+        db.RefreshTokens
+            .Where(t => t.FamilyId == familyId && t.RevokedAt == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now), cancellationToken);
+
+    /// <summary>Transaction-scoped advisory lock on a family, released at commit or rollback.</summary>
+    private Task LockFamilyAsync(Guid familyId, CancellationToken cancellationToken) =>
+        db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({FamilyLockKey(familyId)})", cancellationToken);
+
+    /// <summary>64-bit key of the family's advisory lock: the random half of the identifier.</summary>
+    internal static long FamilyLockKey(Guid familyId) => BitConverter.ToInt64(familyId.ToByteArray(), 8);
+
+    private async Task<SessionResponse> CreateSessionAsync(User user, Guid? familyId, CancellationToken cancellationToken)
     {
         var refreshToken = Base64Url(RandomNumberGenerator.GetBytes(32));
+        var id = Guid.CreateVersion7();
         db.RefreshTokens.Add(new RefreshToken
         {
+            Id = id,
             UserId = user.Id,
+            FamilyId = familyId ?? id,
             TokenHash = Hash(refreshToken),
             ExpiresAt = timeProvider.GetUtcNow() + jwtOptions.Value.RefreshTokenLifetime,
         });
@@ -126,14 +197,6 @@ public sealed class SessionService(
 
         var (accessToken, expiresAt) = accessTokens.Issue(user.Id);
         return new SessionResponse(accessToken, expiresAt, refreshToken, MeResponse.From(user, adminOptions.Value));
-    }
-
-    private async Task RevokeAllAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken)
-    {
-        logger.LogWarning("Revoked refresh token reused for user {UserId}; revoking all their sessions.", userId);
-        await db.RefreshTokens
-            .Where(t => t.UserId == userId && t.RevokedAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now), cancellationToken);
     }
 
     private static ProblemHttpResult InvalidRefreshToken() =>
@@ -155,4 +218,10 @@ public sealed class SessionService(
 
     private static string Base64Url(byte[] bytes) =>
         Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Refresh token of family {FamilyId} (user {UserId}) presented again within the grace period; new token issued")]
+    private partial void LogGraceReuse(Guid userId, Guid familyId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Revoked refresh token reused for user {UserId}; family {FamilyId} revoked ({Count} live tokens)")]
+    private partial void LogReuseDetected(Guid userId, Guid familyId, int count);
 }

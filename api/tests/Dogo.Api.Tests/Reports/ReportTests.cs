@@ -5,6 +5,7 @@ using Dogo.Api.Infrastructure.Auth;
 using Dogo.Api.Tests.Infrastructure;
 using Dogo.Api.Tests.Walks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -119,10 +120,85 @@ public sealed class ReportTests(ApiFixture fixture) : WalkTestBase(fixture)
     }
 
     [Fact]
-    public async Task The_logging_notifier_logs_the_id_and_type_but_never_the_facts()
+    public async Task Administrators_get_a_push_with_only_the_category_whatever_their_preferences()
     {
-        var logger = new CapturingLogger<LoggingReportNotifier>();
-        var notifier = new LoggingReportNotifier(Options.Create(new AdminOptions { ReportEmail = "admin@example.org" }), logger);
+        var (admin, adminSession) = await AdminAsync("admin");
+        var (otherAdmin, otherAdminSession) = await AdminAsync("other-admin");
+        var (me, _) = await SignedInAsync("me", "Me");
+        var (bob, bobId, dog) = await DogOwnerAsync("bob");
+        await RegisterDeviceAsync(admin, "admin");
+        await RegisterDeviceAsync(otherAdmin, "other-admin");
+        await RegisterDeviceAsync(me, "me");
+        await RegisterDeviceAsync(bob, "bob");
+        // Walk preferences do not apply to this notification.
+        await otherAdmin.PutAsJsonAsync("/api/v1/me/notification-preferences", new { registrations = false, walkChanges = false, messages = false, reminders = false }, Ct);
+        Factory.PushSender.Clear();
+
+        var response = await ReportAsync(me, new { type = "BiteOrInjury", facts = "Le chien de Bob a mordu Rex au mollet.", targetUserId = bobId, targetDogId = dog.Id });
+
+        var reportId = (await ReadJsonAsync(response)).GetProperty("id").GetGuid();
+        var pushes = await SentPushesAsync();
+        Assert.Equivalent(new[] { adminSession.User.Id, otherAdminSession.User.Id }, pushes.Select(p => p.UserId));
+        Assert.All(pushes, push =>
+        {
+            Assert.Equal("Nouveau signalement", push.Title);
+            Assert.Equal("Un signalement « Morsure ou blessure » attend d'être examiné.", push.Body);
+            Assert.Equal("report_created", push.Data["type"]);
+            Assert.Equal(reportId.ToString(), push.Data["reportId"]);
+            // No deep link: the app has no screen for it and ignores a tap.
+            Assert.False(push.Data.ContainsKey("url"));
+            Assert.DoesNotContain("mordu", push.Body, StringComparison.Ordinal);
+            Assert.DoesNotContain("Bob", push.Title + push.Body, StringComparison.Ordinal);
+            Assert.DoesNotContain("Me", push.Title + push.Body, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task An_administrator_reporting_is_not_notified_but_the_other_administrators_are()
+    {
+        var (admin, adminSession) = await AdminAsync("admin");
+        var (otherAdmin, otherAdminSession) = await AdminAsync("other-admin");
+        var (_, bobId, _) = await DogOwnerAsync("bob");
+        await RegisterDeviceAsync(admin, "admin");
+        await RegisterDeviceAsync(otherAdmin, "other-admin");
+        Factory.PushSender.Clear();
+
+        await ReportAsync(admin, new { type = "HumanBehavior", facts = "Propos insultants au parc.", targetUserId = bobId });
+
+        var push = Assert.Single(await SentPushesAsync());
+        Assert.Equal(otherAdminSession.User.Id, push.UserId);
+        Assert.NotEqual(adminSession.User.Id, push.UserId);
+    }
+
+    [Fact]
+    public async Task A_suspended_administrator_is_not_notified_of_reports()
+    {
+        var (admin, _) = await AdminAsync("admin");
+        var (otherAdmin, otherAdminSession) = await AdminAsync("other-admin");
+        await RegisterDeviceAsync(otherAdmin, "other-admin");
+        // Suspension removes the devices; one registered directly checks the admin rule itself.
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsync($"/api/v1/admin/users/{otherAdminSession.User.Id}/suspend", null, Ct)).StatusCode);
+        await WithDbAsync(async db =>
+        {
+            db.Devices.Add(new Dogo.Api.Features.Notifications.Device { UserId = otherAdminSession.User.Id, ExpoPushToken = "ExponentPushToken[other-admin]", Platform = Dogo.Api.Features.Notifications.DevicePlatform.Ios });
+            await db.SaveChangesAsync(Ct);
+        });
+        var (me, _) = await SignedInAsync("me", "Me");
+        var (_, bobId, _) = await DogOwnerAsync("bob");
+        Factory.PushSender.Clear();
+
+        await ReportAsync(me, new { type = "HumanBehavior", facts = "Propos insultants au parc.", targetUserId = bobId });
+
+        Assert.Empty(await SentPushesAsync());
+    }
+
+    [Fact]
+    public async Task The_notifier_logs_the_id_and_type_but_never_the_facts()
+    {
+        var logger = new CapturingLogger<AdminReportNotifier>();
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var notifier = ActivatorUtilities.CreateInstance<AdminReportNotifier>(
+            scope.ServiceProvider, Options.Create(new AdminOptions { ReportEmail = "admin@example.org" }), logger);
         var report = new Report
         {
             ReporterId = Guid.NewGuid(),

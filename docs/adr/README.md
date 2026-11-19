@@ -36,6 +36,8 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0032](0032-nettoyage-des-photos.md) | Nettoyage des photos : décodage et réencodage côté serveur (SkiaSharp), HEIC refusé, cache privé ; précise l'ADR 0010 | Proposé |
 | [0033](0033-fin-de-session-et-delais-reseau.md) | Mobile : fin de session expliquée, persistance sûre de la session, délais réseau et configuration de distribution (précise 0014 et 0022) | Accepté |
 | [0034](0034-robustesse-des-ecrans.md) | Robustesse des écrans : cache cumulatif du fil, écritures sans attente, navigation conditionnée au focus | Accepté |
+| [0035](0035-rotation-des-jetons-delai-de-grace.md) | Rotation des jetons de rafraîchissement : familles, délai de grâce, révocation par famille et purge ; précise l'ADR 0009 | Proposé |
+| [0036](0036-suspension-et-signalements.md) | Suspension d'un compte (geler, annuler, laisser partir) et notification push des signalements ; précise les ADR 0020 et 0023 | Proposé |
 | [0039](0039-profils-de-build-eas.md) | Profils de build EAS : variables d'environnement EAS, numéros de build distants, TestFlight par le profil `preview`, garde-fou de distribution | Proposé |
 
 ## Statuts

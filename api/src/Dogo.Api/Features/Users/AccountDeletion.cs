@@ -33,24 +33,8 @@ public sealed partial class AccountDeletion(
             return false;
         }
 
-        // Upcoming walks are cancelled. The UPDATE locks their rows like LockWalkAsync (ADR 0015):
-        // a registration in progress finishes first, a later one sees the walk cancelled.
-        var cancelledWalkIds = await db.Database.SqlQuery<Guid>(
-                $"""
-                UPDATE walks SET status = {nameof(WalkStatus.Cancelled)}
-                WHERE organizer_id = {userId} AND status = {nameof(WalkStatus.Scheduled)} AND starts_at > {now}
-                RETURNING id AS "Value"
-                """)
-            .ToListAsync(cancellationToken);
-        var cancelledWalks = await db.Walks.AsNoTracking().Where(w => cancelledWalkIds.Contains(w.Id)).ToListAsync(cancellationToken);
-        var registrants = (await db.Registrations.AsNoTracking()
-                .Where(r => cancelledWalkIds.Contains(r.WalkId)
-                    && r.UserId != userId
-                    && (r.Status == RegistrationStatus.Accepted || r.Status == RegistrationStatus.Pending))
-                .Select(r => new { r.WalkId, r.UserId })
-                .Distinct()
-                .ToListAsync(cancellationToken))
-            .ToLookup(r => r.WalkId, r => r.UserId);
+        // Upcoming walks are cancelled, as the organizer would (shared with the suspension).
+        var cancelledWalks = await db.CancelUpcomingWalksAsync(userId, now, cancellationToken);
 
         // Every walk they organised is kept, without organizer, for its participants' history.
         // Their series stop (the series rows go; walks keep no series).
@@ -99,10 +83,9 @@ public sealed partial class AccountDeletion(
             await photos.DeleteAsync(fileName, cancellationToken);
         }
 
-        foreach (var walk in cancelledWalks)
+        foreach (var notification in cancelledWalks)
         {
-            notifications.Enqueue(new NotificationRequest(
-                NotificationType.WalkCancelled, NotificationSubject.ForWalk(walk), null, registrants[walk.Id].ToList()));
+            notifications.Enqueue(notification);
         }
 
         return true;
