@@ -19,12 +19,12 @@ export const legalFr = {
   terms: {
     title: 'Conditions d’utilisation',
     intro:
-      'dogo est une application qui permet de trouver et d’organiser des balades entre chiens, près de chez toi. En l’utilisant, tu acceptes ces conditions.',
+      'Uzu est une application qui permet de trouver et d’organiser des balades entre chiens, près de chez toi. En l’utilisant, tu acceptes ces conditions.',
     sections: [
       {
-        title: 'Qui édite dogo',
+        title: 'Qui édite Uzu',
         paragraphs: [
-          'dogo est édité par [NOM DE L’ÉDITEUR], [ADRESSE]. Contact : [E-MAIL DE CONTACT].',
+          'Uzu est édité par [NOM DE L’ÉDITEUR], [ADRESSE]. Contact : [E-MAIL DE CONTACT].',
         ],
       },
       {
@@ -37,7 +37,7 @@ export const legalFr = {
       {
         title: 'Les balades et les risques',
         paragraphs: [
-          'dogo met des personnes en relation : l’application n’organise pas les balades des particuliers et n’y participe pas.',
+          'Uzu met des personnes en relation : l’application n’organise pas les balades des particuliers et n’y participe pas.',
           'Rencontrer d’autres chiens comporte des risques : morsures, bagarres, chutes, maladies, accidents. Chaque propriétaire reste seul responsable de son chien, de son comportement, de sa laisse, de sa vaccination et de son assurance responsabilité civile, ainsi que du respect des règles locales (par exemple laisse et muselière pour les chiens de 1re et 2e catégorie dans les lieux publics).',
           'Tu décides si une balade te convient : lis les règles, le gabarit admis et les profils des chiens inscrits avant de participer.',
         ],
@@ -51,8 +51,8 @@ export const legalFr = {
       {
         title: 'Les organisations',
         paragraphs: [
-          'Une organisation (club, éducateur…) est validée par l’équipe dogo avant d’être visible. Elle peut proposer des balades professionnelles, réservées à ses membres.',
-          'Le paiement éventuel d’une balade professionnelle se fait en dehors de l’application ; dogo n’en est pas partie.',
+          'Une organisation (club, éducateur…) est validée par l’équipe Uzu avant d’être visible. Elle peut proposer des balades professionnelles, réservées à ses membres.',
+          'Le paiement éventuel d’une balade professionnelle se fait en dehors de l’application ; Uzu n’en est pas partie.',
         ],
       },
       {
@@ -63,7 +63,7 @@ export const legalFr = {
         ],
       },
       {
-        title: 'Responsabilité de dogo',
+        title: 'Responsabilité d’Uzu',
         paragraphs: [
           '[À FAIRE RÉDIGER PAR UN JURISTE : limites de responsabilité de la plateforme, notamment si un chien déjà signalé blesse ensuite.]',
         ],
@@ -79,7 +79,7 @@ export const legalFr = {
   privacy: {
     title: 'Politique de confidentialité',
     intro:
-      'Voici les données que dogo utilise, pourquoi, et comment tu gardes la main dessus. Nous ne vendons pas tes données.',
+      'Voici les données qu’Uzu utilise, pourquoi, et comment tu gardes la main dessus. Nous ne vendons pas tes données.',
     sections: [
       {
         title: 'Qui est responsable',
@@ -119,7 +119,7 @@ export const legalFr = {
           'Ton profil (nom, présentation, photo, chiens) est visible des autres membres.',
           'La discussion d’une balade est visible de l’organisateur et des personnes dont le chien est accepté.',
           'La liste des membres d’une organisation n’est visible que de son responsable et de ses éducateurs.',
-          'Les signalements ne sont visibles que de l’équipe dogo.',
+          'Les signalements ne sont visibles que de l’équipe Uzu.',
         ],
       },
       {

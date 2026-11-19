@@ -1,4 +1,4 @@
-// Generates TypeScript types for the dogo API from its OpenAPI description.
+// Generates TypeScript types for the Uzu API from its OpenAPI description.
 //
 //   npm run api:generate                      reads ../api/openapi.json, writes src/api/schema.d.ts
 //   node scripts/generate-api.mjs <in> <out>  custom paths (used to try the script)

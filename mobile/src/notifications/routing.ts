@@ -1,5 +1,7 @@
 import type { Href } from 'expo-router';
 
+import { APP_URL_SCHEME } from '@/lib/appLinks';
+
 /** Types of notification the API sends (api/README.md, « Notifications »). */
 export const notificationTypes = [
   'registration_created',
@@ -30,9 +32,11 @@ const organizationTypes: readonly NotificationType[] = [
   'organization_approved',
 ];
 
-/** The only links a notification may carry: `dogo://walks/<id>` and `dogo://organizations/<id>`. */
-const WALK_URL = /^dogo:\/\/walks\/([A-Za-z0-9-]{1,64})\/?$/;
-const ORGANIZATION_URL = /^dogo:\/\/organizations\/([A-Za-z0-9-]{1,64})\/?$/;
+/** The only links a notification may carry: `uzu://walks/<id>` and `uzu://organizations/<id>` (the scheme is `APP_URL_SCHEME`). */
+const WALK_URL = new RegExp(`^${APP_URL_SCHEME}:\\/\\/walks\\/([A-Za-z0-9-]{1,64})\\/?$`);
+const ORGANIZATION_URL = new RegExp(
+  `^${APP_URL_SCHEME}:\\/\\/organizations\\/([A-Za-z0-9-]{1,64})\\/?$`,
+);
 
 export interface NotificationTarget {
   /** Set for a walk link. */

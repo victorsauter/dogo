@@ -45,8 +45,7 @@ afterEach(async () => {
 describe('notification links', () => {
   it('opens the thread for a message and the walk detail for every other type', () => {
     expect(
-      targetForNotification({ type: 'message_posted', walkId, url: `dogo://walks/${walkId}` })
-        ?.href,
+      targetForNotification({ type: 'message_posted', walkId, url: `uzu://walks/${walkId}` })?.href,
     ).toEqual({ pathname: '/walks/[id]/messages', params: { id: walkId } });
     for (const type of [
       'registration_created',
@@ -58,7 +57,7 @@ describe('notification links', () => {
       'walk_reminder',
       'series_walk_created',
     ]) {
-      expect(targetForNotification({ type, walkId, url: `dogo://walks/${walkId}` })?.href).toEqual({
+      expect(targetForNotification({ type, walkId, url: `uzu://walks/${walkId}` })?.href).toEqual({
         pathname: '/walks/[id]',
         params: { id: walkId },
       });
@@ -66,7 +65,7 @@ describe('notification links', () => {
   });
 
   const organizationId = 'c0c0c0c0-0000-4000-8000-000000000001';
-  const organizationUrl = `dogo://organizations/${organizationId}`;
+  const organizationUrl = `uzu://organizations/${organizationId}`;
 
   it('opens the members screen for a membership request, the organisation for the other types', () => {
     expect(
@@ -87,16 +86,16 @@ describe('notification links', () => {
   it('applies the same strict validation to organisation links', () => {
     const bad = [
       { url: 'https://evil.example/organizations/abc' },
-      { url: 'dogo://evil/organizations/abc' },
-      { url: 'dogo://organizations/abc/../../admin' },
-      { url: 'dogo://organizations/abc?x=1' },
-      { url: 'dogo://organizations/' },
-      { url: 'dogo://organizations/abc/members' },
+      { url: 'uzu://evil/organizations/abc' },
+      { url: 'uzu://organizations/abc/../../admin' },
+      { url: 'uzu://organizations/abc?x=1' },
+      { url: 'uzu://organizations/' },
+      { url: 'uzu://organizations/abc/members' },
       { url: 'http://organizations/abc' },
-      { type: 'membership_accepted', organizationId: 'other', url: 'dogo://organizations/abc' },
+      { type: 'membership_accepted', organizationId: 'other', url: 'uzu://organizations/abc' },
       // The type must agree with the kind of link.
-      { type: 'membership_accepted', url: `dogo://walks/${walkId}` },
-      { type: 'walk_updated', url: 'dogo://organizations/abc' },
+      { type: 'membership_accepted', url: `uzu://walks/${walkId}` },
+      { type: 'walk_updated', url: 'uzu://organizations/abc' },
     ];
     for (const data of bad) expect(targetForNotification(data)).toBeNull();
   });
@@ -105,10 +104,10 @@ describe('notification links', () => {
     expect(targetForNotification({ type: 'report_created' })).toBeNull();
     expect(targetForNotification({ type: 'report_created', reportId: 'r1' })).toBeNull();
     expect(
-      targetForNotification({ type: 'report_created', url: `dogo://walks/${walkId}` }),
+      targetForNotification({ type: 'report_created', url: `uzu://walks/${walkId}` }),
     ).toBeNull();
     expect(
-      targetForNotification({ type: 'report_created', url: 'dogo://admin/reports' }),
+      targetForNotification({ type: 'report_created', url: 'uzu://admin/reports' }),
     ).toBeNull();
   });
 
@@ -116,17 +115,20 @@ describe('notification links', () => {
     const bad = [
       undefined,
       null,
-      'dogo://walks/abc',
+      'uzu://walks/abc',
       {},
       { url: 42 },
       { url: 'https://evil.example/walks/abc' },
-      { url: 'dogo://evil/walks/abc' },
-      { url: 'dogo://walks/abc/../../admin' },
-      { url: 'dogo://walks/abc?x=1' },
-      { url: 'dogo://users/abc' },
+      // The former scheme (before the rename to Uzu, ADR 0041) is not followed any more.
+      { url: 'dogo://walks/abc' },
+      { type: 'walk_updated', walkId: 'abc', url: 'dogo://walks/abc' },
+      { url: 'uzu://evil/walks/abc' },
+      { url: 'uzu://walks/abc/../../admin' },
+      { url: 'uzu://walks/abc?x=1' },
+      { url: 'uzu://users/abc' },
       { url: 'http://walks/abc' },
-      { url: 'dogo://walks/' },
-      { type: 'walk_updated', walkId: 'other', url: 'dogo://walks/abc' },
+      { url: 'uzu://walks/' },
+      { type: 'walk_updated', walkId: 'other', url: 'uzu://walks/abc' },
     ];
     for (const data of bad) expect(targetForNotification(data)).toBeNull();
   });
@@ -375,7 +377,7 @@ describe('receiving and tapping notifications', () => {
     mockApi(routes);
     await start();
     await act(async () =>
-      notifications.__tap({ type: 'walk_updated', walkId, url: `dogo://walks/${walkId}` }),
+      notifications.__tap({ type: 'walk_updated', walkId, url: `uzu://walks/${walkId}` }),
     );
     await waitFor(() => expect(screen).toHavePathname(`/walks/${walkId}`));
   });
@@ -384,7 +386,7 @@ describe('receiving and tapping notifications', () => {
     mockApi(routes);
     await start();
     await act(async () =>
-      notifications.__tap({ type: 'message_posted', walkId, url: `dogo://walks/${walkId}` }),
+      notifications.__tap({ type: 'message_posted', walkId, url: `uzu://walks/${walkId}` }),
     );
     await waitFor(() => expect(screen).toHavePathname(`/walks/${walkId}/messages`));
   });
@@ -395,7 +397,7 @@ describe('receiving and tapping notifications', () => {
       notification: {
         request: {
           content: {
-            data: { type: 'message_posted', walkId, url: `dogo://walks/${walkId}` },
+            data: { type: 'message_posted', walkId, url: `uzu://walks/${walkId}` },
           },
         },
       },
@@ -435,7 +437,7 @@ describe('receiving and tapping notifications', () => {
       notifications.__tap({
         type,
         organizationId,
-        url: `dogo://organizations/${organizationId}`,
+        url: `uzu://organizations/${organizationId}`,
       }),
     );
     await waitFor(() => expect(screen).toHavePathname(`/organizations/${organizationId}${suffix}`));
@@ -468,7 +470,7 @@ describe('receiving and tapping notifications', () => {
     mockApi(routes);
     await start();
     await act(async () =>
-      notifications.__tap({ type: 'walk_updated', url: 'dogo://organizations/abc' }),
+      notifications.__tap({ type: 'walk_updated', url: 'uzu://organizations/abc' }),
     );
     expect(screen).toHavePathname('/profile');
   });
@@ -478,7 +480,9 @@ describe('receiving and tapping notifications', () => {
     await start();
     await act(async () => {
       notifications.__tap({ type: 'walk_updated', url: 'https://evil.example/walks/1' });
-      notifications.__tap({ type: 'walk_updated', url: 'dogo://admin' });
+      notifications.__tap({ type: 'walk_updated', url: `https://uzu.example/walks/${walkId}` });
+      notifications.__tap({ type: 'walk_updated', walkId, url: `dogo://walks/${walkId}` });
+      notifications.__tap({ type: 'walk_updated', url: 'uzu://admin' });
       notifications.__tap({});
     });
     expect(screen).toHavePathname('/profile');
@@ -499,7 +503,7 @@ describe('receiving and tapping notifications', () => {
 
     // Account A's notification is tapped while nobody is signed in…
     await act(async () =>
-      notifications.__tap({ type: 'walk_updated', walkId, url: `dogo://walks/${walkId}` }),
+      notifications.__tap({ type: 'walk_updated', walkId, url: `uzu://walks/${walkId}` }),
     );
     // …then account B signs in: A's walk must not open.
     await act(() => sessionStore.set(authResponse()));
@@ -513,7 +517,7 @@ describe('receiving and tapping notifications', () => {
       notification: {
         request: {
           content: {
-            data: { type: 'walk_updated', walkId, url: `dogo://walks/${walkId}` },
+            data: { type: 'walk_updated', walkId, url: `uzu://walks/${walkId}` },
           },
         },
       },
@@ -535,7 +539,7 @@ describe('receiving and tapping notifications', () => {
       shouldShowList: true,
     });
 
-    await act(async () => notifications.__tap({ url: `dogo://walks/${walkId}` }));
+    await act(async () => notifications.__tap({ url: `uzu://walks/${walkId}` }));
     await waitFor(() => expect(screen).toHavePathname(`/walks/${walkId}`));
     const before = calls.filter((c) => c.path === walkPath).length;
     await act(async () => notifications.__receive({ type: 'walk_updated', walkId }));

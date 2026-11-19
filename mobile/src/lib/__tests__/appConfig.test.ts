@@ -1,7 +1,11 @@
 import type { ConfigContext } from 'expo/config';
 
 import appConfig, { APP, BRAND, assertDistributionConfig, createConfig } from '../../../app.config';
+import { SESSION_STORAGE_KEY } from '../../auth/sessionStore';
+import { DISCOVER_LAYOUT_STORAGE_KEY } from '../../discover/layoutPreference';
+import { fr } from '../../strings/fr';
 import { darkColors, lightColors } from '../../theme/tokens';
+import { APP_URL_SCHEME } from '../appLinks';
 
 const context = { config: {} } as ConfigContext;
 
@@ -99,6 +103,36 @@ describe('createConfig', () => {
     expect(config.scheme).toBe(APP.urlScheme);
     expect(config.ios?.bundleIdentifier).toBe(APP.iosBundleIdentifier);
     expect(config.android?.package).toBe(APP.androidPackage);
+  });
+
+  it('names the app Uzu, with the confirmed identifiers (ADR 0041)', () => {
+    expect(APP).toEqual({
+      displayName: 'Uzu',
+      slug: 'uzu',
+      urlScheme: 'uzu',
+      iosBundleIdentifier: 'com.victorsauter.uzu',
+      androidPackage: 'com.victorsauter.uzu',
+    });
+  });
+
+  it('keeps the scheme of the deep links of the app equal to the one of the configuration', () => {
+    expect(APP_URL_SCHEME).toBe(APP.urlScheme);
+  });
+
+  it('shows the same name in the app as under the icon', () => {
+    expect(fr.app.name).toBe(APP.displayName);
+  });
+
+  it('prefixes the storage keys with the scheme name, not with the former product name', () => {
+    expect(SESSION_STORAGE_KEY).toBe('uzu.session');
+    expect(DISCOVER_LAYOUT_STORAGE_KEY).toBe('uzu.discoverLayout');
+  });
+
+  it('writes the display name at the start of the permission texts', () => {
+    const info = createConfig(context, {}).ios?.infoPlist;
+    expect(info?.NSLocationWhenInUseUsageDescription).toMatch(/^Uzu utilise ta position/);
+    expect(info?.NSPhotoLibraryUsageDescription).toMatch(/^Uzu accède à tes photos/);
+    expect(info?.NSCameraUsageDescription).toMatch(/^Uzu utilise l’appareil photo/);
   });
 
   it('builds in development without any variable, keeping the previous behaviour', () => {

@@ -10,7 +10,8 @@ import { devLog, loadNotifications, notificationsAvailable } from './native';
 /** `unavailable`: no push on this build (no module or no EAS project). */
 export type PermissionState = 'granted' | 'denied' | 'undetermined' | 'unavailable';
 
-const ASKED_KEY = 'dogo.notifications.asked';
+// `uzu.` prefix, like the other storage keys (ADR 0041).
+const ASKED_KEY = 'uzu.notifications.asked';
 const ANDROID_CHANNEL = 'default';
 
 /** Token registered by this process, so sign-out can remove it without asking again. */

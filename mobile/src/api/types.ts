@@ -1,7 +1,7 @@
 /**
  * API shapes used across the app, taken from the generated `schema.d.ts`
  * (`api/openapi.json`). Only RFC 9457 problem details keep a local shape, with
- * the dogo `code` extension (spec §1), because errors are read loosely.
+ * the Uzu `code` extension (spec §1), because errors are read loosely.
  */
 import type { components } from './schema';
 
@@ -67,7 +67,7 @@ export type WalkSummary = Pick<
   myRegistrations?: MyRegistration[];
 };
 
-/** RFC 9457 problem details, with the dogo `code` extension (spec §1). */
+/** RFC 9457 problem details, with the Uzu `code` extension (spec §1). */
 export interface ProblemDetails {
   type?: string;
   title?: string;

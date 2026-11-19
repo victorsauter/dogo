@@ -18,7 +18,7 @@ export type ConfigError = 'missingApiUrl' | 'insecureApiUrl';
 
 export interface AppConfig {
   /**
-   * Base URL of the dogo API, without a trailing slash (e.g. `http://localhost:5080`).
+   * Base URL of the Uzu API, without a trailing slash (e.g. `http://localhost:5080`).
    * Falls back to the local API in development only; empty when `error` is `missingApiUrl`.
    */
   apiUrl: string;
