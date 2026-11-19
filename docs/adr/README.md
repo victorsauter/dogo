@@ -34,6 +34,7 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0030](0030-charte-graphique-uzu.md) | Charte graphique « Uzu » : blanc cassé, fauve et noir, couleurs du pelage d'un Jack Russell | Accepté |
 | [0031](0031-durcissement-de-l-api.md) | Durcissement de l'API : environnements en liste blanche, limitation de débit, en-têtes transférés | Proposé |
 | [0032](0032-nettoyage-des-photos.md) | Nettoyage des photos : décodage et réencodage côté serveur (SkiaSharp), HEIC refusé, cache privé ; précise l'ADR 0010 | Proposé |
+| [0038](0038-image-et-migrations-en-production.md) | Image de l'API et migrations en production : image .NET Ubuntu non root, bundle EF Core lancé à chaque déploiement | Proposé |
 
 ## Statuts
 
