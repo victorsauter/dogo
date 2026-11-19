@@ -95,6 +95,19 @@ export function searchParamsAround(
   return params;
 }
 
+/** How often a search whose refresh failed, with older walks on screen, tries again. */
+export const STALE_SEARCH_RETRY_MS = 30_000;
+
+/**
+ * Refetch interval of a search: none while it is up to date; every
+ * `STALE_SEARCH_RETRY_MS` while its last refresh failed over walks loaded
+ * earlier (« Impossible d'actualiser… »), so the notice goes away by itself once
+ * the API answers again, instead of waiting for the tab to regain focus.
+ */
+export function staleSearchRetryInterval(state: { status: string; data: unknown }): number | false {
+  return state.status === 'error' && state.data !== undefined ? STALE_SEARCH_RETRY_MS : false;
+}
+
 /** Nearby walks. Keeps the previous results while a new area loads (no flicker). */
 export function useWalkSearch(params: WalkSearchParams | null) {
   return useQuery({
@@ -102,6 +115,7 @@ export function useWalkSearch(params: WalkSearchParams | null) {
     queryFn: () => unwrap(api.GET('/api/v1/walks', { params: { query: params! } })),
     enabled: params !== null,
     placeholderData: keepPreviousData,
+    refetchInterval: (query) => staleSearchRetryInterval(query.state),
   });
 }
 
