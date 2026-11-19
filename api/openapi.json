@@ -684,7 +684,7 @@
         "tags": [
           "Dogs"
         ],
-        "summary": "Create a dog owned by the signed-in user.",
+        "summary": "Create a dog owned by the signed-in user (20 dogs at most per account).",
         "operationId": "createDog",
         "requestBody": {
           "content": {
@@ -729,6 +729,16 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2920,7 +2930,7 @@
         "tags": [
           "Memberships"
         ],
-        "summary": "List the accepted members and the pending requests of an organisation (owner and educators only).",
+        "summary": "List the accepted members and the pending requests of an organisation (owner and educators only); limit applies to each list.",
         "operationId": "listMemberships",
         "parameters": [
           {
@@ -2931,6 +2941,17 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
           }
         ],
         "responses": {
@@ -2940,6 +2961,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OrganizationMembersResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
                 }
               }
             }

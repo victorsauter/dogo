@@ -25,9 +25,10 @@ public static class DogEndpoints
 
         group.MapPost("/dogs", CreateDog)
             .WithName("createDog")
-            .WithSummary("Create a dog owned by the signed-in user.")
+            .WithSummary("Create a dog owned by the signed-in user (20 dogs at most per account).")
             .ProducesValidationProblem()
-            .ProducesProblem(StatusCodes.Status403Forbidden);
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapGet("/dogs/{id:guid}", GetDog)
             .WithName("getDog")
@@ -66,12 +67,21 @@ public static class DogEndpoints
         return TypedResults.Ok(dogs.Select(DogResponse.From).ToList());
     }
 
-    private static async Task<Created<DogResponse>> CreateDog(
+    private static async Task<Results<Created<DogResponse>, ProblemHttpResult>> CreateDog(
         CreateDogRequest request, ClaimsPrincipal principal, DogoDbContext db, CancellationToken cancellationToken)
     {
+        // The owner's row is locked so that concurrent creations cannot pass the limit together.
+        var ownerId = principal.GetUserId();
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await db.Database.SqlQuery<Guid>($"SELECT id AS \"Value\" FROM users WHERE id = {ownerId} FOR UPDATE").ToListAsync(cancellationToken);
+        if (await db.Dogs.CountAsync(d => d.OwnerId == ownerId, cancellationToken) >= Dog.MaxPerOwner)
+        {
+            return Problems.Conflict(ErrorCodes.DogLimitReached, $"An account cannot have more than {Dog.MaxPerOwner} dogs.");
+        }
+
         var dog = new Dog
         {
-            OwnerId = principal.GetUserId(),
+            OwnerId = ownerId,
             Name = request.Name.Trim(),
             Size = request.Size,
             BirthDate = request.BirthDate,
@@ -83,6 +93,7 @@ public static class DogEndpoints
         };
         db.Dogs.Add(dog);
         await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
         return TypedResults.Created($"/api/v1/dogs/{dog.Id}", DogResponse.From(dog));
     }
 

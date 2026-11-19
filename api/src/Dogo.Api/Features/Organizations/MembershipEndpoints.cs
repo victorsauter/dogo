@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Dogo.Api.Common;
 using Dogo.Api.Features.Notifications;
@@ -27,7 +28,8 @@ public static class MembershipEndpoints
 
         group.MapGet("", ListMemberships)
             .WithName("listMemberships")
-            .WithSummary("List the accepted members and the pending requests of an organisation (owner and educators only).")
+            .WithSummary("List the accepted members and the pending requests of an organisation (owner and educators only); limit applies to each list.")
+            .ProducesValidationProblem()
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
         group.MapPost("/{membershipId:guid}/accept", AcceptMembership)
@@ -107,7 +109,12 @@ public static class MembershipEndpoints
     }
 
     private static async Task<Results<Ok<OrganizationMembersResponse>, ProblemHttpResult>> ListMemberships(
-        Guid id, ClaimsPrincipal principal, DogoDbContext db, IOptions<AdminOptions> admin, CancellationToken cancellationToken)
+        Guid id,
+        ClaimsPrincipal principal,
+        DogoDbContext db,
+        IOptions<AdminOptions> admin,
+        CancellationToken cancellationToken,
+        [Range(1, OrganizationEndpoints.MaxListLimit)] int limit = OrganizationEndpoints.DefaultListLimit)
     {
         var (access, problem) = await db.FindVisibleAsync(admin.Value, id, principal.GetUserId(), cancellationToken);
         if (access is null)
@@ -121,19 +128,23 @@ public static class MembershipEndpoints
             return OrganizationQueries.Forbidden("Only the owner and educators can see the members.");
         }
 
-        var memberships = await db.Memberships.AsNoTracking()
-            .Where(m => m.OrganizationId == id && (m.Status == MembershipStatus.Accepted || m.Status == MembershipStatus.Pending))
+        // Spec §1: each list holds at most `limit` entries (50 by default, 100 at most).
+        var members = await db.Memberships.AsNoTracking()
+            .Where(m => m.OrganizationId == id && m.Status == MembershipStatus.Accepted)
             .OrderBy(m => m.Role == MembershipRole.Owner ? 0 : m.Role == MembershipRole.Educator ? 1 : 2)
             .ThenBy(m => m.User.DisplayName).ThenBy(m => m.Id)
+            .Take(limit)
             .Include(m => m.User)
             .ToListAsync(cancellationToken);
-        var members = memberships.Where(m => m.Status == MembershipStatus.Accepted).Select(MembershipResponse.From).ToList();
-        var requests = memberships
-            .Where(m => m.Status == MembershipStatus.Pending)
+        var requests = await db.Memberships.AsNoTracking()
+            .Where(m => m.OrganizationId == id && m.Status == MembershipStatus.Pending)
             .OrderBy(m => m.CreatedAt).ThenBy(m => m.Id)
-            .Select(MembershipResponse.From)
-            .ToList();
-        return TypedResults.Ok(new OrganizationMembersResponse(members, requests));
+            .Take(limit)
+            .Include(m => m.User)
+            .ToListAsync(cancellationToken);
+        return TypedResults.Ok(new OrganizationMembersResponse(
+            members.Select(MembershipResponse.From).ToList(),
+            requests.Select(MembershipResponse.From).ToList()));
     }
 
     private static async Task<Results<Ok<MembershipResponse>, ProblemHttpResult>> AcceptMembership(
