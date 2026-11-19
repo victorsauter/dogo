@@ -101,6 +101,17 @@ describe('notification links', () => {
     for (const data of bad) expect(targetForNotification(data)).toBeNull();
   });
 
+  it('report_created (administrators, ADR 0036) has no link: it is ignored, even with one', () => {
+    expect(targetForNotification({ type: 'report_created' })).toBeNull();
+    expect(targetForNotification({ type: 'report_created', reportId: 'r1' })).toBeNull();
+    expect(
+      targetForNotification({ type: 'report_created', url: `dogo://walks/${walkId}` }),
+    ).toBeNull();
+    expect(
+      targetForNotification({ type: 'report_created', url: 'dogo://admin/reports' }),
+    ).toBeNull();
+  });
+
   it('ignores anything that is not one of our own walk links', () => {
     const bad = [
       undefined,
@@ -428,6 +439,29 @@ describe('receiving and tapping notifications', () => {
       }),
     );
     await waitFor(() => expect(screen).toHavePathname(`/organizations/${organizationId}${suffix}`));
+  });
+
+  it('receives and taps report_created without navigating or failing (administrators)', async () => {
+    const { calls } = mockApi({ ...routes, 'GET /api/v1/me/organizations': () => ok([]) });
+    const consoleSpy = [
+      jest.spyOn(console, 'error').mockImplementation(() => {}),
+      jest.spyOn(console, 'warn').mockImplementation(() => {}),
+    ];
+    await start();
+    const before = calls.length;
+
+    await act(async () => {
+      notifications.__receive({ type: 'report_created' });
+      notifications.__tap({ type: 'report_created' });
+    });
+    // Let the refresh started by the reception settle.
+    await waitFor(() => expect(calls.length).toBeGreaterThanOrEqual(before));
+
+    expect(screen).toHavePathname('/profile');
+    expect(screen.queryByText(t.states.errorTitle)).toBeNull();
+    expect(screen.queryByText(t.states.crashTitle)).toBeNull();
+    expect(notifications.clearLastNotificationResponse).toHaveBeenCalled();
+    consoleSpy.forEach((spy) => expect(spy).not.toHaveBeenCalled());
   });
 
   it('ignores an organisation link carrying a walk type', async () => {

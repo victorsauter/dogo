@@ -553,7 +553,7 @@ export const fr = {
     deleteAccount: 'Supprimer mon compte',
     suspendedTitle: 'Compte suspendu',
     suspendedMessage:
-      'Ton compte est suspendu : tu peux consulter l’application, mais les actions (s’inscrire, organiser, écrire, modifier) sont désactivées. Si tu penses à une erreur, contacte l’équipe dogo.',
+      'Ton compte est suspendu : tu peux consulter l’application et supprimer ton compte, mais les autres actions (s’inscrire, organiser, écrire, modifier) sont désactivées. Si tu penses à une erreur, contacte l’équipe dogo.',
   },
   deleteAccount: {
     title: 'Supprimer mon compte',

@@ -212,18 +212,65 @@ describe('delete my account', () => {
   });
 
   it('keeps the session and explains the refusal when the server says no', async () => {
-    mockApi({ 'DELETE /api/v1/me': () => problemResponse(403, 'account.suspended') });
+    mockApi({ 'DELETE /api/v1/me': () => problemResponse(500, 'server.error') });
     await openAt('/delete-account');
     await fireEvent.changeText(
       await screen.findByLabelText(t.deleteAccount.confirmField),
       t.deleteAccount.confirmWord,
     );
     await fireEvent.press(screen.getByRole('button', { name: t.deleteAccount.submit }));
-    expect(await screen.findByText(t.errors['account.suspended'])).toBeTruthy();
+    expect(await screen.findByText(t.errors.server)).toBeTruthy();
     // The lead sentence says what did not happen; the reason follows.
     expect(screen.getByText(t.deleteAccount.failed)).toBeTruthy();
     expect(sessionStore.getSnapshot().status).toBe('signedIn');
     expect(screen).toHavePathname('/delete-account');
+  });
+
+  describe('a suspended account (ADR 0036: the only write it may do)', () => {
+    it('reaches the profile entry, then the screen, which offers the deletion', async () => {
+      mockApi({
+        ...profileRoutes({ ...testUser, status: 'Suspended' }),
+        'GET /api/v1/me/blocks': () => ok([]),
+      });
+      await openAt('/profile', { status: 'Suspended' });
+      expect(await screen.findByText(t.settings.suspendedTitle)).toBeTruthy();
+      const entry = await screen.findByRole('button', { name: t.settings.deleteAccount });
+      expect(entry.props.accessibilityState?.disabled).not.toBe(true);
+      await fireEvent.press(entry);
+      await waitFor(() => expect(screen).toHavePathname('/delete-account'));
+      expect(await screen.findByText(t.deleteAccount.intro)).toBeTruthy();
+    });
+
+    it('deletes the account (204) and returns to sign-in', async () => {
+      const { calls } = mockApi({
+        ...profileRoutes({ ...testUser, status: 'Suspended' }),
+        'DELETE /api/v1/me': () => new Response(null, { status: 204 }),
+      });
+      await openAt('/delete-account', { status: 'Suspended' });
+      const button = await screen.findByRole('button', { name: t.deleteAccount.submit });
+      expect(button.props.accessibilityState.disabled).toBe(true);
+      await fireEvent.changeText(
+        screen.getByLabelText(t.deleteAccount.confirmField),
+        t.deleteAccount.confirmWord,
+      );
+      expect(
+        screen.getByRole('button', { name: t.deleteAccount.submit }).props.accessibilityState
+          .disabled,
+      ).toBe(false);
+      await fireEvent.press(screen.getByRole('button', { name: t.deleteAccount.submit }));
+
+      expect(await screen.findByText(t.auth.accountDeleted)).toBeTruthy();
+      expect(screen).toHavePathname('/sign-in');
+      expect(sessionStore.getSnapshot().status).toBe('signedOut');
+      expect(calls.filter((c) => c.method === 'DELETE').map((c) => c.path)).toEqual(['/api/v1/me']);
+    });
+
+    it('says in the profile banner that deleting the account stays possible', async () => {
+      mockApi(profileRoutes({ ...testUser, status: 'Suspended' }));
+      await openAt('/profile', { status: 'Suspended' });
+      expect(await screen.findByText(t.settings.suspendedMessage)).toBeTruthy();
+      expect(t.settings.suspendedMessage).toMatch(/supprimer ton compte/);
+    });
   });
 });
 

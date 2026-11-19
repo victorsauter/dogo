@@ -14,9 +14,14 @@ export const notificationTypes = [
   'membership_requested',
   'membership_accepted',
   'organization_approved',
+  // Administrators only (ADR 0036): shown by the system, nothing to open (no administration screen).
+  'report_created',
 ] as const;
 
 export type NotificationType = (typeof notificationTypes)[number];
+
+/** Types shown by the system and never followed: a tap leads nowhere, whatever link they carry. */
+const informationOnlyTypes: readonly NotificationType[] = ['report_created'];
 
 /** Types whose link points to an organisation (payload `organizationId`), not to a walk. */
 const organizationTypes: readonly NotificationType[] = [
@@ -39,7 +44,8 @@ export interface NotificationTarget {
 }
 
 /**
- * Where tapping a notification leads, or `null` to ignore it. Only links that
+ * Where tapping a notification leads, or `null` to ignore it (a `report_created`
+ * has no link: it is only shown, and a tap on it changes nothing). Only links that
  * match the app's own routes are followed (anything else, other schemes and
  * hosts included, is dropped), and the type must agree with the kind of link.
  * Walks: a `message_posted` opens the thread, every other type the walk
@@ -52,6 +58,7 @@ export function targetForNotification(data: unknown): NotificationTarget | null 
   if (typeof url !== 'string') return null;
   const link = url.trim();
   const known = notificationTypes.find((value) => value === type) ?? null;
+  if (known !== null && informationOnlyTypes.includes(known)) return null;
   const isOrganizationType = known !== null && organizationTypes.includes(known);
 
   const walk = WALK_URL.exec(link)?.[1];
