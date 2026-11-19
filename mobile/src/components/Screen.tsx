@@ -1,7 +1,6 @@
 import { useRef, useState, type PropsWithChildren, type ReactElement } from 'react';
 import {
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   View,
   type RefreshControlProps,
@@ -39,6 +38,12 @@ export interface ScreenProps {
  * sheet) it would stop short by the header height and leave the bottom of the
  * screen — a thread's composer — under the keyboard. The screen's position in
  * the window is therefore passed as `keyboardVerticalOffset`.
+ *
+ * `behavior="padding"` on both platforms, as Expo's keyboard guide says: apps of this
+ * SDK are edge-to-edge on Android, the window no longer resizes for the keyboard, and
+ * without a `behavior` a thread's composer and the bottom of the forms stay under it.
+ * `softwareKeyboardLayoutMode: 'pan'` must not be set: the window would pan and the
+ * padding would move the content a second time. Not checked on an Android device.
  */
 export function Screen({
   children,
@@ -72,7 +77,7 @@ export function Screen({
     >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         keyboardVerticalOffset={windowTop}
       >
         {scroll ? (
