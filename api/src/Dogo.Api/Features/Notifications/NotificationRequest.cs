@@ -57,7 +57,7 @@ public enum NotificationType
 
 /// <summary>What a notification is about; becomes <c>data</c> and the deep link opened by the app.</summary>
 /// <param name="IdKey">Name of the id in <c>data</c>, e.g. <c>walkId</c>.</param>
-/// <param name="Path">Deep link path after <c>dogo://</c>, e.g. <c>walks/{id}</c>; null for no link (no <c>url</c> in <c>data</c>).</param>
+/// <param name="Path">Deep link path after <c>uzu://</c>, e.g. <c>walks/{id}</c>; null for no link (no <c>url</c> in <c>data</c>).</param>
 /// <param name="Name">Shown in the texts, e.g. the walk title.</param>
 /// <param name="StartsAt">Start of the walk, for texts that show it.</param>
 public sealed record NotificationSubject(string IdKey, Guid Id, string? Path, string Name, DateTimeOffset? StartsAt = null)

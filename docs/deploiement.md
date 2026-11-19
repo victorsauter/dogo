@@ -1,4 +1,4 @@
-# dogo — Guide de déploiement de l'API
+# Uzu — Guide de déploiement de l'API
 
 **Version :** 0.1 · 19/11/2026 · pour un pilote (quelques dizaines d'utilisateurs, un village)
 
@@ -39,7 +39,7 @@ L'image fixe déjà `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_HTTP_PORTS=
 | --- | --- | --- |
 | `ConnectionStrings__Dogo` | Oui. `Host=…;Port=5432;Database=dogo;Username=…;Password=…` | **Refus de démarrer** (« ConnectionStrings:Dogo is empty »). Avec une base injoignable : l'API démarre mais `/api/v1/health` répond 503 |
 | `Auth__Jwt__SigningKey` | Oui. 32 octets au moins, secrète : `openssl rand -base64 48` | **Refus de démarrer**, y compris avec la clé de développement du dépôt. La changer invalide les jetons d'accès en cours (15 minutes) ; les sessions se renouvellent seules, les jetons de rafraîchissement étant en base (ADR 0009) |
-| `Auth__Apple__Audiences__0` | L'identifiant de l'application iOS (`com.victorsauter.dogo` d'après `mobile/app.config.ts`) | Avec `Auth__Google__Audiences__*` vide aussi : **refus de démarrer** en Production. Seul Apple manquant : la connexion Apple est refusée |
+| `Auth__Apple__Audiences__0` | L'identifiant de l'application iOS (`com.victorsauter.uzu`, ADR 0041, d'après `mobile/app.config.ts`) | Avec `Auth__Google__Audiences__*` vide aussi : **refus de démarrer** en Production. Seul Apple manquant : la connexion Apple est refusée |
 | `Auth__Google__Audiences__0`, `__1`… | Identifiants client OAuth Google utilisés par l'application (web, et iOS : voir `mobile/.env.example`) | Voir ci-dessus ; seul Google manquant : la connexion Google est refusée |
 | `Notifications__Provider` | `Expo` | `Log` (valeur par défaut) en Production : **refus de démarrer** |
 | `Notifications__Expo__AccessToken` | Seulement si la « sécurité renforcée » est activée dans le projet Expo | Sinon facultatif ; si elle est activée et le jeton absent, l'envoi est refusé par Expo (visible dans les journaux) |

@@ -1,6 +1,6 @@
-# dogo — API
+# Uzu — API
 
-API .NET 10 (minimal API) de l'application dogo. Le contrat est dans [`docs/specification-v1.md`](../docs/specification-v1.md) ; les décisions techniques dans [`docs/adr/`](../docs/adr/).
+API .NET 10 (minimal API) de l'application Uzu. Le dépôt, le code (`Dogo.Api`), la base et les conteneurs gardent le nom `dogo` (ADR 0041). Le contrat est dans [`docs/specification-v1.md`](../docs/specification-v1.md) ; les décisions techniques dans [`docs/adr/`](../docs/adr/).
 
 ## Prérequis
 
@@ -110,7 +110,7 @@ curl -s -X POST http://localhost:5080/api/v1/walks/<walkId>/registrations -H "Au
 
 #### Notifications
 
-Chaque événement est déposé dans une file en mémoire **après** la validation de la transaction ; un service d'arrière-plan l'envoie (ADR 0019). La requête n'attend jamais l'envoi et n'échoue jamais à cause de lui ; les échecs sont journalisés. Le service retire l'auteur de l'action et les doublons, applique les préférences, puis envoie une notification par appareil. `data` vaut `{ "type": "<type>", "walkId": "<id>", "url": "dogo://walks/<id>" }` pour une balade, `{ "type": "<type>", "organizationId": "<id>", "url": "dogo://organizations/<id>" }` pour une organisation, `{ "type": "report_created", "reportId": "<id>" }` pour un signalement (sans `url` : aucun écran ne l'affiche, l'application montre la notification et ignore le toucher).
+Chaque événement est déposé dans une file en mémoire **après** la validation de la transaction ; un service d'arrière-plan l'envoie (ADR 0019). La requête n'attend jamais l'envoi et n'échoue jamais à cause de lui ; les échecs sont journalisés. Le service retire l'auteur de l'action et les doublons, applique les préférences, puis envoie une notification par appareil. `data` vaut `{ "type": "<type>", "walkId": "<id>", "url": "uzu://walks/<id>" }` pour une balade, `{ "type": "<type>", "organizationId": "<id>", "url": "uzu://organizations/<id>" }` pour une organisation, `{ "type": "report_created", "reportId": "<id>" }` pour un signalement (sans `url` : aucun écran ne l'affiche, l'application montre la notification et ignore le toucher).
 
 | `type` | Destinataires | Préférence | Titre | Texte |
 | --- | --- | --- | --- | --- |
@@ -285,7 +285,7 @@ Au-delà : 429 `application/problem+json` avec `code` = `rate_limit.exceeded` et
 
 **En-têtes et taille.** `X-Content-Type-Options: nosniff` sur toutes les réponses ; `Strict-Transport-Security` (un an, sans sous-domaines) sur les réponses HTTPS hors Development. Corps de requête limité à 256 Ko (413 `request.too_large`), sauf les photos qui gardent leur limite de 6 Mo.
 
-**`AllowedHosts`.** Vaut `*` dans `appsettings.json`. En production, le fixer au nom public de l'API, par exemple `AllowedHosts=api.dogo.app` (plusieurs noms séparés par `;`) : une requête avec un autre en-tête `Host` reçoit 400.
+**`AllowedHosts`.** Vaut `*` dans `appsettings.json`. En production, le fixer au nom public de l'API, par exemple `AllowedHosts=api.example.com` (plusieurs noms séparés par `;`) : une requête avec un autre en-tête `Host` reçoit 400.
 
 **Journaux.** Le fournisseur `Log` n'écrit le texte des notifications (extrait des messages du fil) qu'au niveau Debug ; l'envoi par Expo masque les jetons d'appareil et tronque les réponses journalisées à 500 caractères.
 
@@ -352,7 +352,7 @@ L'image contient l'API et le bundle de migrations. La construction de l'image n'
 | `Notifications:Provider` | `Notifications__Provider` | `Log` | `Log` (journal seulement) ou `Expo` (envoi réel) ; `Log` refusé en Production |
 | `Notifications:Expo:AccessToken` | `Notifications__Expo__AccessToken` | vide | Jeton d'accès Expo, seulement si la sécurité renforcée des notifications est activée |
 | `DemoData:Enabled` | `DemoData__Enabled` | `false` (Development : `true`) | Active `/dev/demo-data` ; démarrage refusé si vrai hors de Development et Testing ou sans `Auth:AllowDevLogin` (ADR 0027, 0031) |
-| `DemoData:Photos:UserAgent` | `DemoData__Photos__UserAgent` | `dogo-demo-data/1.0 (development seed data)` | Agent utilisateur des téléchargements de photos de démonstration |
+| `DemoData:Photos:UserAgent` | `DemoData__Photos__UserAgent` | `uzu-demo-data/1.0 (development seed data)` | Agent utilisateur des téléchargements de photos de démonstration |
 | `DemoData:Photos:Timeout`, `TotalTimeout` | `DemoData__Photos__Timeout`, … | `00:00:10`, `00:01:00` | Délai par image et pour l'ensemble des photos |
 | `DemoData:Photos:MaxParallelDownloads` | `DemoData__Photos__MaxParallelDownloads` | `4` | Téléchargements simultanés |
 | `RateLimiting:Enabled` | `RateLimiting__Enabled` | `true` | Limitation de débit (voir « Durcissement ») |

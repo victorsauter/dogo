@@ -17,7 +17,7 @@ namespace Dogo.Api.Tests.Auth;
 /// </summary>
 public sealed class JwksIdentityTokenValidatorTests : IDisposable
 {
-    private const string AppleAudience = "com.victorsauter.dogo";
+    private const string AppleAudience = "com.victorsauter.uzu";
     private const string GoogleAudience = "google-client-id.apps.googleusercontent.com";
 
     private readonly RSA _rsa = RSA.Create(2048);

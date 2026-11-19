@@ -1,6 +1,8 @@
-# dogo
+# Uzu
 
 Application mobile pour trouver et organiser des balades entre chiens, en sachant à l'avance quels chiens seront là.
+
+Le dépôt, le code et l'infrastructure gardent le nom `dogo` (dossiers, projets .NET, base et conteneurs Docker) ; le produit s'appelle Uzu ([ADR 0041](docs/adr/0041-nom-de-l-application-uzu.md)).
 
 ## État
 

@@ -24,9 +24,9 @@ public static class OpenApiSetup
             {
                 document.Info = new OpenApiInfo
                 {
-                    Title = "dogo API",
+                    Title = "Uzu API",
                     Version = "v1",
-                    Description = "API of the dogo app. Errors are RFC 9457 problem details with a stable `code` extension.",
+                    Description = "API of the Uzu app. Errors are RFC 9457 problem details with a stable `code` extension.",
                 };
                 // The client chooses the server; no build-machine URL in the committed file.
                 document.Servers = [];

@@ -1,6 +1,6 @@
-# Documentation de dogo
+# Documentation d'Uzu
 
-dogo est une application mobile pour trouver et organiser des balades entre chiens, en sachant à l'avance quels chiens seront là.
+Uzu est une application mobile pour trouver et organiser des balades entre chiens, en sachant à l'avance quels chiens seront là. Le dépôt, le code et l'infrastructure gardent le nom `dogo` (ADR 0041).
 
 | Document | Contenu |
 | --- | --- |

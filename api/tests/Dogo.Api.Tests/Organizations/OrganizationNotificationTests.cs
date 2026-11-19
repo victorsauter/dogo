@@ -25,7 +25,7 @@ public sealed class OrganizationNotificationTests(ApiFixture fixture) : Organiza
             {
                 ["type"] = "organization_approved",
                 ["organizationId"] = organization.Id.ToString(),
-                ["url"] = $"dogo://organizations/{organization.Id}",
+                ["url"] = $"uzu://organizations/{organization.Id}",
             },
             push.Data);
     }

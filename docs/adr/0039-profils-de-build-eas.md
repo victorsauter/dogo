@@ -2,6 +2,7 @@
 
 - **Statut :** Proposé
 - **Date :** 19/11/2026
+- **Précisé par :** [ADR 0041](0041-nom-de-l-application-uzu.md) : le renommage prévu est fait ; identifiants définitifs `com.victorsauter.uzu`, schéma `uzu://`, slug `uzu`.
 - **Note :** décidé par l'agent mobile, sur délégation, d'après la documentation d'Expo consultée ce jour ; à confirmer. Précise l'[ADR 0021](0021-carte-et-position-mobile.md) (clé Google Maps) et l'[ADR 0022](0022-notifications-push-mobile.md) (identifiant du projet EAS), et complète l'[ADR 0033](0033-fin-de-session-et-delais-reseau.md) (configuration de distribution).
 
 ## Contexte
