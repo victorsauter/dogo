@@ -41,6 +41,7 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0037](0037-organisations-gelees-et-blocage-indiscernable.md) | Organisation non validée : balades gelées sans annulation ; blocage indiscernable d'une balade complète (`walk.full`) ; écritures concurrentes par conditions sur le statut et verrous de lignes (chiens puis balade) ; précise l'ADR 0015 | Proposé |
 | [0038](0038-image-et-migrations-en-production.md) | Image de l'API et migrations en production : image .NET Ubuntu non root, bundle EF Core lancé à chaque déploiement | Proposé |
 | [0039](0039-profils-de-build-eas.md) | Profils de build EAS : variables d'environnement EAS, numéros de build distants, TestFlight par le profil `preview`, garde-fou de distribution | Proposé |
+| [0040](0040-navigation-gardee-et-rafraichissement-apres-refus.md) | Navigation gardée contre les appuis répétés, rafraîchissement après un refus 404 ou 409, mise en page qui suit la taille du texte | Proposé |
 
 Les numéros 0016 et 0024 n'ont jamais été attribués : il n'y a pas d'ADR manquant.
 
@@ -58,4 +59,4 @@ Les numéros 0016 et 0024 n'ont jamais été attribués : il n'y a pas d'ADR man
 
 Un ADR accepté ne se réécrit pas. Pour changer d'avis, on en ajoute un nouveau qui remplace l'ancien.
 
-Pour garder cette règle sans laisser un lecteur sur une information périmée, on peut ajouter sous l'en-tête d'un ADR ancien une ligne « Précisé par » (un ADR plus récent complète ou corrige un point) ou « Remplacé en partie par » (il révise une partie de la décision). C'est le seul changement permis à un ADR accepté ; le texte de la décision reste tel qu'il a été écrit. Les ADR 0031 à 0039 sont « Proposé » tant que le porteur du projet ne les a pas validés, sauf 0033 et 0034, déjà « Accepté » dans leur fichier (à confirmer).
+Pour garder cette règle sans laisser un lecteur sur une information périmée, on peut ajouter sous l'en-tête d'un ADR ancien une ligne « Précisé par » (un ADR plus récent complète ou corrige un point) ou « Remplacé en partie par » (il révise une partie de la décision). C'est le seul changement permis à un ADR accepté ; le texte de la décision reste tel qu'il a été écrit. Les ADR 0031 à 0040 sont « Proposé » tant que le porteur du projet ne les a pas validés, sauf 0033 et 0034, déjà « Accepté » dans leur fichier (à confirmer).
