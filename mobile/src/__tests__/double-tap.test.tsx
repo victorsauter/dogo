@@ -73,11 +73,11 @@ describe('the guard against repeated taps', () => {
   });
 
   it('identifies a destination by its path and its params, whatever their order', () => {
-    expect(hrefKey({ pathname: '/x/[a]', params: { a: '1', b: '2' } })).toBe(
-      hrefKey({ pathname: '/x/[a]', params: { b: '2', a: '1' } }),
+    expect(hrefKey({ pathname: '/walks/[id]', params: { id: '1', welcome: '2' } })).toBe(
+      hrefKey({ pathname: '/walks/[id]', params: { welcome: '2', id: '1' } }),
     );
-    expect(hrefKey({ pathname: '/x/[a]', params: { a: '1' } })).not.toBe(
-      hrefKey({ pathname: '/x/[a]', params: { a: '2' } }),
+    expect(hrefKey({ pathname: '/walks/[id]', params: { id: '1' } })).not.toBe(
+      hrefKey({ pathname: '/walks/[id]', params: { id: '2' } }),
     );
   });
 });
