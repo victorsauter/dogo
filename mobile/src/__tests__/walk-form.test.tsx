@@ -71,6 +71,23 @@ describe('validateWalk', () => {
     });
   });
 
+  it('measures the title without its leading and trailing spaces, like the API', () => {
+    const titleError = (title: string) => validateWalk({ ...valid, title }, now).title;
+    expect(titleError('  ab  ')).toBe('Entre 3 et 80 caractères.');
+    expect(titleError('   abc   ')).toBeUndefined();
+    expect(titleError(`  ${'x'.repeat(80)}  `)).toBeUndefined();
+    expect(titleError('x'.repeat(81))).toBe('Entre 3 et 80 caractères.');
+    expect(titleError('     ')).toBe(t.common.required);
+  });
+
+  it('refuses a start more than a year ahead, accepts exactly one year', () => {
+    const startsAtError = (startsAt: Date) => validateWalk({ ...valid, startsAt }, now).startsAt;
+    expect(startsAtError(new Date('2027-11-18T08:00:00Z'))).toBeUndefined();
+    expect(startsAtError(new Date('2027-11-18T08:00:01Z'))).toBe(t.walk.startsAtTooFar);
+    expect(startsAtError(new Date('2062-11-19T09:00:00Z'))).toBe(t.walk.startsAtTooFar);
+    expect(startsAtError(new Date('2026-11-18T07:59:00Z'))).toBe(t.walk.startsAtPast);
+  });
+
   it('builds the request with trimmed texts and sizes in order', () => {
     expect(
       toCreateWalkRequest({ ...valid, title: ' Tour ', allowedSizes: ['Large', 'Small'] }),

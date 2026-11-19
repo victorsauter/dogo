@@ -18,6 +18,8 @@ export interface DateTimeFieldProps {
   onChange: (value: Date) => void;
   /** Earliest selectable day (a walk starts in the future). */
   minimumDate?: Date;
+  /** Latest selectable day (a walk starts within a year). */
+  maximumDate?: Date;
   dateA11yLabel: string;
   timeA11yLabel: string;
   error?: string;
@@ -45,6 +47,7 @@ export function DateTimeField({
   value,
   onChange,
   minimumDate,
+  maximumDate,
   dateA11yLabel,
   timeA11yLabel,
   error,
@@ -70,6 +73,7 @@ export function DateTimeField({
         mode,
         is24Hour: true,
         minimumDate: mode === 'date' ? minimumDate : undefined,
+        maximumDate: mode === 'date' ? maximumDate : undefined,
         onChange: handleChange(mode),
       });
     } else {
@@ -105,6 +109,7 @@ export function DateTimeField({
           display={open === 'date' ? 'inline' : 'spinner'}
           locale="fr-FR"
           minimumDate={open === 'date' ? minimumDate : undefined}
+          maximumDate={open === 'date' ? maximumDate : undefined}
           minuteInterval={5}
           onChange={handleChange(open)}
         />

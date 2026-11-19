@@ -364,6 +364,7 @@ export const fr = {
     pickFailed: 'Impossible de récupérer cette photo. Essaie-en une autre.',
   },
   dog: {
+    limitTitle: 'Maximum de chiens atteint',
     myDogsEmptyTitle: 'Ajoute ton premier chien',
     myDogsEmptyMessage: 'Présente ton chien pour pouvoir l’inscrire à des balades.',
     /** Shown on the new-dog screen right after the welcome profile edit. */

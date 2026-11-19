@@ -6,7 +6,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 
-import { endOfDay } from '@/lib/dates';
+import { endOfDay, toApiDateTime } from '@/lib/dates';
 import { MAX_SEARCH_RADIUS_KM, radiusForRegion, roundCoordinate, type MapRegion } from '@/lib/geo';
 
 import { api, unwrap } from './client';
@@ -86,10 +86,10 @@ export function searchParamsAround(
     radiusKm: Math.min(MAX_SEARCH_RADIUS_KM, radiusKm),
     limit: SEARCH_LIMIT,
   };
-  if (filters.period === 'today') params.to = endOfDay(now).toISOString();
+  if (filters.period === 'today') params.to = toApiDateTime(endOfDay(now));
   // Rounded to the minute so the query key does not change on every render.
   if (filters.period === 'week') {
-    params.to = new Date(Math.ceil((now.getTime() + WEEK_MS) / 60_000) * 60_000).toISOString();
+    params.to = toApiDateTime(new Date(Math.ceil((now.getTime() + WEEK_MS) / 60_000) * 60_000));
   }
   if (filters.size !== 'all') params.size = filters.size;
   return params;

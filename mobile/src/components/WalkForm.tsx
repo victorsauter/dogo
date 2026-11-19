@@ -4,7 +4,7 @@ import { enumValues, type DogSize, type LeashRule, type WalkAccess } from '@/api
 import { ApiError, errorMessage } from '@/api/errors';
 import type { GeoPoint } from '@/api/types';
 import type { LocationStatus } from '@/lib/location';
-import { formatDuration } from '@/lib/dates';
+import { formatDuration, latestWalkStart } from '@/lib/dates';
 import { openAppSettings } from '@/lib/linking';
 import {
   limits,
@@ -183,6 +183,7 @@ export function WalkForm({
         value={values.startsAt}
         onChange={(date) => set('startsAt', date)}
         minimumDate={new Date()}
+        maximumDate={latestWalkStart()}
         dateA11yLabel={t.walk.pickDate}
         timeA11yLabel={t.walk.pickTime}
         error={errors.startsAt}

@@ -20,6 +20,7 @@ import type {
 import { format, t } from '@/strings';
 
 import { parseBirthDate, toApiDate } from './age';
+import { latestWalkStart, toApiDateTime } from './dates';
 
 /** Limits of the API (`api/openapi.json`): keep in sync with the request schemas. */
 export const limits = {
@@ -38,6 +39,8 @@ export const limits = {
   walkDurationStep: 15,
   walkDogsMin: 1,
   walkDogsMax: 50,
+  /** Dogs one account may have (`Dog.MaxPerOwner` of the API). */
+  dogsMax: 20,
   organizationNameMin: 3,
   organizationName: 80,
   organizationDescription: 2000,
@@ -334,6 +337,9 @@ export function validateWalk(values: WalkFormValues, now: Date = new Date()) {
   }
   if (Number.isNaN(values.startsAt.getTime())) errors.startsAt = t.common.required;
   else if (values.startsAt.getTime() <= now.getTime()) errors.startsAt = t.walk.startsAtPast;
+  else if (values.startsAt.getTime() > latestWalkStart(now).getTime()) {
+    errors.startsAt = t.walk.startsAtTooFar;
+  }
   if (!inRange(values.durationMinutes, limits.walkDurationMin, limits.walkDurationMax)) {
     errors.durationMinutes = t.common.fieldInvalid;
   }
@@ -363,7 +369,7 @@ export function toCreateWalkRequest(values: WalkFormValues): CreateWalkRequest {
   return {
     title: values.title.trim(),
     description: values.description.trim(),
-    startsAt: values.startsAt.toISOString(),
+    startsAt: toApiDateTime(values.startsAt),
     durationMinutes: values.durationMinutes,
     location: { latitude: values.location.latitude, longitude: values.location.longitude },
     locationLabel: values.locationLabel.trim(),
