@@ -22,6 +22,7 @@ import {
   Text,
 } from '@/components';
 import { LayoutSetting } from '@/discover/LayoutSetting';
+import { limits } from '@/lib/forms';
 import { useRefetchOnFocus } from '@/lib/hooks';
 import { format, t } from '@/strings';
 import { useTheme } from '@/theme';
@@ -130,7 +131,18 @@ export default function ProfileScreen() {
               onPress={() => router.push({ pathname: '/dogs/[id]', params: { id: dog.id } })}
             />
           ))}
-          <Button label={t.dog.add} variant="secondary" onPress={() => router.push('/dogs/new')} />
+          {dogs.data.length >= limits.dogsMax ? (
+            // The API refuses a 21st dog: explain rather than offer a button that fails.
+            <Text color="textMuted" accessibilityLiveRegion="polite">
+              {t.errors['dog.limit_reached']}
+            </Text>
+          ) : (
+            <Button
+              label={t.dog.add}
+              variant="secondary"
+              onPress={() => router.push('/dogs/new')}
+            />
+          )}
         </View>
       )}
 
