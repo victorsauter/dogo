@@ -186,9 +186,9 @@ public sealed class NotificationEventTests(ApiFixture fixture) : WalkTestBase(fi
             location = walk.Location,
             allowedSizes = walk.AllowedSizes,
             maxDogs = walk.MaxDogs,
-        }, Ct);
+        }, Json, Ct);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.StatusCode == HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
         Assert.Empty(await SentSinceAsync(before));
     }
 

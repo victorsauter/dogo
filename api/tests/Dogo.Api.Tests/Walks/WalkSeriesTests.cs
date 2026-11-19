@@ -9,8 +9,49 @@ namespace Dogo.Api.Tests.Walks;
 /// <summary>Weekly series (spec §4.5): creation, next walk, catch-up, concurrency, stop, daylight saving.</summary>
 public sealed class WalkSeriesTests(ApiFixture fixture) : WalkTestBase(fixture)
 {
-    /// <summary>A Tuesday in June 2031, 10:00 in Paris (summer time): far from any clock change.</summary>
-    private static readonly DateTimeOffset JuneStart = new(2031, 6, 3, 8, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// The next Tuesday between 3 and 9 June, 10:00 in Paris (summer time): far from any clock change,
+    /// and within the year ahead that the API accepts for a start.
+    /// </summary>
+    private static readonly DateTimeOffset JuneStart = NextJuneTuesday();
+
+    private static DateTimeOffset NextJuneTuesday()
+    {
+        var now = DateTimeOffset.UtcNow;
+        for (var year = now.Year; ; year++)
+        {
+            var day = new DateTime(year, 6, 3);
+            while (day.DayOfWeek != DayOfWeek.Tuesday)
+            {
+                day = day.AddDays(1);
+            }
+
+            var start = new DateTimeOffset(day.AddHours(8), TimeSpan.Zero);
+            if (start > now.AddDays(1))
+            {
+                return start;
+            }
+        }
+    }
+
+    /// <summary>The next last Sunday of <paramref name="month"/> (a clock change in Europe) after tomorrow.</summary>
+    private static DateTime NextLastSunday(int month)
+    {
+        var now = DateTime.UtcNow;
+        for (var year = now.Year; ; year++)
+        {
+            var day = new DateTime(year, month, 1).AddMonths(1).AddDays(-1);
+            while (day.DayOfWeek != DayOfWeek.Sunday)
+            {
+                day = day.AddDays(-1);
+            }
+
+            if (day > now.AddDays(2))
+            {
+                return day;
+            }
+        }
+    }
 
     private Task<List<Walk>> SeriesWalksAsync(Guid seriesId) =>
         WithDbAsync(db => db.Walks.AsNoTracking().Where(w => w.SeriesId == seriesId).OrderBy(w => w.StartsAt).ToListAsync(Ct));
@@ -103,7 +144,7 @@ public sealed class WalkSeriesTests(ApiFixture fixture) : WalkTestBase(fixture)
         Assert.Equal(next.Id.ToString(), push.Data["walkId"]);
         Assert.Equal($"dogo://walks/{next.Id}", push.Data["url"]);
         Assert.Equal("Nouvelle date", push.Title);
-        Assert.Equal("« Balade du mardi » revient le mardi 10 juin à 10:00. Inscris-toi à nouveau pour y participer.", push.Body);
+        Assert.Equal($"« Balade du mardi » revient le mardi {JuneStart.AddDays(7).Day} juin à 10:00. Inscris-toi à nouveau pour y participer.", push.Body);
 
         // Only one upcoming walk per series.
         Assert.Equal(0, await RunSeriesJobAsync(JuneStart.AddMinutes(2)));
@@ -230,19 +271,20 @@ public sealed class WalkSeriesTests(ApiFixture fixture) : WalkTestBase(fixture)
     }
 
     [Theory]
-    // Clocks go forward on Sunday 30 March 2031: 10:00 stays 10:00, from 09:00 to 08:00 UTC.
-    [InlineData("2031-03-29T09:00:00Z", "2031-04-05T08:00:00Z")]
-    // Clocks go back on Sunday 26 October 2031: from 08:00 to 09:00 UTC.
-    [InlineData("2031-10-25T08:00:00Z", "2031-11-01T09:00:00Z")]
-    public async Task The_local_time_is_kept_across_daylight_saving_changes(string start, string expected)
+    // Clocks go forward on the last Sunday of March: 10:00 on the Saturday before stays 10:00, from 09:00 to 08:00 UTC.
+    [InlineData(3, 9, 8)]
+    // Clocks go back on the last Sunday of October: from 08:00 to 09:00 UTC.
+    [InlineData(10, 8, 9)]
+    public async Task The_local_time_is_kept_across_daylight_saving_changes(int month, int startHourUtc, int expectedHourUtc)
     {
         var (client, _) = await SignedInAsync();
-        var startsAt = DateTimeOffset.Parse(start, System.Globalization.CultureInfo.InvariantCulture);
+        var saturday = NextLastSunday(month).AddDays(-1);
+        var startsAt = new DateTimeOffset(saturday.AddHours(startHourUtc), TimeSpan.Zero);
         var first = await CreateWalkAsync(client, ("repeatWeekly", true), ("startsAt", startsAt));
 
         Assert.Equal(1, await RunSeriesJobAsync(startsAt.AddMinutes(5)));
 
         var next = (await SeriesWalksAsync(await SeriesIdAsync(first.Id)))[^1];
-        Assert.Equal(DateTimeOffset.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), next.StartsAt);
+        Assert.Equal(new DateTimeOffset(saturday.AddDays(7).AddHours(expectedHourUtc), TimeSpan.Zero), next.StartsAt);
     }
 }

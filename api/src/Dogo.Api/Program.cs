@@ -25,8 +25,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    // Web defaults (camelCase) + enums as strings + numbers as JSON numbers only.
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    // Web defaults (camelCase) + enums as strings (names only, never integers) + numbers as JSON numbers only.
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false));
     options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
 });
 builder.Services.AddDogoProblemDetails();
@@ -87,7 +87,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi().AllowAnonymous();
 }
 
-var api = app.MapGroup("/api/v1");
+// Enum query parameters take member names only, like enums in bodies.
+var api = app.MapGroup("/api/v1").RequireDefinedEnumQueryValues();
 api.MapHealthEndpoints();
 api.MapAuthEndpoints();
 api.MapDemoDataEndpoints();

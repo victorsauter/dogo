@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi;
@@ -82,6 +83,18 @@ public static class OpenApiSetup
                             values.Remove(value);
                         }
                     }
+                }
+
+                // A custom converter hides the type from the schema exporter: still an ISO 8601 string.
+                // (On a nullable property the serializer wraps the converter: read the attribute instead.)
+                if (context.JsonPropertyInfo?.AttributeProvider?.GetCustomAttributes(typeof(JsonConverterAttribute), true)
+                        .OfType<JsonConverterAttribute>()
+                        .Any(a => a.ConverterType == typeof(ExplicitOffsetDateTimeOffsetConverter)) == true)
+                {
+                    schema.Type = Nullable.GetUnderlyingType(context.JsonPropertyInfo.PropertyType) is null
+                        ? JsonSchemaType.String
+                        : JsonSchemaType.String | JsonSchemaType.Null;
+                    schema.Format = "date-time";
                 }
 
                 // Every problem carries the stable "code" extension (see ErrorCodes).
