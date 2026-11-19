@@ -351,6 +351,28 @@ describe('authFetch time limits', () => {
     expect(store.getSnapshot().status).toBe('signedIn');
   });
 
+  it('does not send a call with an expired token when the refresh times out', async () => {
+    // Expired a minute ago: the call could only be refused.
+    const store = await signedInStore(-60_000);
+    const server = fakeFetch((request) => (isRefresh(request) ? hang(request) : jsonResponse({})));
+    const authFetch = createAuthFetch({
+      store,
+      apiUrl: API,
+      fetch: server.fetch,
+      now: () => NOW,
+      timeoutMs: 20,
+    });
+
+    const failure = await authFetch(`${API}/api/v1/walks`).catch((error: unknown) => error);
+
+    // One time limit, not two: the refresh's failure is the answer.
+    expect(failure).toMatchObject({ kind: 'network', timedOut: true });
+    expect(server.requests.map((request) => new URL(request.url).pathname)).toEqual([
+      '/api/v1/auth/refresh',
+    ]);
+    expect(store.getSnapshot().status).toBe('signedIn');
+  });
+
   it('never lets the revocation hang or throw', async () => {
     jest.useFakeTimers();
     try {

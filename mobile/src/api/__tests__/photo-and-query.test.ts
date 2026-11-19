@@ -32,10 +32,9 @@ describe('shouldRetry', () => {
     expect(shouldRetry(2, network)).toBe(false);
   });
 
-  it('retries a timed-out request once, and never a 429', () => {
+  it('never retries a timed-out request (it already waited 20 s), nor a 429', () => {
     const timedOut = new ApiError({ kind: 'network', timedOut: true });
-    expect(shouldRetry(0, timedOut)).toBe(true);
-    expect(shouldRetry(1, timedOut)).toBe(false);
+    expect(shouldRetry(0, timedOut)).toBe(false);
     expect(shouldRetry(0, new ApiError({ kind: 'http', status: 429 }))).toBe(false);
   });
 });
