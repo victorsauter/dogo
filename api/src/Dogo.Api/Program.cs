@@ -89,8 +89,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi().AllowAnonymous();
 }
 
-// Enum query parameters take member names only, like enums in bodies.
-var api = app.MapGroup("/api/v1").RequireDefinedEnumQueryValues();
+// Enum query parameters take member names only, and date ones an explicit offset, like in bodies.
+var api = app.MapGroup("/api/v1").RequireDefinedEnumQueryValues().RequireExplicitOffsetDateQueryValues();
 api.MapHealthEndpoints();
 
 // Development routes exist only where the environment allows them and their option is on (ADR 0031); everywhere

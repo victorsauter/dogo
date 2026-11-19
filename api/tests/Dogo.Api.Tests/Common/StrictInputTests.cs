@@ -103,6 +103,48 @@ public sealed class StrictInputTests(ApiFixture fixture) : WalkTestBase(fixture)
     }
 
     [Theory]
+    [InlineData("from", "2030-12-01T10:00:00")]
+    [InlineData("from", "2030-12-01T10:00")]
+    [InlineData("from", "2030-12-01")]
+    [InlineData("to", "2030-12-01T10:00:00")]
+    [InlineData("to", "2030-12-01")]
+    [InlineData("to", "2030-12-01T10:00:00+2")]
+    public async Task A_search_date_without_an_explicit_offset_is_refused(string parameter, string value)
+    {
+        var (client, _) = await SignedInAsync();
+
+        var response = await client.GetAsync(
+            $"/api/v1/walks?lat={ParisLatitude}&lng={ParisLongitude}&{parameter}={Uri.EscapeDataString(value)}", Ct);
+
+        await AssertValidationProblemAsync(response, parameter);
+    }
+
+    [Theory]
+    [InlineData("Z")]
+    [InlineData("%2B00:00")]
+    [InlineData("%2B02:00")]
+    [InlineData("-05:30")]
+    public async Task A_search_date_with_an_offset_is_accepted(string offset)
+    {
+        var (client, _) = await SignedInAsync();
+
+        var response = await client.GetAsync(
+            $"/api/v1/walks?lat={ParisLatitude}&lng={ParisLongitude}&from=2030-12-01T10:00:00{offset}&to=2030-12-02T10:00:00{offset}", Ct);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_search_date_that_is_not_a_date_still_fails_the_binding()
+    {
+        var (client, _) = await SignedInAsync();
+
+        var response = await client.GetAsync($"/api/v1/walks?lat={ParisLatitude}&lng={ParisLongitude}&from=tomorrow", Ct);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
     [InlineData("Z")]
     [InlineData("+00:00")]
     [InlineData("+02:00")]
