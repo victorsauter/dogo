@@ -24,8 +24,12 @@ public sealed partial class AccountSuspension(
         var now = timeProvider.GetUtcNow();
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
-        // The user row lock serialises the suspension with a deletion of the same account.
-        var user = (await db.Users.FromSql($"SELECT * FROM users WHERE id = {userId} FOR UPDATE").ToListAsync(cancellationToken))
+        // The user row lock serialises the suspension with a deletion of the same account. It is
+        // FOR NO KEY UPDATE, not FOR UPDATE: the foreign-key check of a registration or a dog being
+        // created by this very account takes FOR KEY SHARE on the row, and FOR UPDATE would make it
+        // wait while holding its dog and walk locks, against the walk locks taken below
+        // (a deadlock, ADR 0037: the lock order is user row, dogs, then walks).
+        var user = (await db.Users.FromSql($"SELECT * FROM users WHERE id = {userId} FOR NO KEY UPDATE").ToListAsync(cancellationToken))
             .SingleOrDefault();
         if (user is null)
         {
