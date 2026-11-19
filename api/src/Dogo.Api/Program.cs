@@ -20,6 +20,7 @@ using Dogo.Api.Infrastructure.Jobs;
 using Dogo.Api.Infrastructure.Persistence;
 using Dogo.Api.Infrastructure.Push;
 using Dogo.Api.Infrastructure.Storage;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -91,8 +92,18 @@ if (app.Environment.IsDevelopment())
 // Enum query parameters take member names only, like enums in bodies.
 var api = app.MapGroup("/api/v1").RequireDefinedEnumQueryValues();
 api.MapHealthEndpoints();
-api.MapAuthEndpoints();
-api.MapDemoDataEndpoints();
+
+// Development routes exist only where the environment allows them and their option is on (ADR 0031); everywhere
+// else they are not declared and answer 404 like any unknown route, whatever the body or the caller.
+// openapi.json is generated in Development, where both are on.
+var devTools = app.Environment.AllowsDevTools();
+var mapDevSignIn = BuildContext.IsOpenApiGeneration || devTools && app.Services.GetRequiredService<IOptions<AuthOptions>>().Value.AllowDevLogin;
+var mapDemoData = BuildContext.IsOpenApiGeneration || devTools && app.Services.GetRequiredService<IOptions<DemoDataOptions>>().Value.Enabled;
+api.MapAuthEndpoints(mapDevSignIn);
+if (mapDemoData)
+{
+    api.MapDemoDataEndpoints();
+}
 
 // Everything else requires a valid access token (fallback authorization policy).
 var authenticated = api.MapGroup("").ProducesProblem(StatusCodes.Status401Unauthorized);
