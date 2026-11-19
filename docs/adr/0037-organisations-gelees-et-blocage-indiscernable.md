@@ -27,6 +27,7 @@ Une revue des règles métier a relevé trois défauts :
 - Le chien est verrouillé : `FOR UPDATE` pour le modifier ou le supprimer, `FOR SHARE` pour l'inscrire ou accepter son inscription. Ordre des verrous : les chiens, puis la balade. La suppression d'un chien verrouille le chien puis touche les lignes des balades (contrôles de clés étrangères) ; l'ordre inverse produisait des interblocages, observés en test.
 - L'inscription à une balade professionnelle partage (`FOR SHARE`) la ligne de l'organisation et celle de l'adhésion ; quitter supprime d'abord l'adhésion, puis annule les inscriptions. Une fermeture, un refus ou un départ simultané attend donc l'inscription, ou est vu par elle.
 - Créer un chien verrouille la ligne du compte, pour que le plafond de 20 chiens tienne.
+- La suspension d'un compte (ADR 0036) verrouille la ligne du compte en `FOR NO KEY UPDATE`, pas en `FOR UPDATE` : le contrôle de clé étrangère d'une inscription du même compte prend `FOR KEY SHARE` sur cette ligne, et `FOR UPDATE` le faisait attendre alors qu'il détenait déjà la balade que la suspension réclame ensuite (interblocage constaté, revue d'intégration). Elle reste sérialisée avec la suppression du compte et la création d'un chien, qui prennent `FOR UPDATE`. Ordre complet : ligne du compte, chiens, puis balades (par identifiant croissant quand il y en a plusieurs). La suppression du compte garde `FOR UPDATE` (la ligne disparaît) : une inscription du même compte lancée en même temps peut encore échouer en 500, limite connue.
 
 ## Conséquences
 
