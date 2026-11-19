@@ -29,7 +29,8 @@ export function initials(name: string): string {
 export function Avatar({ name, photoUrl, size = 48, placeholderIcon = 'person' }: AvatarProps) {
   const { colors } = useTheme();
   const uri = photoUri(photoUrl);
-  const shape = { width: size, height: size, borderRadius: size / 2 };
+  // `flexShrink: 0`: a row of enlarged text must squeeze the text, not the picture.
+  const shape = { width: size, height: size, borderRadius: size / 2, flexShrink: 0 };
   const letters = initials(name);
   const label = letters ? format(t.a11y.avatarOf, { name: name.trim() }) : t.a11y.photo;
   // A line height proportional to the font size: the `body` variant's fixed
@@ -52,6 +53,8 @@ export function Avatar({ name, photoUrl, size = 48, placeholderIcon = 'person' }
     >
       {letters ? (
         <Text
+          // The letters sit in a fixed circle: they follow `size`, not the system text size.
+          allowFontScaling={false}
           style={{
             color: colors.primary,
             fontSize,

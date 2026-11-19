@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Platform, View } from 'react-native';
 
 import { formatDay, formatTime } from '@/lib/dates';
-import { useTheme } from '@/theme';
+import { useLargeText, useTheme } from '@/theme';
 
 import { Button } from './Button';
 import { FieldAnchor } from './FormScroll';
@@ -55,6 +55,8 @@ export function DateTimeField({
   name,
 }: DateTimeFieldProps) {
   const { spacing } = useTheme();
+  // With enlarged text the two buttons no longer fit side by side (« 10:0 » cut short): stack them.
+  const stacked = useLargeText();
   const [open, setOpen] = useState<Mode | null>(null);
   const day = formatDay(value);
   const time = formatTime(value);
@@ -84,8 +86,8 @@ export function DateTimeField({
   return (
     <FieldAnchor name={name} style={{ gap: spacing.xs }}>
       <Text variant="label">{label}</Text>
-      <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-        <View style={{ flex: 3 }}>
+      <View style={{ flexDirection: stacked ? 'column' : 'row', gap: spacing.sm }}>
+        <View style={{ flex: stacked ? undefined : 3 }}>
           <Button
             label={day}
             variant="secondary"
@@ -93,7 +95,7 @@ export function DateTimeField({
             onPress={() => openPicker('date')}
           />
         </View>
-        <View style={{ flex: 2 }}>
+        <View style={{ flex: stacked ? undefined : 2 }}>
           <Button
             label={time}
             variant="secondary"

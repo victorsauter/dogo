@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, TextInput, type TextInputProps } from 'react-native';
 
-import { useTheme } from '@/theme';
+import { scaledSize, useFontScale, useTheme } from '@/theme';
 
 import { FieldAnchor } from './FormScroll';
 import { Text } from './Text';
@@ -27,6 +27,7 @@ export function TextField({
   ...props
 }: TextFieldProps) {
   const { colors, radii, spacing, typography, minTouchSize } = useTheme();
+  const fontScale = useFontScale();
   const [focused, setFocused] = useState(false);
   const borderColor = error ? colors.danger : focused ? colors.primary : colors.border;
 
@@ -51,7 +52,8 @@ export function TextField({
           styles.input,
           typography.body,
           {
-            minHeight: multiline ? minTouchSize * 2.5 : minTouchSize,
+            // A minimum that follows the text size, never a fixed height: the field grows with its text.
+            minHeight: scaledSize(multiline ? minTouchSize * 2.5 : minTouchSize, fontScale),
             borderRadius: radii.md,
             paddingHorizontal: spacing.md,
             paddingVertical: spacing.sm,

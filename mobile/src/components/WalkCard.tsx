@@ -4,7 +4,7 @@ import type { GeoPoint, MyRegistration, WalkSummary } from '@/api/types';
 import { formatDuration, formatWalkStart } from '@/lib/dates';
 import { distanceMeters, formatDistance } from '@/lib/geo';
 import { enumLabel, format, t } from '@/strings';
-import { useTheme } from '@/theme';
+import { useLineLimit, useTheme } from '@/theme';
 
 import { Badge } from './Badge';
 import { Card } from './Card';
@@ -55,6 +55,8 @@ export function WalkCard({
   compact = false,
 }: WalkCardProps) {
   const { colors, spacing } = useTheme();
+  const titleLines = useLineLimit(2);
+  const whereLines = useLineLimit(1);
   const full = isWalkFull(walk);
   const cancelled = walk.status === 'Cancelled';
   const registration = myRegistrationState(walk.myRegistrations);
@@ -137,13 +139,13 @@ export function WalkCard({
       ) : null}
       <Text
         variant="subheading"
-        numberOfLines={2}
+        numberOfLines={titleLines}
         style={cancelled ? { textDecorationLine: 'line-through' } : undefined}
       >
         {walk.title}
       </Text>
       <Text color="textMuted">{`${when} · ${duration}`}</Text>
-      <Text variant="caption" color="textMuted" numberOfLines={1}>
+      <Text variant="caption" color="textMuted" numberOfLines={whereLines}>
         {where}
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>

@@ -335,7 +335,7 @@ function AnchoredMenu<T extends string>({
                 <View style={{ width: 18, alignItems: 'center' }}>
                   {checked ? <Icon name="check" size={15} color="text" /> : null}
                 </View>
-                <Text variant="body" numberOfLines={1} style={{ flex: 1 }}>
+                <Text variant="body" style={{ flex: 1 }}>
                   {option.label}
                 </Text>
               </Pressable>

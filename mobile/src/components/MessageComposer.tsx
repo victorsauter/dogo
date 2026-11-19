@@ -3,7 +3,7 @@ import { TextInput, View, type TextInputInstance } from 'react-native';
 
 import { MESSAGE_MAX_LENGTH } from '@/api/messages';
 import { format, t } from '@/strings';
-import { useTheme } from '@/theme';
+import { scaledSize, useFontScale, useTheme } from '@/theme';
 
 import { Button } from './Button';
 import { Text } from './Text';
@@ -19,6 +19,7 @@ export interface MessageComposerProps {
 /** Text field and « Envoyer » button of the thread, limited to 1 000 characters. */
 export function MessageComposer({ onSend }: MessageComposerProps) {
   const { colors, radii, spacing, typography, minTouchSize } = useTheme();
+  const fontScale = useFontScale();
   const [text, setText] = useState('');
   const inputRef = useRef<TextInputInstance>(null);
   const canSend = text.trim().length > 0;
@@ -55,8 +56,9 @@ export function MessageComposer({ onSend }: MessageComposerProps) {
             typography.body,
             {
               flex: 1,
-              minHeight: minTouchSize,
-              maxHeight: 120,
+              // Both follow the text size: enlarged text keeps a few lines visible.
+              minHeight: scaledSize(minTouchSize, fontScale),
+              maxHeight: scaledSize(120, fontScale, 3),
               color: colors.text,
               backgroundColor: colors.background,
               borderColor: colors.border,

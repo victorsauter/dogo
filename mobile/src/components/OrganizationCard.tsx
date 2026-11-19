@@ -2,7 +2,7 @@ import { View } from 'react-native';
 
 import type { MyMembership, OrganizationSummary } from '@/api/types';
 import { enumLabel, plural, t } from '@/strings';
-import { useTheme } from '@/theme';
+import { useLineLimit, useTheme } from '@/theme';
 
 import { Badge } from './Badge';
 import { Card } from './Card';
@@ -18,6 +18,7 @@ export interface OrganizationCardProps {
 /** An organisation in a list: name, city, member count, my role and what is pending. */
 export function OrganizationCard({ organization, membership, onPress }: OrganizationCardProps) {
   const { spacing } = useTheme();
+  const titleLines = useLineLimit(2);
   const details = [organization.city, plural(t.organization.memberCount, organization.memberCount)]
     .filter(Boolean)
     .join(' · ');
@@ -61,7 +62,7 @@ export function OrganizationCard({ organization, membership, onPress }: Organiza
 
   return (
     <Card onPress={onPress} accessibilityLabel={summary}>
-      <Text variant="subheading" numberOfLines={2}>
+      <Text variant="subheading" numberOfLines={titleLines}>
         {organization.name}
       </Text>
       <Text variant="caption" color="textMuted">
