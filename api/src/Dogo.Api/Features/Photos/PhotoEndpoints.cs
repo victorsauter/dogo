@@ -58,7 +58,7 @@ public static class PhotoEndpoints
         DogoDbContext db,
         IPhotoStorage storage,
         IOptions<AdminOptions> admin,
-        IConfiguration configuration,
+        IOptions<PhotoProcessingOptions> processing,
         CancellationToken cancellationToken)
     {
         var user = await db.Users.FindAsync([principal.GetUserId()], cancellationToken);
@@ -67,7 +67,7 @@ public static class PhotoEndpoints
             return Problems.Unauthorized(ErrorCodes.Unauthenticated, "The account no longer exists.");
         }
 
-        var (fileName, problem) = await SaveAsync(file, storage, configuration, cancellationToken);
+        var (fileName, problem) = await SaveAsync(file, storage, processing, cancellationToken);
         if (fileName is null)
         {
             return problem!;
@@ -86,7 +86,7 @@ public static class PhotoEndpoints
         ClaimsPrincipal principal,
         DogoDbContext db,
         IPhotoStorage storage,
-        IConfiguration configuration,
+        IOptions<PhotoProcessingOptions> processing,
         CancellationToken cancellationToken)
     {
         var (dog, ownershipProblem) = await DogEndpoints.FindOwnedDogAsync(db, id, principal, cancellationToken);
@@ -95,7 +95,7 @@ public static class PhotoEndpoints
             return ownershipProblem!;
         }
 
-        var (fileName, problem) = await SaveAsync(file, storage, configuration, cancellationToken);
+        var (fileName, problem) = await SaveAsync(file, storage, processing, cancellationToken);
         if (fileName is null)
         {
             return problem!;
@@ -131,7 +131,7 @@ public static class PhotoEndpoints
     /// and stores the result. Returns the stored name or a problem.
     /// </summary>
     private static async Task<(string? FileName, ProblemHttpResult? Problem)> SaveAsync(
-        IFormFile? file, IPhotoStorage storage, IConfiguration configuration, CancellationToken cancellationToken)
+        IFormFile? file, IPhotoStorage storage, IOptions<PhotoProcessingOptions> processing, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
         {
@@ -153,7 +153,7 @@ public static class PhotoEndpoints
             }
         }
 
-        var processor = new PhotoProcessor(PhotoProcessingOptions.From(configuration));
+        var processor = new PhotoProcessor(processing.Value);
         var (photo, rejection) = await processor.ProcessAsync(content, cancellationToken);
         if (photo is null)
         {

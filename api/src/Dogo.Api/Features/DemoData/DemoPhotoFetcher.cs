@@ -25,7 +25,7 @@ internal sealed record DemoPhotoResult(IReadOnlyList<string> StoredFiles, int Fa
 public sealed partial class DemoPhotoFetcher(
     IHttpClientFactory httpClientFactory,
     IPhotoStorage storage,
-    IConfiguration configuration,
+    IOptions<PhotoProcessingOptions> processing,
     IOptions<DemoDataOptions> options,
     ILogger<DemoPhotoFetcher> logger)
 {
@@ -150,7 +150,7 @@ public sealed partial class DemoPhotoFetcher(
                 return null;
             }
 
-            var (photo, rejection) = await new PhotoProcessor(PhotoProcessingOptions.From(configuration))
+            var (photo, rejection) = await new PhotoProcessor(processing.Value)
                 .ProcessAsync(content.ToArray(), cancellationToken);
             if (photo is null)
             {

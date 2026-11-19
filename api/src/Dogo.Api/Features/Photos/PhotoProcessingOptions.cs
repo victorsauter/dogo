@@ -19,14 +19,27 @@ public sealed class PhotoProcessingOptions
 
     /// <summary>Quality of re-encoded WebP images, 1 to 100.</summary>
     public int WebpQuality { get; set; } = 85;
+}
 
-    public static PhotoProcessingOptions From(IConfiguration configuration)
+public static class PhotoProcessingOptionsExtensions
+{
+    /// <summary>
+    /// Registers the options: bound from <c>Photos</c>, brought back into range (a value outside
+    /// its range is clamped, never refused), and read at startup so that a value that cannot be
+    /// read (<c>Photos:MaxSide=abc</c>) prevents the start instead of failing the first upload.
+    /// </summary>
+    public static IServiceCollection AddDogoPhotoProcessing(this IServiceCollection services)
     {
-        var options = configuration.GetSection(SectionName).Get<PhotoProcessingOptions>() ?? new PhotoProcessingOptions();
-        options.MaxPixels = Math.Max(1, options.MaxPixels);
-        options.MaxSide = Math.Clamp(options.MaxSide, 16, 16384);
-        options.JpegQuality = Math.Clamp(options.JpegQuality, 1, 100);
-        options.WebpQuality = Math.Clamp(options.WebpQuality, 1, 100);
-        return options;
+        services.AddOptions<PhotoProcessingOptions>()
+            .BindConfiguration(PhotoProcessingOptions.SectionName)
+            .PostConfigure(options =>
+            {
+                options.MaxPixels = Math.Max(1, options.MaxPixels);
+                options.MaxSide = Math.Clamp(options.MaxSide, 16, 16384);
+                options.JpegQuality = Math.Clamp(options.JpegQuality, 1, 100);
+                options.WebpQuality = Math.Clamp(options.WebpQuality, 1, 100);
+            })
+            .ValidateOnStart();
+        return services;
     }
 }

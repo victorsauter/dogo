@@ -43,6 +43,7 @@ builder.Services.AddDogoPersistence();
 builder.Services.AddDogoAuth();
 builder.Services.AddOptions<LocalStorageOptions>().BindConfiguration(LocalStorageOptions.SectionName);
 builder.Services.AddSingleton<IPhotoStorage, LocalPhotoStorage>();
+builder.Services.AddDogoPhotoProcessing();
 
 builder.Services.AddDogoPush();
 

@@ -58,6 +58,15 @@ public sealed class StartupConfigurationTests(ApiFixture fixture)
         AssertStartupFails(factory, "Auth:Jwt:RefreshTokenGracePeriod must be between");
     }
 
+    [Fact]
+    public async Task A_photo_setting_that_cannot_be_read_prevents_startup()
+    {
+        await using var factory = new DogoApiFactory(
+            fixture.ConnectionString, new Dictionary<string, string?> { ["Photos:MaxSide"] = "large" });
+
+        AssertStartupFails(factory, "Photos:MaxSide");
+    }
+
     [Theory]
     [InlineData("Production")]
     [InlineData("Staging")]
