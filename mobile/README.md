@@ -45,29 +45,32 @@ Après un changement de `.env`, relancer Metro avec `npx expo start --clear`.
 
 Lues une seule fois dans `src/lib/config.ts` (objet `config` typé). Expo intègre les variables `EXPO_PUBLIC_*` au moment de la construction : elles ne sont pas secrètes et ne doivent jamais contenir de secret.
 
-| Variable                                                        | Défaut                                            | Rôle                                                                                                                                                                           |
-| --------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `EXPO_PUBLIC_API_URL`                                           | `http://localhost:5080` (développement seulement) | Adresse de l'API, sans `/api/v1` ; obligatoire et en `https` dans une version de distribution (voir plus bas)                                                                  |
-| `EXPO_PUBLIC_DEV_LOGIN`                                         | absente                                           | `true` affiche, **dans une version de développement seulement** (`__DEV__`), la connexion de test (l'API doit avoir `Auth:AllowDevLogin=true`) et les données de démonstration |
-| `EXPO_PUBLIC_DEFAULT_LATITUDE`, `EXPO_PUBLIC_DEFAULT_LONGITUDE` | Seppois-le-Haut (`47.5339`, `7.1844`)             | Centre de la carte quand la position n'est pas connue ; les deux sont nécessaires, une valeur invalide est ignorée                                                             |
-| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`                              | absente                                           | Identifiant client OAuth web de Google ; sans lui, bouton Google masqué (version de développement requise)                                                                     |
-| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`                              | absente                                           | Identifiant client OAuth iOS, requis en plus sur iOS ; il sert aussi au plugin natif (`app.config.ts`)                                                                         |
-| `EXPO_PUBLIC_EAS_PROJECT_ID`                                    | absente                                           | Identifiant du projet EAS (`eas init`) : sans lui, notifications push indisponibles (`extra.eas.projectId`)                                                                    |
-| `GOOGLE_MAPS_ANDROID_API_KEY`                                   | absente                                           | Clé Google Maps pour Android, lue par `app.config.ts` à la construction (sans préfixe `EXPO_PUBLIC_`) ; sans elle, carte grise hors Expo Go                                    |
-| `GOOGLE_SERVICES_JSON`                                          | absente                                           | Chemin de `google-services.json` (Firebase), nécessaire aux notifications push sur Android ; sur EAS, variable de type fichier                                                 |
+| Variable                                                        | Défaut                                            | Rôle                                                                                                                                                                                                                                                               |
+| --------------------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `EXPO_PUBLIC_API_URL`                                           | `http://localhost:5080` (développement seulement) | Adresse de l'API, sans `/api/v1` ; obligatoire et en `https` dans une version de distribution (voir plus bas)                                                                                                                                                      |
+| `EXPO_PUBLIC_DEV_LOGIN`                                         | absente                                           | `true` affiche, **dans une version de développement seulement** (`__DEV__`), la connexion de test (l'API doit avoir `Auth:AllowDevLogin=true`) et les données de démonstration                                                                                     |
+| `EXPO_PUBLIC_DEMO_MODE`                                         | absente                                           | `true` affiche la connexion de test et les données de démonstration **même dans une version Release** (build de démo sur son propre iPhone, ADR 0043) ; l'adresse de l'API reste obligatoire et en `https`. Refusée pour les profils EAS `preview` et `production` |
+| `UZU_FREE_SIGNING`                                              | absente                                           | `true` (lue par `app.config.ts` à la construction, sans préfixe `EXPO_PUBLIC_`) : build signée avec un Apple ID gratuit, sans connexion Apple ni notifications push (plugins et droit Apple retirés, `extra.freeSigning`)                                          |
+| `UZU_IOS_BUNDLE_IDENTIFIER`                                     | `com.victorsauter.uzu`                            | Remplace l'identifiant de bundle iOS si Xcode le refuse à une équipe personnelle (ex. `com.victorsauter.uzudemo`) ; l'identifiant Android ne change pas                                                                                                            |
+| `EXPO_PUBLIC_DEFAULT_LATITUDE`, `EXPO_PUBLIC_DEFAULT_LONGITUDE` | Seppois-le-Haut (`47.5339`, `7.1844`)             | Centre de la carte quand la position n'est pas connue ; les deux sont nécessaires, une valeur invalide est ignorée                                                                                                                                                 |
+| `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`                              | absente                                           | Identifiant client OAuth web de Google ; sans lui, bouton Google masqué (version de développement requise)                                                                                                                                                         |
+| `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`                              | absente                                           | Identifiant client OAuth iOS, requis en plus sur iOS ; il sert aussi au plugin natif (`app.config.ts`)                                                                                                                                                             |
+| `EXPO_PUBLIC_EAS_PROJECT_ID`                                    | absente                                           | Identifiant du projet EAS (`eas init`) : sans lui, notifications push indisponibles (`extra.eas.projectId`)                                                                                                                                                        |
+| `GOOGLE_MAPS_ANDROID_API_KEY`                                   | absente                                           | Clé Google Maps pour Android, lue par `app.config.ts` à la construction (sans préfixe `EXPO_PUBLIC_`) ; sans elle, carte grise hors Expo Go                                                                                                                        |
+| `GOOGLE_SERVICES_JSON`                                          | absente                                           | Chemin de `google-services.json` (Firebase), nécessaire aux notifications push sur Android ; sur EAS, variable de type fichier                                                                                                                                     |
 
-**Version de distribution** (`__DEV__` faux : build de prévisualisation ou de production) : le repli sur `http://localhost:5080` n'existe pas. Sans `EXPO_PUBLIC_API_URL`, ou avec une adresse qui n'est pas en `https`, l'application affiche au démarrage l'écran « Application mal configurée » (`AppProviders`, `config.error`) au lieu de tenter des requêtes vouées à l'échec. La connexion de test et les données de démonstration n'y apparaissent jamais, même avec `EXPO_PUBLIC_DEV_LOGIN=true`. Pour voir cet écran : `npx expo start --no-dev --minify` sans la variable.
+**Version de distribution** (`__DEV__` faux : build de prévisualisation ou de production) : le repli sur `http://localhost:5080` n'existe pas. Sans `EXPO_PUBLIC_API_URL`, ou avec une adresse qui n'est pas en `https`, l'application affiche au démarrage l'écran « Application mal configurée » (`AppProviders`, `config.error`) au lieu de tenter des requêtes vouées à l'échec. La connexion de test et les données de démonstration n'y apparaissent jamais, même avec `EXPO_PUBLIC_DEV_LOGIN=true` ; **seule exception**, `EXPO_PUBLIC_DEMO_MODE=true` (build de démo locale, voir « Build de démo sur un iPhone avec un Apple ID gratuit »), que `app.config.ts` refuse pour les profils `preview` et `production`. Pour voir cet écran : `npx expo start --no-dev --minify` sans la variable.
 
 ## Données de démonstration (développement)
 
-Avec `EXPO_PUBLIC_DEV_LOGIN=true`, l'écran de connexion montre, sous « Connexion de test », deux cartes réservées au développement (voir l'[ADR 0027](../docs/adr/0027-donnees-de-demonstration.md) et « Données de démonstration » dans `api/README.md`) :
+Avec `EXPO_PUBLIC_DEV_LOGIN=true` (version de développement) ou `EXPO_PUBLIC_DEMO_MODE=true` (build de démo, y compris en Release), l'écran de connexion montre, sous « Connexion de test », deux cartes réservées au développement (voir l'[ADR 0027](../docs/adr/0027-donnees-de-demonstration.md) et « Données de démonstration » dans `api/README.md`) :
 
 - **« Données de démonstration »** : l'état (aucune donnée, ou le nombre de comptes, chiens, balades, messages et photos), l'interrupteur « Télécharger des photos » (activé par défaut), « Générer les données de démonstration » (avec les photos, compter quelques secondes à une minute : le bouton tourne et une phrase l'explique, puis un résumé s'affiche) et « Supprimer les données de démonstration » après confirmation. Générer à nouveau remplace les données de démonstration ; le compte de test (`dev-user-1`) n'est jamais touché. Si l'API répond 404 (`DemoData:Enabled` à `false`), la carte le dit en une phrase.
 - **« Se connecter comme… »** : les comptes de démonstration avec leur avatar, leurs chiens, le badge « Éducateur » et leur organisation, et un champ de recherche (nom, chien ou organisation, sans tenir compte des accents). Toucher un compte ouvre une session par la connexion de test, avec son `subject`.
 
 Pour essayer : lancer l'API en Development (`DemoData:Enabled` y est vrai), ouvrir l'application déconnectée, générer, puis se connecter comme `demo-marie-schmitt` (balade complète, fils de discussion), `demo-thomas-haas` (avertissement « Participant bloqué ») ou `demo-sandrine-gutzwiller` (responsable d'organisation : membres et demandes). Se déconnecter ramène à l'écran de connexion pour changer de compte.
 
-Le code vit à part, dans `src/devtools/` (`demoData.ts` pour les appels typés depuis `schema.d.ts`, `DemoDataSection.tsx` pour l'interface) ; `loadDemoDataSection()` ne le charge que dans une version de développement avec `EXPO_PUBLIC_DEV_LOGIN` à `true` : sinon rien n'est rendu ni appelé. Les photos viennent de DiceBear (avatars dessinés, CC0) et de Wikimedia Commons (photos de races sous licence libre) ; elles restent sur l'API de développement.
+Le code vit à part, dans `src/devtools/` (`demoData.ts` pour les appels typés depuis `schema.d.ts`, `DemoDataSection.tsx` pour l'interface) ; `loadDemoDataSection()` ne le charge que si `config.devLogin` est vrai (version de développement avec `EXPO_PUBLIC_DEV_LOGIN` à `true`, ou `EXPO_PUBLIC_DEMO_MODE` à `true`) : sinon rien n'est rendu ni appelé. Les photos viennent de DiceBear (avatars dessinés, CC0) et de Wikimedia Commons (photos de races sous licence libre) ; elles restent sur l'API de développement.
 
 ## Construire une version de test
 
@@ -153,7 +156,7 @@ eas env:list --environment preview        # vérifier
 eas env:exec preview "EAS_BUILD_PROFILE=preview npx expo config --type public"
 ```
 
-**Garde-fou.** Pour les profils `preview` et `production`, `app.config.ts` fait échouer la build, avec un message qui dit quoi corriger, si `EXPO_PUBLIC_API_URL` est absente ou n'est pas en `https`, ou si `EXPO_PUBLIC_DEV_LOGIN` vaut `true`. Il s'appuie sur `EAS_BUILD_PROFILE`, que EAS Build pose sur la machine de build : EAS CLI ne l'a pas quand il lit la configuration chez toi, donc l'erreur peut n'apparaître qu'à l'étape « Read app config » du journal de build (la commande `eas env:exec` ci-dessus la montre avant). Le développement local et les tests ne sont jamais gênés (`app.config.ts`, tests dans `src/lib/__tests__/appConfig.test.ts`).
+**Garde-fou.** Pour les profils `preview` et `production`, `app.config.ts` fait échouer la build, avec un message qui dit quoi corriger, si `EXPO_PUBLIC_API_URL` est absente ou n'est pas en `https`, ou si `EXPO_PUBLIC_DEV_LOGIN` ou `EXPO_PUBLIC_DEMO_MODE` vaut `true`. Il s'appuie sur `EAS_BUILD_PROFILE`, que EAS Build pose sur la machine de build : EAS CLI ne l'a pas quand il lit la configuration chez toi, donc l'erreur peut n'apparaître qu'à l'étape « Read app config » du journal de build (la commande `eas env:exec` ci-dessus la montre avant). Le développement local et les tests ne sont jamais gênés (`app.config.ts`, tests dans `src/lib/__tests__/appConfig.test.ts`).
 
 **4. Créer les identifiants de connexion Apple et Google, et les reporter des deux côtés.** Tout est lié à l'identifiant `com.victorsauter.uzu` : l'audience Apple de l'API (`Auth__Apple__Audiences__0`) est exactement cet identifiant, et les clients OAuth Google (iOS, Android) et la clé Google Maps Android se créent pour ce bundle et ce paquet.
 
@@ -223,6 +226,31 @@ eas build -p android --profile development         # .apk
 npx expo start --dev-client
 ```
 
+### Build de démo sur un iPhone avec un Apple ID gratuit
+
+Pour montrer Uzu depuis son propre iPhone, sans EAS ni compte développeur payant, avec l'API de démo hébergée (ADR 0043 ; mise en place dans `docs/demo-hebergee.md`). Build Release locale, signée par Xcode avec une équipe personnelle.
+
+1. Dans `.env` (voir `.env.example`) :
+
+   ```sh
+   EXPO_PUBLIC_API_URL=https://<service>.onrender.com
+   EXPO_PUBLIC_DEMO_MODE=true
+   UZU_FREE_SIGNING=true
+   # Seulement si Xcode refuse l'identifiant de bundle à l'équipe personnelle :
+   # UZU_IOS_BUNDLE_IDENTIFIER=com.victorsauter.uzudemo
+   ```
+
+2. Générer le projet natif (le dossier `ios/` est ignoré par git) : `npx expo prebuild --clean -p ios`.
+3. Ouvrir `ios/*.xcworkspace` dans Xcode, onglet **Signing & Capabilities** de la cible de l'app, cocher « Automatically manage signing » et choisir son équipe personnelle (« Nom (Personal Team) »), après s'être connecté avec son Apple ID dans Xcode > Réglages > Comptes. Si l'identifiant de bundle est refusé, utiliser `UZU_IOS_BUNDLE_IDENTIFIER` et refaire l'étape 2.
+4. iPhone branché et déverrouillé : `npx expo run:ios --device --configuration Release`, puis choisir l'iPhone.
+5. Sur l'iPhone, au premier lancement : activer le **Mode développeur** (Réglages > Confidentialité et sécurité > Mode développeur, redémarrage demandé), puis faire confiance au développeur (Réglages > Général > VPN et gestion de l'appareil > son Apple ID > Faire confiance).
+
+**Expiration.** Avec un Apple ID gratuit, l'app cesse de s'ouvrir après 7 jours : relancer la même commande (étape 4) avec l'iPhone branché la réinstalle pour 7 jours, données de l'appareil conservées ; refaire `prebuild` n'est utile que si la configuration change.
+
+**Limites.** Pas de connexion Apple (le bouton est masqué), pas de notifications push (droits que l'Apple ID gratuit ne peut pas signer) ; la connexion Google dépend des identifiants OAuth configurés. On se connecte avec « Se connecter comme… ». Le nombre d'apps installées avec un Apple ID gratuit est limité par Apple.
+
+_Non vérifié ici (aucun iPhone ni Xcode utilisé) : l'intitulé exact des menus d'Xcode et d'iOS, la durée de 7 jours et les limites de l'Apple ID gratuit viennent d'Apple et peuvent changer. La documentation Expo confirme `prebuild --clean` et `run:ios --device --configuration Release`, mais pas la signature ni le Mode développeur._
+
 ### Si l'application devait être renommée à nouveau
 
 Le renommage en Uzu (ADR 0041) a suivi ce chemin ; il ne se refait pas après le premier envoi à un store. Tout part de `APP` en tête de `app.config.ts` (nom affiché, slug, schéma de lien, identifiants de bundle et de paquet) ; les textes des permissions le reprennent. Le schéma est aussi écrit dans `src/lib/appLinks.ts` (`APP_URL_SCHEME`, lu par `src/notifications/routing.ts`), qu'un test de `appConfig.test.ts` tient égal à `APP.urlScheme`, et dans l'API (liens des notifications). Ensuite, à la main : `Auth__Apple__Audiences__0` de l'API, les clients OAuth Google (identifiant de bundle et nom de paquet), l'application Android du projet Firebase (nom de paquet), la restriction de la clé Maps (nom de paquet), le projet EAS (slug), `fr.app.name` et les textes de `src/strings/` qui citent le nom, et les clés de stockage `uzu.*`.
@@ -276,7 +304,7 @@ mobile/
     ├── theme/             couleurs claires et sombres (charte « Uzu »), espacements, rayons, typographie
     ├── strings/           tous les textes français (fr.ts)
     ├── lib/               configuration, fournisseurs, âge, dates, géographie, position, validation des formulaires, sélecteur de photo
-    ├── devtools/          outils de développement (données de démonstration), chargés seulement avec EXPO_PUBLIC_DEV_LOGIN=true
+    ├── devtools/          outils de développement (données de démonstration), chargés seulement si config.devLogin est vrai
     └── test/              utilitaires de test (pas de tests ici)
 ```
 
