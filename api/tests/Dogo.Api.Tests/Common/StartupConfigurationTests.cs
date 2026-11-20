@@ -1,7 +1,9 @@
 using Dogo.Api.Infrastructure.Auth;
 using Dogo.Api.Infrastructure.Hosting;
 using Dogo.Api.Infrastructure.Push;
+using Dogo.Api.Infrastructure.Storage;
 using Dogo.Api.Tests.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 
@@ -59,6 +61,96 @@ public sealed class StartupConfigurationTests(ApiFixture fixture)
     }
 
     [Fact]
+    public async Task The_local_photo_storage_is_the_default()
+    {
+        await using var factory = new DogoApiFactory(fixture.ConnectionString);
+
+        Assert.IsType<LocalPhotoStorage>(factory.Services.GetRequiredService<IPhotoStorage>());
+    }
+
+    [Theory]
+    [InlineData("ServiceUrl")]
+    [InlineData("Bucket")]
+    [InlineData("Region")]
+    [InlineData("AccessKeyId")]
+    [InlineData("SecretAccessKey")]
+    public async Task The_s3_photo_storage_without_one_of_its_settings_prevents_startup(string missing)
+    {
+        await using var factory = new DogoApiFactory(fixture.ConnectionString, S3Settings((missing, null)));
+
+        AssertStartupFails(factory, $"Storage:S3:{missing} is empty but Storage:Provider is S3");
+    }
+
+    [Fact]
+    public async Task The_s3_photo_storage_with_no_setting_names_every_missing_one()
+    {
+        await using var factory = new DogoApiFactory(fixture.ConnectionString, new Dictionary<string, string?> { ["Storage:Provider"] = "S3" });
+
+        var exception = Assert.ThrowsAny<Exception>(() => factory.CreateClient()).ToString();
+
+        foreach (var key in new[] { "ServiceUrl", "Bucket", "Region", "AccessKeyId", "SecretAccessKey" })
+        {
+            Assert.Contains($"Storage:S3:{key}", exception, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task An_s3_service_url_that_is_not_a_url_prevents_startup()
+    {
+        await using var factory = new DogoApiFactory(fixture.ConnectionString, S3Settings(("ServiceUrl", "storage.example.com")));
+
+        AssertStartupFails(factory, "Storage:S3:ServiceUrl must be an absolute http or https URL");
+    }
+
+    [Fact]
+    public async Task An_unknown_photo_storage_provider_prevents_startup()
+    {
+        await using var factory = new DogoApiFactory(fixture.ConnectionString, new Dictionary<string, string?> { ["Storage:Provider"] = "Azure" });
+
+        AssertStartupFails(factory, "Storage");
+    }
+
+    [Fact]
+    public async Task The_s3_photo_storage_starts_when_complete_and_is_not_contacted_at_startup()
+    {
+        // The port is closed: the check is about the settings only, so a wrong endpoint shows on the first photo.
+        await using var factory = new DogoApiFactory(fixture.ConnectionString, S3Settings());
+
+        var response = await factory.CreateClient().GetAsync("/api/v1/health", TestContext.Current.CancellationToken);
+
+        Assert.True(response.IsSuccessStatusCode);
+        Assert.IsType<S3PhotoStorage>(factory.Services.GetRequiredService<IPhotoStorage>());
+    }
+
+    [Fact]
+    public async Task The_s3_settings_are_not_checked_while_the_provider_is_local()
+    {
+        await using var factory = new DogoApiFactory(fixture.ConnectionString, new Dictionary<string, string?> { ["Storage:S3:Bucket"] = "" });
+
+        Assert.True((await factory.CreateClient().GetAsync("/api/v1/health", TestContext.Current.CancellationToken)).IsSuccessStatusCode);
+    }
+
+    /// <summary>A complete S3 configuration; <paramref name="overrides"/> replace or (with null) remove values.</summary>
+    private static Dictionary<string, string?> S3Settings(params (string Key, string? Value)[] overrides)
+    {
+        var settings = new Dictionary<string, string?>
+        {
+            ["Storage:Provider"] = "S3",
+            ["Storage:S3:ServiceUrl"] = "http://127.0.0.1:1",
+            ["Storage:S3:Bucket"] = "photos",
+            ["Storage:S3:Region"] = "eu-central-1",
+            ["Storage:S3:AccessKeyId"] = "key-id",
+            ["Storage:S3:SecretAccessKey"] = "secret-key",
+        };
+        foreach (var (key, value) in overrides)
+        {
+            settings[$"Storage:S3:{key}"] = value;
+        }
+
+        return settings;
+    }
+
+    [Fact]
     public async Task A_photo_setting_that_cannot_be_read_prevents_startup()
     {
         await using var factory = new DogoApiFactory(
@@ -91,6 +183,25 @@ public sealed class StartupConfigurationTests(ApiFixture fixture)
     }
 
     [Fact]
+    public async Task The_demo_environment_starts_with_a_real_key_and_the_dev_tools_on()
+    {
+        // DogoApiFactory turns the dev sign-in and the demo data on for Demo, like the configuration of the hosted demo.
+        await using var factory = new DogoApiFactory(fixture.ConnectionString, environment: "Demo");
+
+        var response = await factory.CreateClient().GetAsync("/api/v1/health", TestContext.Current.CancellationToken);
+
+        Assert.True(response.IsSuccessStatusCode);
+    }
+
+    [Fact]
+    public async Task The_demo_environment_still_needs_a_connection_string()
+    {
+        await using var factory = new DogoApiFactory("", environment: "Demo");
+
+        AssertStartupFails(factory, "ConnectionStrings:Dogo is empty");
+    }
+
+    [Fact]
     public async Task Demo_data_without_the_dev_sign_in_prevents_startup()
     {
         await using var factory = new DogoApiFactory(
@@ -111,6 +222,7 @@ public sealed class StartupConfigurationTests(ApiFixture fixture)
 
     [Theory]
     [InlineData("Testing")]
+    [InlineData("Demo")]
     [InlineData("Staging")]
     [InlineData("Production")]
     public async Task The_committed_development_signing_key_prevents_startup_outside_development(string environment)

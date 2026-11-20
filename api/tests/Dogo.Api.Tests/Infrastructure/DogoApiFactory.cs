@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 
 namespace Dogo.Api.Tests.Infrastructure;
 
@@ -34,7 +33,7 @@ public sealed class DogoApiFactory(
 
     public FakeDemoPhotoServer DemoPhotos { get; } = new();
 
-    private bool DevTools => environment == Environments.Development || environment == "Testing";
+    private bool DevTools => environment is "Development" or "Testing" or "Demo";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -43,7 +42,7 @@ public sealed class DogoApiFactory(
         var settings = new Dictionary<string, string?>
         {
             ["ConnectionStrings:Dogo"] = connectionString,
-            // Like the configuration files: dev tools on only where they are allowed (Development, Testing).
+            // Like the configuration files: dev tools on only where they are allowed (Development, Testing, Demo).
             ["Auth:AllowDevLogin"] = DevTools ? "true" : "false",
             ["Auth:Jwt:SigningKey"] = SigningKey,
             ["Storage:Local:Path"] = PhotoPath,

@@ -89,6 +89,18 @@ public sealed class HttpHardeningTests(ApiFixture fixture) : ApiTestBase(fixture
     }
 
     [Fact]
+    public async Task Https_responses_carry_hsts_in_the_demo_environment()
+    {
+        await using var demo = new DogoApiFactory(Fixture.ConnectionString, environment: "Demo");
+        var client = demo.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://api.dogo.test") });
+
+        var response = await client.GetAsync("/api/v1/health", Ct);
+
+        var hsts = Assert.Single(response.Headers.GetValues("Strict-Transport-Security"));
+        Assert.Contains("max-age=31536000", hsts, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Hsts_is_not_sent_in_development()
     {
         await using var development = new DogoApiFactory(Fixture.ConnectionString, environment: "Development");
