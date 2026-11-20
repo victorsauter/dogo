@@ -3,7 +3,7 @@
 - **Statut :** Accepté
 - **Date :** 18/11/2026
 - **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
-- **Précisé par :** [ADR 0036](0036-suspension-et-signalements.md) (un compte suspendu peut se supprimer).
+- **Précisé par :** [ADR 0036](0036-suspension-et-signalements.md) (un compte suspendu peut se supprimer) ; [ADR 0042](0042-chien-relie-a-plusieurs-humains.md) (un chien n'est supprimé que si l'utilisateur en était le dernier propriétaire).
 
 ## Contexte
 
