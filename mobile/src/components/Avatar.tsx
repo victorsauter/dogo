@@ -2,7 +2,7 @@ import { Image, View } from 'react-native';
 
 import { photoUri } from '@/api/photo';
 import { format, t } from '@/strings';
-import { useTheme } from '@/theme';
+import { useTheme, type ColorTokens } from '@/theme';
 
 import { Icon, type IconName } from './Icon';
 import { Text } from './Text';
@@ -15,6 +15,11 @@ export interface AvatarProps {
   size?: number;
   /** Shown instead of initials while `name` is empty (e.g. a dog not named yet). */
   placeholderIcon?: IconName;
+  /**
+   * Fill behind the initials when there is no photo, `primarySoft` by default.
+   * On a background already tinted `primarySoft`, pass `surface` so the circle shows.
+   */
+  background?: keyof ColorTokens;
 }
 
 export function initials(name: string): string {
@@ -26,7 +31,13 @@ export function initials(name: string): string {
     .toLocaleUpperCase('fr-FR');
 }
 
-export function Avatar({ name, photoUrl, size = 48, placeholderIcon = 'person' }: AvatarProps) {
+export function Avatar({
+  name,
+  photoUrl,
+  size = 48,
+  placeholderIcon = 'person',
+  background = 'primarySoft',
+}: AvatarProps) {
   const { colors } = useTheme();
   const uri = photoUri(photoUrl);
   // `flexShrink: 0`: a row of enlarged text must squeeze the text, not the picture.
@@ -48,7 +59,7 @@ export function Avatar({ name, photoUrl, size = 48, placeholderIcon = 'person' }
       accessibilityLabel={label}
       style={[
         shape,
-        { backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+        { backgroundColor: colors[background], alignItems: 'center', justifyContent: 'center' },
       ]}
     >
       {letters ? (

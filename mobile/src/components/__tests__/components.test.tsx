@@ -203,6 +203,16 @@ describe('Avatar', () => {
     },
   );
 
+  it('fills the circle with primarySoft by default, or with the colour asked for', async () => {
+    const { lightColors } = jest.requireActual<typeof import('@/theme/tokens')>('@/theme/tokens');
+    const fill = () =>
+      StyleSheet.flatten(screen.getByLabelText('Photo de Rex').props.style).backgroundColor;
+    await renderWithTheme(<Avatar name="Rex" />);
+    expect(fill()).toBe(lightColors.primarySoft);
+    await renderWithTheme(<Avatar name="Rex" background="surface" />);
+    expect(fill()).toBe(lightColors.surface);
+  });
+
   it('shows a placeholder icon instead of initials while there is no name (defect D3)', async () => {
     await renderWithTheme(<Avatar name="  " placeholderIcon="paw" />);
     expect(screen.getByLabelText(t.a11y.photo)).toBeTruthy();

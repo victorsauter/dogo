@@ -55,6 +55,8 @@ export function ParticipantRow({
   const { colors, spacing } = useTheme();
   const lines = useLineLimit(1);
   const { dog, owner } = participant;
+  // The avatars' fallback fill is `primarySoft`: on a row of that colour, they take the surface.
+  const avatarBackground = background === 'primarySoft' ? 'surface' : undefined;
   const ownerLine = format(t.walk.ownerAndSize, {
     owner: isMine ? t.walk.you : owner.displayName,
     size: enumLabel('DogSize', dog.size),
@@ -93,7 +95,13 @@ export function ParticipantRow({
         })}
       >
         <View style={{ width: DOG_SIZE, height: DOG_SIZE, marginRight: spacing.xs }}>
-          <Avatar name={dog.name} photoUrl={dog.photoUrl} size={DOG_SIZE} placeholderIcon="paw" />
+          <Avatar
+            name={dog.name}
+            photoUrl={dog.photoUrl}
+            size={DOG_SIZE}
+            placeholderIcon="paw"
+            background={avatarBackground}
+          />
           <View
             style={{
               position: 'absolute',
@@ -104,7 +112,12 @@ export function ParticipantRow({
               backgroundColor: colors[background],
             }}
           >
-            <Avatar name={owner.displayName} photoUrl={owner.photoUrl} size={OWNER_SIZE} />
+            <Avatar
+              name={owner.displayName}
+              photoUrl={owner.photoUrl}
+              size={OWNER_SIZE}
+              background={avatarBackground}
+            />
           </View>
         </View>
         <View style={{ flex: 1 }}>
