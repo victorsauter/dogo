@@ -144,6 +144,7 @@ Une inscription concerne un chien. On peut inscrire plusieurs de ses chiens en u
 | --- | --- | --- |
 | Nouvelle inscription ou demande | Organisateur | `registrations` |
 | Inscription acceptée ou refusée | Auteur de l'inscription | `registrations` |
+| Inscription annulée par un autre propriétaire du chien | Auteur de l'inscription | `registrations` |
 | Balade modifiée ou annulée | Inscrits `Accepted` et `Pending` | `walkChanges` |
 | Nouveau message | Organisateur et inscrits `Accepted`, sauf l'auteur | `messages` |
 | Rappel, 2 heures avant le début | Organisateur et inscrits `Accepted` | `reminders` |
@@ -151,7 +152,7 @@ Une inscription concerne un chien. On peut inscrire plusieurs de ses chiens en u
 | Signalement créé (`report_created`) | Administrateurs, sauf le signalant | Aucune : toujours envoyée |
 | Demande d'adhésion reçue, adhésion acceptée, organisation validée | Personnes concernées | `registrations` |
 
-- Dans ce tableau, « inscrits » et « auteur de l'inscription » désignent l'humain de l'inscription (`Registration.userId`) ; les autres propriétaires du chien ne sont pas prévenus, y compris quand l'un d'eux annule l'inscription.
+- Dans ce tableau, « inscrits » et « auteur de l'inscription » désignent l'humain de l'inscription (`Registration.userId`) ; les autres propriétaires du chien ne sont pas prévenus. Quand un propriétaire annule l'inscription faite par un autre humain, l'auteur de l'inscription est prévenu.
 - Un rappel est envoyé une fois par heure de début, même si le serveur redémarre : déplacer une balade après l'envoi du rappel en déclenche un nouveau.
 - Les notifications sont envoyées au mieux : une notification en file est perdue si le serveur s'arrête, et un rappel n'est jamais envoyé deux fois (ADR 0019).
 - Écrire dans le fil d'une balade annulée est refusé (`walk.not_open`) ; la lecture reste possible.
@@ -315,7 +316,7 @@ Ces points n'étaient pas tranchés dans le périmètre. Ils sont faciles à cha
 | Nom de l'application | Uzu (nom affiché), slug Expo `uzu` | Décision du porteur du projet (ADR 0041) ; le dépôt et le code gardent le nom `dogo` |
 | Identifiant de l'application | `com.victorsauter.uzu` (bundle iOS et paquet Android), schéma de lien `uzu://` | Figé au premier envoi à un store (ADR 0039, 0041) |
 | Invitation de chien | Lien `uzu://invitation/{jeton}`, jeton gardé haché, à usage unique, 7 jours, révocable, valable même si son auteur quitte le chien | Décidé par le porteur du projet (ADR 0042) ; forme du lien, hachage et survie à l'auteur choisis par l'agent |
-| Départ d'un propriétaire | Ses inscriptions déjà faites pour le chien restent ; l'annulation d'une inscription par un autre propriétaire ne prévient personne | Évite d'annuler en silence ce qu'un humain a organisé ; à confirmer |
+| Départ d'un propriétaire | Ses inscriptions déjà faites pour le chien restent | Évite d'annuler en silence ce qu'un humain a organisé ; à confirmer |
 | Fuseau des séries | `Europe/Paris` | Le pilote est en France |
 | Centre de la carte par défaut | Seppois-le-Haut, réglable par configuration | C'est la zone pilote |
 | Données de démonstration | Jeu fictif autour de Seppois-le-Haut, activable en développement seulement (ADR 0027) | Essayer l'application sans attendre de vrais utilisateurs |
