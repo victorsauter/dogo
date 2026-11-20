@@ -4,6 +4,7 @@ describe('sign-in providers without their native module', () => {
   afterEach(() => {
     jest.resetModules();
     jest.dontMock('expo-apple-authentication');
+    jest.dontMock('expo-constants');
     jest.dontMock('@react-native-google-signin/google-signin');
   });
 
@@ -38,5 +39,27 @@ describe('sign-in providers without their native module', () => {
     expect(
       (require('../providers/google') as typeof import('../providers/google')).isGoogleConfigured(),
     ).toBe(false);
+  });
+
+  it('Apple is unavailable in a free-signing build, even when the native module works', async () => {
+    const isAvailableAsync = jest.fn(async () => true);
+    jest.doMock('expo-apple-authentication', () => ({ isAvailableAsync }));
+    jest.doMock('expo-constants', () => ({
+      __esModule: true,
+      default: { expoConfig: { extra: { freeSigning: true } } },
+    }));
+    const apple = require('../providers/apple') as typeof import('../providers/apple');
+    await expect(apple.isAppleSignInAvailable()).resolves.toBe(false);
+    expect(isAvailableAsync).not.toHaveBeenCalled();
+  });
+
+  it('Apple stays available without the free-signing flag', async () => {
+    jest.doMock('expo-apple-authentication', () => ({ isAvailableAsync: async () => true }));
+    jest.doMock('expo-constants', () => ({
+      __esModule: true,
+      default: { expoConfig: { extra: {} } },
+    }));
+    const apple = require('../providers/apple') as typeof import('../providers/apple');
+    await expect(apple.isAppleSignInAvailable()).resolves.toBe(true);
   });
 });

@@ -24,9 +24,16 @@ export interface AppConfig {
   apiUrl: string;
   /**
    * Shows the test sign-in (`POST /auth/dev`) and the demo data on the sign-in
-   * screen: `EXPO_PUBLIC_DEV_LOGIN=true` **and** a development build (`__DEV__`).
+   * screen: a demo build (`demo`) or `EXPO_PUBLIC_DEV_LOGIN=true` **and** a
+   * development build (`__DEV__`). This is the only place where that rule lives.
    */
   devLogin: boolean;
+  /**
+   * Demo build (`EXPO_PUBLIC_DEMO_MODE=true`): a Release build installed on the
+   * developer's own phone, talking to the hosted demo API (ADR 0043). The API
+   * address must still be `https`.
+   */
+  demo: boolean;
   /** Set when a distribution build is misconfigured (see `ConfigError`). */
   error?: ConfigError;
   /** Google OAuth web client ID (audience of the ID token); the Google button needs it. */
@@ -87,10 +94,15 @@ function readApiUrl(
   return { apiUrl: given };
 }
 
+function isTrue(value: string | undefined): boolean {
+  return value?.trim().toLowerCase() === 'true';
+}
+
 export function readConfig(
   env: {
     EXPO_PUBLIC_API_URL?: string;
     EXPO_PUBLIC_DEV_LOGIN?: string;
+    EXPO_PUBLIC_DEMO_MODE?: string;
     EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?: string;
     EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?: string;
     EXPO_PUBLIC_DEFAULT_LATITUDE?: string;
@@ -100,10 +112,12 @@ export function readConfig(
   dev: boolean = __DEV__,
 ): AppConfig {
   const { apiUrl, error } = readApiUrl(env.EXPO_PUBLIC_API_URL, dev);
+  const demo = isTrue(env.EXPO_PUBLIC_DEMO_MODE);
   return {
     apiUrl,
     ...(error ? { error } : {}),
-    devLogin: dev && env.EXPO_PUBLIC_DEV_LOGIN?.trim().toLowerCase() === 'true',
+    demo,
+    devLogin: demo || (dev && isTrue(env.EXPO_PUBLIC_DEV_LOGIN)),
     googleWebClientId: env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim() || undefined,
     googleIosClientId: env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() || undefined,
     easProjectId: readEasProjectId(),
@@ -117,6 +131,7 @@ export function readConfig(
 export const config: AppConfig = readConfig({
   EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
   EXPO_PUBLIC_DEV_LOGIN: process.env.EXPO_PUBLIC_DEV_LOGIN,
+  EXPO_PUBLIC_DEMO_MODE: process.env.EXPO_PUBLIC_DEMO_MODE,
   EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
   EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
   EXPO_PUBLIC_DEFAULT_LATITUDE: process.env.EXPO_PUBLIC_DEFAULT_LATITUDE,

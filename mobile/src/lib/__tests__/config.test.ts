@@ -5,6 +5,7 @@ describe('readConfig', () => {
     expect(readConfig({})).toEqual({
       apiUrl: 'http://localhost:5080',
       devLogin: false,
+      demo: false,
       defaultCenter: { latitude: 47.5339, longitude: 7.1844 },
     });
     expect(PILOT_CENTER).toEqual({ latitude: 47.5339, longitude: 7.1844 });
@@ -53,6 +54,34 @@ describe('readConfig', () => {
       false,
     );
     expect(release.devLogin).toBe(false);
+  });
+
+  it('enables the test sign-in in a demo build, outside development', () => {
+    const demo = readConfig(
+      { EXPO_PUBLIC_API_URL: 'https://api.dogo.test', EXPO_PUBLIC_DEMO_MODE: 'true' },
+      false,
+    );
+    expect(demo).toMatchObject({ demo: true, devLogin: true, apiUrl: 'https://api.dogo.test' });
+    expect(demo.error).toBeUndefined();
+  });
+
+  it('keeps the test sign-in off outside development without the demo mode', () => {
+    const release = readConfig({ EXPO_PUBLIC_API_URL: 'https://api.dogo.test' }, false);
+    expect(release).toMatchObject({ demo: false, devLogin: false });
+    expect(readConfig({ EXPO_PUBLIC_DEMO_MODE: 'yes' }, false)).toMatchObject({
+      demo: false,
+      devLogin: false,
+    });
+  });
+
+  it('still requires an https API address in a demo build', () => {
+    expect(
+      readConfig(
+        { EXPO_PUBLIC_API_URL: 'http://api.dogo.test', EXPO_PUBLIC_DEMO_MODE: 'true' },
+        false,
+      ).error,
+    ).toBe('insecureApiUrl');
+    expect(readConfig({ EXPO_PUBLIC_DEMO_MODE: 'true' }, false).error).toBe('missingApiUrl');
   });
 
   it('accepts any API address in development, without error', () => {

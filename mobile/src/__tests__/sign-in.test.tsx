@@ -214,18 +214,13 @@ describe('sign-in: Google', () => {
 });
 
 describe('sign-in: development tools', () => {
-  it('hides the test sign-in outside a development build, even with the variable', async () => {
-    const globals = globalThis as unknown as { __DEV__: boolean };
+  it('hides the test sign-in and the demo data when config.devLogin is off', async () => {
+    mutableConfig.devLogin = false;
     mockApi({});
-    globals.__DEV__ = false;
-    try {
-      await renderRouter(APP_DIR, { initialUrl: '/sign-in' });
-      expect(await screen.findByText(t.auth.noMethodTitle)).toBeTruthy();
-      expect(screen.queryByText(t.auth.devLoginSection)).toBeNull();
-      expect(screen.queryByText(t.demoData.title)).toBeNull();
-    } finally {
-      globals.__DEV__ = true;
-    }
+    await renderRouter(APP_DIR, { initialUrl: '/sign-in' });
+    expect(await screen.findByText(t.auth.noMethodTitle)).toBeTruthy();
+    expect(screen.queryByText(t.auth.devLoginSection)).toBeNull();
+    expect(screen.queryByText(t.demoData.title)).toBeNull();
   });
 });
 

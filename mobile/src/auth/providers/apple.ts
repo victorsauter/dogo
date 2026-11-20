@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 /**
@@ -17,8 +18,24 @@ function loadApple(): AppleModule | null {
   }
 }
 
+/**
+ * `extra.freeSigning` of the app config (`UZU_FREE_SIGNING=true`): the build is
+ * signed with a free Apple ID, which cannot carry the Sign in with Apple
+ * entitlement. The native module stays linked, so without this guard the button
+ * would show and then fail.
+ */
+function isFreeSigning(): boolean {
+  try {
+    const extra = Constants.expoConfig?.extra as { freeSigning?: unknown } | undefined;
+    return extra?.freeSigning === true;
+  } catch {
+    return false;
+  }
+}
+
 /** True when the Apple button can be shown on this device. */
 export async function isAppleSignInAvailable(): Promise<boolean> {
+  if (isFreeSigning()) return false;
   const apple = loadApple();
   if (!apple) return false;
   try {

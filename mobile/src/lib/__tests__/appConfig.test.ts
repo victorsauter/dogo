@@ -78,6 +78,28 @@ describe('assertDistributionConfig', () => {
     ).not.toThrow();
   });
 
+  it.each(['preview', 'production'])('rejects EXPO_PUBLIC_DEMO_MODE=true in %s', (profile) => {
+    expect(() =>
+      assertDistributionConfig({
+        ...production,
+        EAS_BUILD_PROFILE: profile,
+        EXPO_PUBLIC_DEMO_MODE: ' True ',
+      }),
+    ).toThrow(/EXPO_PUBLIC_DEMO_MODE=true must not be set/);
+  });
+
+  it('accepts EXPO_PUBLIC_DEMO_MODE when it is not true, and does not check it in development', () => {
+    expect(() =>
+      assertDistributionConfig({ ...production, EXPO_PUBLIC_DEMO_MODE: 'false' }),
+    ).not.toThrow();
+    expect(() =>
+      assertDistributionConfig({
+        EAS_BUILD_PROFILE: 'development',
+        EXPO_PUBLIC_DEMO_MODE: 'true',
+      }),
+    ).not.toThrow();
+  });
+
   it('reports every problem at once, with the profile name', () => {
     expect(() =>
       assertDistributionConfig({
@@ -203,6 +225,56 @@ describe('createConfig', () => {
         color: BRAND.primary,
       }),
     ]);
+  });
+
+  describe('free Apple ID signing (UZU_FREE_SIGNING)', () => {
+    const pluginNames = (env: Record<string, string>) =>
+      (createConfig(context, env).plugins ?? []).map((p) => (Array.isArray(p) ? p[0] : p));
+
+    it('keeps Sign in with Apple and notifications by default', () => {
+      const config = createConfig(context, {});
+      expect(config.ios?.usesAppleSignIn).toBe(true);
+      expect(pluginNames({})).toEqual(
+        expect.arrayContaining(['expo-apple-authentication', 'expo-notifications']),
+      );
+      expect(config.extra).toBeUndefined();
+    });
+
+    it('removes the Apple and notifications plugins and flags extra.freeSigning', () => {
+      const env = { UZU_FREE_SIGNING: 'true' };
+      const config = createConfig(context, env);
+      expect(config.ios?.usesAppleSignIn).toBeFalsy();
+      expect(pluginNames(env)).not.toContain('expo-apple-authentication');
+      expect(pluginNames(env)).not.toContain('expo-notifications');
+      expect(pluginNames(env)).toContain('expo-location');
+      expect(config.extra).toEqual({ freeSigning: true });
+    });
+
+    it('keeps extra.eas next to extra.freeSigning', () => {
+      expect(
+        createConfig(context, { UZU_FREE_SIGNING: 'true', EXPO_PUBLIC_EAS_PROJECT_ID: '1234' })
+          .extra,
+      ).toEqual({ eas: { projectId: '1234' }, freeSigning: true });
+    });
+
+    it('is off for any value other than true', () => {
+      expect(createConfig(context, { UZU_FREE_SIGNING: 'false' }).ios?.usesAppleSignIn).toBe(true);
+    });
+  });
+
+  describe('iOS bundle identifier override (UZU_IOS_BUNDLE_IDENTIFIER)', () => {
+    it('keeps the confirmed identifier by default', () => {
+      expect(createConfig(context, {}).ios?.bundleIdentifier).toBe(APP.iosBundleIdentifier);
+      expect(createConfig(context, { UZU_IOS_BUNDLE_IDENTIFIER: '  ' }).ios?.bundleIdentifier).toBe(
+        APP.iosBundleIdentifier,
+      );
+    });
+
+    it('replaces the iOS identifier only, not the Android package', () => {
+      const config = createConfig(context, { UZU_IOS_BUNDLE_IDENTIFIER: ' com.example.uzudemo ' });
+      expect(config.ios?.bundleIdentifier).toBe('com.example.uzudemo');
+      expect(config.android?.package).toBe(APP.androidPackage);
+    });
   });
 });
 

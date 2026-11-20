@@ -12,13 +12,9 @@ import { setSignInNotice, useSignInNotice } from '@/lib/signInNotice';
 import { t } from '@/strings';
 import { useTheme } from '@/theme';
 
-// Development only: null (and never loaded) outside a development build with EXPO_PUBLIC_DEV_LOGIN=true.
+// Null (and never loaded) unless the test sign-in is on (`config.devLogin`: development build with
+// EXPO_PUBLIC_DEV_LOGIN=true, or demo build).
 const DemoDataSection = loadDemoDataSection();
-
-/** Test sign-in and demo data: development builds only (`config.devLogin` also requires `__DEV__`). */
-function showDevTools(): boolean {
-  return __DEV__ && config.devLogin;
-}
 
 export default function SignInScreen() {
   const { spacing } = useTheme();
@@ -47,7 +43,7 @@ export default function SignInScreen() {
 
   const busy = apple.isPending || google.isPending || dev.isPending;
   const error = [apple, google, dev].find((mutation) => mutation.isError)?.error;
-  const devTools = showDevTools();
+  const devTools = config.devLogin;
   const hasMethod = appleAvailable || googleAvailable || devTools;
 
   return (

@@ -80,6 +80,11 @@ export function assertDistributionConfig(env: ConfigEnv): void {
       'EXPO_PUBLIC_DEV_LOGIN=true must not be set in a distribution build: remove it from the EAS environment variables of this profile.',
     );
   }
+  if (env.EXPO_PUBLIC_DEMO_MODE?.trim().toLowerCase() === 'true') {
+    problems.push(
+      'EXPO_PUBLIC_DEMO_MODE=true must not be set in a distribution build: it shows the test sign-in. Remove it from the EAS environment variables of this profile.',
+    );
+  }
   if (problems.length > 0) {
     throw new Error(
       `Invalid configuration for the EAS build profile "${profile}":\n- ${problems.join('\n- ')}`,
@@ -113,6 +118,15 @@ function googleMapsPlugin(
 }
 
 /**
+ * Plugins that need a capability a free Apple ID (Xcode personal team) cannot
+ * sign: Sign in with Apple and push notifications. Left out with `UZU_FREE_SIGNING=true`.
+ */
+const FREE_SIGNING_EXCLUDED_PLUGINS: readonly string[] = [
+  'expo-apple-authentication',
+  'expo-notifications',
+];
+
+/**
  * Builds the Expo configuration from the environment. Everything that differs
  * between development, `preview` and `production` comes from variables (EAS
  * environment variables on a build, `.env` locally), never from the repository.
@@ -134,6 +148,58 @@ export function createConfig({ config }: ConfigContext, env: ConfigEnv = process
    * file; locally it is usually unset.
    */
   const googleServicesFile = env.GOOGLE_SERVICES_JSON?.trim();
+  /**
+   * Demo build signed with a free Apple ID (ADR 0043): no Sign in with Apple, no
+   * push notifications, which that kind of signing cannot carry.
+   */
+  const freeSigning = env.UZU_FREE_SIGNING?.trim().toLowerCase() === 'true';
+  /** Replaces the iOS bundle identifier when Xcode refuses it to a personal team; default unchanged. */
+  const iosBundleIdentifier = env.UZU_IOS_BUNDLE_IDENTIFIER?.trim() || APP.iosBundleIdentifier;
+  const extra = {
+    ...config.extra,
+    ...(easProjectId ? { eas: { projectId: easProjectId } } : {}),
+    ...(freeSigning ? { freeSigning: true } : {}),
+  };
+  const plugins: NonNullable<ExpoConfig['plugins']> = [
+    'expo-router',
+    'expo-secure-store',
+    'expo-apple-authentication',
+    [
+      'expo-image-picker',
+      {
+        photosPermission: permissions.photoLibrary,
+        cameraPermission: permissions.camera,
+        microphonePermission: false,
+      },
+    ],
+    '@react-native-community/datetimepicker',
+    // Apple Maps on iOS needs no key; Android uses Google Maps (Expo Go's key in
+    // development, `GOOGLE_MAPS_ANDROID_API_KEY` for a build, see mobile/README.md).
+    ['expo-location', { locationWhenInUsePermission: permissions.locationWhenInUse }],
+    // The plugin of react-native-maps is added only with a key: without a key it would
+    // remove any Maps key from the Android manifest.
+    ...googleMapsPlugin(googleMapsAndroidApiKey),
+    [
+      'expo-notifications',
+      {
+        defaultChannel: 'default',
+        // Android only: all-white silhouette on a transparent background, tinted with the brand colour.
+        icon: './assets/notification-icon.png',
+        color: BRAND.primary,
+      },
+    ],
+    ...googleSignInPlugin(env),
+    [
+      'expo-splash-screen',
+      {
+        image: './assets/splash-icon.png',
+        imageWidth: 160,
+        resizeMode: 'contain',
+        backgroundColor: BRAND.backgroundLight,
+        dark: { backgroundColor: BRAND.backgroundDark },
+      },
+    ],
+  ];
 
   return {
     ...config,
@@ -146,9 +212,9 @@ export function createConfig({ config }: ConfigContext, env: ConfigEnv = process
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
     ios: {
-      bundleIdentifier: APP.iosBundleIdentifier,
+      bundleIdentifier: iosBundleIdentifier,
       supportsTablet: false,
-      usesAppleSignIn: true,
+      usesAppleSignIn: !freeSigning,
       config: {
         // The app only uses the encryption of the system (HTTPS): no export question at each TestFlight upload.
         usesNonExemptEncryption: false,
@@ -178,47 +244,15 @@ export function createConfig({ config }: ConfigContext, env: ConfigEnv = process
     web: {
       favicon: './assets/favicon.png',
     },
-    ...(easProjectId ? { extra: { ...config.extra, eas: { projectId: easProjectId } } } : {}),
-    plugins: [
-      'expo-router',
-      'expo-secure-store',
-      'expo-apple-authentication',
-      [
-        'expo-image-picker',
-        {
-          photosPermission: permissions.photoLibrary,
-          cameraPermission: permissions.camera,
-          microphonePermission: false,
-        },
-      ],
-      '@react-native-community/datetimepicker',
-      // Apple Maps on iOS needs no key; Android uses Google Maps (Expo Go's key in
-      // development, `GOOGLE_MAPS_ANDROID_API_KEY` for a build, see mobile/README.md).
-      ['expo-location', { locationWhenInUsePermission: permissions.locationWhenInUse }],
-      // The plugin of react-native-maps is added only with a key: without a key it would
-      // remove any Maps key from the Android manifest.
-      ...googleMapsPlugin(googleMapsAndroidApiKey),
-      [
-        'expo-notifications',
-        {
-          defaultChannel: 'default',
-          // Android only: all-white silhouette on a transparent background, tinted with the brand colour.
-          icon: './assets/notification-icon.png',
-          color: BRAND.primary,
-        },
-      ],
-      ...googleSignInPlugin(env),
-      [
-        'expo-splash-screen',
-        {
-          image: './assets/splash-icon.png',
-          imageWidth: 160,
-          resizeMode: 'contain',
-          backgroundColor: BRAND.backgroundLight,
-          dark: { backgroundColor: BRAND.backgroundDark },
-        },
-      ],
-    ],
+    ...(easProjectId || freeSigning ? { extra } : {}),
+    plugins: freeSigning
+      ? plugins.filter(
+          (plugin) =>
+            !FREE_SIGNING_EXCLUDED_PLUGINS.includes(
+              String(Array.isArray(plugin) ? plugin[0] : plugin),
+            ),
+        )
+      : plugins,
     experiments: {
       typedRoutes: true,
     },
