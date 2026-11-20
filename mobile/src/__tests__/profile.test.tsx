@@ -41,6 +41,32 @@ describe('profile tab', () => {
     expect(screen.getByRole('button', { name: t.dog.add })).toBeTruthy();
   });
 
+  it('says « aussi avec » on my profile for a dog I share', async () => {
+    const lea = { id: 'human-lea', displayName: 'Léa Roy', photoUrl: null };
+    mockApi({
+      'GET /api/v1/me/organizations': () => ok([]),
+      'GET /api/v1/me': () => ok(testUser),
+      'GET /api/v1/me/dogs': () =>
+        ok([
+          { ...testDog, id: 'd1', name: 'Biscotte' },
+          {
+            ...testDog,
+            id: 'd2',
+            name: 'Noux',
+            members: [
+              { user: testUser, role: 'Owner' },
+              { user: lea, role: 'Owner' },
+            ],
+          },
+        ]),
+    });
+    await openProfile();
+
+    expect(await screen.findByText('Noux')).toBeTruthy();
+    expect(screen.getAllByText(/aussi avec/)).toHaveLength(1);
+    expect(screen.getByText('aussi avec Léa Roy')).toBeTruthy();
+  });
+
   it('invites to add a first dog when there is none', async () => {
     mockApi({
       'GET /api/v1/me/organizations': () => ok([]),
@@ -270,7 +296,15 @@ describe('public profile', () => {
           displayName: 'Paul Durand',
           bio: 'Petit chien, grandes balades',
           photoUrl: null,
-          dogs: [{ ...testDog, ownerId: other, name: 'Pixel' }],
+          dogs: [
+            {
+              ...testDog,
+              members: [
+                { user: { id: other, displayName: 'Paul Durand', photoUrl: null }, role: 'Owner' },
+              ],
+              name: 'Pixel',
+            },
+          ],
         }),
     });
     await sessionStore.set(authResponse());
@@ -281,6 +315,38 @@ describe('public profile', () => {
     expect(screen.getByText('Les chiens de Paul Durand')).toBeTruthy();
     expect(screen.getByText('Pixel')).toBeTruthy();
     expect(screen.queryByRole('button', { name: t.profile.editButton })).toBeNull();
+  });
+
+  it('adds « aussi avec » on a shared dog, not on a dog of one human only', async () => {
+    const paul = { id: other, displayName: 'Paul Durand', photoUrl: null };
+    const lea = { id: 'human-lea', displayName: 'Léa Roy', photoUrl: null };
+    mockApi({
+      [`GET /api/v1/users/${other}`]: () =>
+        ok({
+          id: other,
+          displayName: 'Paul Durand',
+          bio: '',
+          photoUrl: null,
+          dogs: [
+            { ...testDog, id: 'd1', name: 'Pixel', members: [{ user: paul, role: 'Owner' }] },
+            {
+              ...testDog,
+              id: 'd2',
+              name: 'Noux',
+              members: [
+                { user: paul, role: 'Owner' },
+                { user: lea, role: 'Owner' },
+              ],
+            },
+          ],
+        }),
+    });
+    await sessionStore.set(authResponse());
+    await renderRouter(APP_DIR, { initialUrl: `/users/${other}` });
+
+    expect(await screen.findByText('Noux')).toBeTruthy();
+    expect(screen.getAllByText(/aussi avec/)).toHaveLength(1);
+    expect(screen.getByText('aussi avec Léa Roy')).toBeTruthy();
   });
 
   it('shows a French message for an unknown user', async () => {

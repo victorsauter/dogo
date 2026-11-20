@@ -23,6 +23,7 @@ const specLabels: Record<EnumName, string[]> = {
   WalkStatus: ['Prévue', 'Annulée'],
   RegistrationStatus: ['En attente', 'Acceptée', 'Refusée', 'Annulée'],
   OrganizationStatus: ['En attente', 'Validée', 'Refusée', 'Fermée'],
+  DogMemberRole: ['Propriétaire'],
   MembershipRole: ['Responsable', 'Éducateur', 'Membre'],
   MembershipStatus: ['En attente', 'Accepté', 'Refusé'],
   ReportType: [

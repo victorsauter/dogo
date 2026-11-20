@@ -17,6 +17,7 @@ export const enumValues = {
   WalkStatus: ['Scheduled', 'Cancelled'],
   RegistrationStatus: ['Pending', 'Accepted', 'Declined', 'Cancelled'],
   OrganizationStatus: ['Pending', 'Approved', 'Rejected', 'Closed'],
+  DogMemberRole: ['Owner'],
   MembershipRole: ['Owner', 'Educator', 'Member'],
   MembershipStatus: ['Pending', 'Accepted', 'Declined'],
   ReportType: ['IncidentNoInjury', 'Altercation', 'BiteOrInjury', 'HumanBehavior'],

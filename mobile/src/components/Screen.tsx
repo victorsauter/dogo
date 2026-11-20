@@ -1,4 +1,4 @@
-import { useRef, useState, type PropsWithChildren, type ReactElement } from 'react';
+import { useRef, useState, type PropsWithChildren, type ReactElement, type RefObject } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -27,6 +27,8 @@ export interface ScreenProps {
   refreshControl?: ReactElement<RefreshControlProps>;
   /** Test identifier of the scroll view (or of the content view). */
   testID?: string;
+  /** Reference to the scroll view, for a screen that scrolls itself to a section. */
+  scrollRef?: RefObject<ScrollViewInstance | null>;
 }
 
 /**
@@ -75,9 +77,11 @@ export function Screen({
   contentStyle,
   refreshControl,
   testID,
+  scrollRef: externalScrollRef,
 }: PropsWithChildren<ScreenProps>) {
   const { colors, spacing } = useTheme();
-  const scrollRef = useRef<ScrollViewInstance>(null);
+  const ownScrollRef = useRef<ScrollViewInstance>(null);
+  const scrollRef = externalScrollRef ?? ownScrollRef;
   const rootRef = useRef<ViewInstance>(null);
   const [windowTop, setWindowTop] = useState(0);
   const content: ViewStyle = {

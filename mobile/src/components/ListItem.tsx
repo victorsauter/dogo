@@ -12,6 +12,8 @@ export interface ListItemProps {
   left?: ReactNode;
   /** Trailing element, typically a chevron or a status chip. */
   right?: ReactNode;
+  /** Element under the title (a `Badge`), in place of the subtitle. */
+  below?: ReactNode;
   onPress?: () => void;
   accessibilityLabel?: string;
   /** Title in the danger color (a destructive entry such as « Supprimer mon compte »). */
@@ -23,6 +25,7 @@ export function ListItem({
   subtitle,
   left,
   right,
+  below,
   onPress,
   accessibilityLabel,
   danger = false,
@@ -56,6 +59,7 @@ export function ListItem({
             {subtitle}
           </Text>
         ) : null}
+        {below}
       </View>
       {right}
     </Pressable>

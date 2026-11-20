@@ -1,4 +1,5 @@
 export { Avatar, initials, type AvatarProps } from './Avatar';
+export { AvatarStack, type AvatarStackProps } from './AvatarStack';
 export { Banner, type BannerProps, type BannerTone } from './Banner';
 export { Badge, type BadgeProps, type BadgeTone } from './Badge';
 export { Button, type ButtonProps, type ButtonVariant } from './Button';

@@ -87,6 +87,7 @@ export default function PublicProfileScreen() {
             <DogCard
               key={dog.id}
               dog={dog}
+              profileUserId={id}
               onPress={() => router.push({ pathname: '/dogs/[id]', params: { id: dog.id } })}
             />
           ))}

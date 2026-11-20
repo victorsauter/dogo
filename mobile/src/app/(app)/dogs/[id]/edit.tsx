@@ -6,6 +6,7 @@ import { errorMessage } from '@/api/errors';
 import type { PickedPhoto } from '@/api/photoUpload';
 import { DogForm, ErrorState, LoadingState, Screen } from '@/components';
 import { useSession } from '@/auth';
+import { isDogOwner } from '@/lib/dogMembers';
 import { dogFormFrom, toUpdateDogRequest } from '@/lib/forms';
 import { useFocusedRouter } from '@/lib/hooks';
 import { t } from '@/strings';
@@ -40,7 +41,7 @@ export default function EditDogScreen() {
         <LoadingState />
       </Screen>
     );
-  if (dog.isError || dog.data.ownerId !== user?.id) {
+  if (dog.isError || !isDogOwner(dog.data, user?.id)) {
     return (
       <Screen scroll={false}>
         <ErrorState

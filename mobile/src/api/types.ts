@@ -14,6 +14,8 @@ export type SessionUser = Schemas['MeResponse'];
 export type AuthResponse = Schemas['SessionResponse'];
 
 export type Dog = Schemas['DogResponse'];
+/** One human linked to a dog: their summary and their role (only `Owner` in V1). */
+export type DogMember = Schemas['DogMemberResponse'];
 export type PublicUser = Schemas['PublicUserResponse'];
 export type CreateDogRequest = Schemas['CreateDogRequest'];
 export type UpdateDogRequest = Schemas['UpdateDogRequest'];

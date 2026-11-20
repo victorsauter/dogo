@@ -412,7 +412,22 @@ export const fr = {
     ageYears: '{count} an|{count} ans',
     ageMonths: '{count} mois',
     ageNewborn: 'Moins d’un mois',
-    ownedBy: 'Voir le propriétaire',
+    /** Header line of the dog screen: « avec Camille et toi ». `{names}` comes from `humansPhrase`. */
+    withHumans: 'avec {names}',
+    /** Line of a dog's card on a human's profile: « aussi avec Camille ». */
+    alsoWithHumans: 'aussi avec {names}',
+    /** « {names} et {last} » (two or more names) and « {names} et {count} autres ». */
+    listAnd: '{names} et {last}',
+    listOthers: '{names} et {count} autres',
+    /** Myself, inside a sentence (« avec Camille et toi »), then as a line title. */
+    youInline: 'toi',
+    you: 'Toi',
+    characterTitle: 'Son caractère',
+    descriptionTitle: 'Description',
+    humansTitle: 'Ses humains',
+    humansOf: 'Humains de {name} : {names}',
+    humansScrollHint: 'Aller à la liste de ses humains',
+    memberA11y: '{name}, {role}',
     summary: '{size} · {sociability}',
     deleteConfirmTitle: 'Supprimer {name} ?',
     deleteConfirmMessage: 'Ses inscriptions à venir seront annulées. Cette action est définitive.',
@@ -619,6 +634,7 @@ export const fr = {
       Rejected: 'Refusée',
       Closed: 'Fermée',
     },
+    DogMemberRole: { Owner: 'Propriétaire' },
     MembershipRole: { Owner: 'Responsable', Educator: 'Éducateur', Member: 'Membre' },
     MembershipStatus: { Pending: 'En attente', Accepted: 'Accepté', Declined: 'Refusé' },
     ReportType: {

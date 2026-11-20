@@ -683,7 +683,7 @@ describe('professional walks', () => {
     const dogs = [
       {
         id: 'dog-1',
-        ownerId: testUser.id,
+        members: [{ user: testUser, role: 'Owner' }],
         name: 'Biscotte',
         photoUrl: null,
         size: 'Small',

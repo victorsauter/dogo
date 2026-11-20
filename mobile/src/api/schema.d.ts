@@ -945,11 +945,16 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        DogMemberResponse: {
+            user: components["schemas"]["UserSummaryResponse"];
+            role: components["schemas"]["DogMemberRole"];
+        };
+        /** @enum {string} */
+        DogMemberRole: "Owner";
         DogResponse: {
             /** Format: uuid */
             id: string;
-            /** Format: uuid */
-            ownerId: string;
+            members: components["schemas"]["DogMemberResponse"][];
             name: string;
             photoUrl: null | string;
             size: components["schemas"]["DogSize"];
@@ -1180,8 +1185,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             name: string;
-            /** Format: uuid */
-            ownerId: string;
+            members: components["schemas"]["DogMemberResponse"][];
         };
         ReportReceiptResponse: {
             /** Format: uuid */
