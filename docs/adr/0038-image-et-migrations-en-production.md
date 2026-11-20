@@ -2,6 +2,7 @@
 
 - **Statut :** Proposé
 - **Date :** 19/11/2026
+- **Précisé par :** [ADR 0043](0043-demo-hebergee.md) (migrations au démarrage dans l'environnement `Demo` seulement).
 
 ## Contexte
 

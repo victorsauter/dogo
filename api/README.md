@@ -34,7 +34,7 @@ cd api
 dotnet test
 ```
 
-Les tests d'intégration démarrent un conteneur PostGIS avec Testcontainers (un seul pour toute la série ; chaque test repart d'une base vide). Ils tournent dans l'environnement `Testing`, qui autorise comme `Development` la connexion de test et les données de démonstration ; la limitation de débit y est coupée, sauf dans `RateLimitingTests` et `HttpHardeningTests`, qui démarrent leur propre hôte. Seul Docker est nécessaire : les jetons Apple et Google sont validés par un faux validateur, les notifications et les signalements sont enregistrés par des faux, les sources de photos des données de démonstration sont simulées (`FakeDemoPhotoServer`), aucun test n'appelle le réseau. Les tâches planifiées sont éteintes dans les tests, qui les appellent avec une horloge contrôlée.
+Les tests d'intégration démarrent un conteneur PostGIS avec Testcontainers (un seul pour toute la série ; chaque test repart d'une base vide). Ils tournent dans l'environnement `Testing`, qui autorise comme `Development` la connexion de test et les données de démonstration ; la limitation de débit y est coupée, sauf dans `RateLimitingTests` et `HttpHardeningTests`, qui démarrent leur propre hôte. Seul Docker est nécessaire (un second conteneur, MinIO, ne démarre que pour les tests du stockage S3 des photos : image `chainguard/minio`, voir « Dépannage ») : les jetons Apple et Google sont validés par un faux validateur, les notifications et les signalements sont enregistrés par des faux, les sources de photos des données de démonstration sont simulées (`FakeDemoPhotoServer`), aucun test n'appelle le réseau. Les tâches planifiées sont éteintes dans les tests, qui les appellent avec une horloge contrôlée.
 
 ## Organisation du code
 
@@ -73,7 +73,7 @@ Ajouter une fonctionnalité : voir l'[ADR 0011](../docs/adr/0011-conventions-api
 
 **Nettoyage** ([ADR 0032](../docs/adr/0032-nettoyage-des-photos.md)). Le serveur décode chaque photo puis la réécrit à partir de ses pixels avec SkiaSharp : aucune métadonnée ne survit (EXIF dont la position GPS, XMP, IPTC, commentaires) et aucun contenu caché derrière un en-tête valide. Le profil de couleur d'origine est supprimé ; SkiaSharp écrit en revanche dans le fichier servi un profil sRGB standard (environ 470 octets, sans donnée personnelle) derrière un en-tête valide. L'orientation EXIF est appliquée aux pixels, l'image est réduite si son grand côté dépasse 2 048 px, le format reste celui du fichier (JPEG qualité 90, WebP qualité 85, PNG sans perte ; images animées : première image). Le même traitement s'applique aux photos des données de démonstration. Réglages facultatifs, par configuration ou variables d'environnement : `Photos:MaxPixels` (25 000 000), `Photos:MaxSide` (2048), `Photos:JpegQuality` (90), `Photos:WebpQuality` (85). Ils sont lus au démarrage (`PhotoProcessingOptions`, enregistrées avec les autres options) : une valeur hors plage est ramenée dans la plage, une valeur illisible (`Photos__MaxSide=grand`) empêche le démarrage. **Mémoire** : un seul nettoyage à la fois ; le JPEG et le WebP sont décodés à taille réduite (la pleine résolution n'est jamais allouée), le PNG est décodé en entier (4 octets par pixel, d'où la limite de 25 Mpx). Pic mesuré par téléversement de 5 000 × 5 000 px sous Linux arm64 (conteneur limité à 512 Mo, runtime compris) : JPEG 66 Mo, WebP 51 Mo, PNG 157 Mo ; le pire cas est un PNG de 25 Mpx, environ 160 Mo. Code : `Features/Photos/PhotoProcessor.cs`. Sous Linux, `SkiaSharp.NativeAssets.Linux.NoDependencies` ne demande que la libc : l'image `mcr.microsoft.com/dotnet/aspnet` suffit, sans paquet système (sans cette variante, il faudrait `libfontconfig1`).
 
-Les photos sont servies sans authentification sur `/photos/{fichier}` (hors `/api/v1`, noms aléatoires impossibles à deviner) avec `Cache-Control: private, max-age=86400`, `X-Content-Type-Options: nosniff` et `Content-Security-Policy: default-src 'none'; sandbox`. **`photoUrl` est un chemin relatif à l'origine de l'API**, par exemple `/photos/3f2a….jpg` : l'application le préfixe par l'URL de base de l'API (`http://localhost:5080` + `photoUrl`). Les fichiers sont écrits dans `Storage:Local:Path` (`./data/photos` par défaut, relatif à `src/Dogo.Api/`, ignoré par git). Supprimer un fichier ne lève jamais d'exception (`IPhotoStorage.DeleteAsync`) : un échec est journalisé en avertissement et le fichier reste sur le disque, sans faire échouer la requête.
+Les photos sont servies sans authentification sur `/photos/{fichier}` (hors `/api/v1`, noms aléatoires impossibles à deviner) avec `Cache-Control: private, max-age=86400`, `X-Content-Type-Options: nosniff` et `Content-Security-Policy: default-src 'none'; sandbox`. **`photoUrl` est un chemin relatif à l'origine de l'API**, par exemple `/photos/3f2a….jpg` : l'application le préfixe par l'URL de base de l'API (`http://localhost:5080` + `photoUrl`). Les fichiers sont écrits dans `Storage:Local:Path` (`./data/photos` par défaut, relatif à `src/Dogo.Api/`, ignoré par git), ou dans un bucket S3 avec `Storage:Provider=S3` (voir « Stockage S3 des photos »). Supprimer un fichier ne lève jamais d'exception (`IPhotoStorage.DeleteAsync`) : un échec est journalisé en avertissement et le fichier reste sur le disque, sans faire échouer la requête.
 
 ### Balades et inscriptions (lot 2)
 
@@ -230,7 +230,7 @@ curl -s -X DELETE http://localhost:5080/api/v1/me -H "Authorization: Bearer $BOB
 
 Pour essayer l'application avec une communauté réaliste, l'API sait créer un jeu de données fictif autour de Seppois-le-Haut (Haut-Rhin) : 50 propriétaires et 95 chiens, 10 éducateurs canins, 4 organisations validées et 1 en attente, 45 balades dans un rayon de 12 km (25 à venir sur trois semaines, 20 passées sur six semaines, dont 5 séries hebdomadaires, une balade complète et une annulée), leurs inscriptions, une vingtaine de fils de discussion, 3 blocages et 4 signalements. Voir l'[ADR 0027](../docs/adr/0027-donnees-de-demonstration.md).
 
-**Activation.** `DemoData:Enabled` vaut `true` dans `appsettings.Development.json`, `false` partout ailleurs. Désactivées, les routes répondent 404 comme la connexion de test. L'API refuse de démarrer si `DemoData:Enabled` est vrai hors de Development et Testing (liste blanche, ADR 0031), ou si la connexion de test (`Auth:AllowDevLogin`) est coupée : les comptes de démonstration se connectent par elle.
+**Activation.** `DemoData:Enabled` vaut `true` dans `appsettings.Development.json`, `false` partout ailleurs (la démo hébergée le pose à `true` par variable d'environnement, voir « Environnement Demo »). Désactivées, les routes répondent 404 comme la connexion de test. L'API refuse de démarrer si `DemoData:Enabled` est vrai hors de Development, Testing et Demo (liste blanche, ADR 0031 et 0043), ou si la connexion de test (`Auth:AllowDevLogin`) est coupée : les comptes de démonstration se connectent par elle.
 
 | Route (anonyme) | Rôle |
 | --- | --- |
@@ -262,14 +262,14 @@ Les requêtes ne transportent aucune donnée d'utilisateur : un agent utilisateu
 
 ## Durcissement (ADR 0031)
 
-**Environnements.** La connexion de test (`Auth:AllowDevLogin`) et les données de démonstration (`DemoData:Enabled`) ne sont admises qu'en `Development` et `Testing` (environnement des tests automatisés) : dans tout autre environnement (`Staging`, `Production`, une faute de frappe…), l'API refuse de démarrer si l'une est active. Ne jamais déployer un serveur en `Development` ou `Testing`.
+**Environnements.** La connexion de test (`Auth:AllowDevLogin`) et les données de démonstration (`DemoData:Enabled`) ne sont admises qu'en `Development`, `Testing` (environnement des tests automatisés) et `Demo` (démo hébergée, ADR 0043) : dans tout autre environnement (`Staging`, `Production`, une faute de frappe…), l'API refuse de démarrer si l'une est active. Ne jamais déployer un serveur en `Development` ou `Testing` ; `Demo` ne sert qu'à une démo à données fictives (voir « Environnement Demo »).
 
-**Contrôles au démarrage.** Hors Development, l'API refuse de démarrer si :
+**Contrôles au démarrage.** Hors Development (donc aussi en Demo), l'API refuse de démarrer si :
 - `Auth:Jwt:SigningKey` est la clé de développement versionnée dans `appsettings.Development.json` ;
 - `ConnectionStrings:Dogo` est vide ;
 - le fuseau `Europe/Paris` est introuvable (image sans `tzdata` : installer le paquet) ; les séries et les textes des notifications en dépendent.
 
-En Production, elle refuse aussi `Notifications:Provider=Log` (aucune notification ne partirait) et des audiences Apple et Google toutes deux vides (toute connexion serait refusée).
+En Production seulement (pas en Demo), elle refuse aussi `Notifications:Provider=Log` (aucune notification ne partirait) et des audiences Apple et Google toutes deux vides (toute connexion serait refusée).
 
 **Limitation de débit.** Compteurs en mémoire, par instance, fenêtres fixes, sans file d'attente :
 
@@ -293,6 +293,28 @@ Au-delà : 429 `application/problem+json` avec `code` = `rate_limit.exceeded` et
 
 **Jetons d'identité.** Seul RS256 est accepté pour les jetons Apple et Google (`ValidAlgorithms`), le seul algorithme que publient leurs configurations OpenID.
 
+## Stockage S3 des photos
+
+`Storage:Provider` choisit l'implémentation de `IPhotoStorage` : `Local` (par défaut, dossier du serveur, [ADR 0010](../docs/adr/0010-stockage-des-photos.md)) ou `S3` (objets d'un bucket d'un service compatible S3 : Supabase Storage, MinIO, AWS S3 ; [ADR 0043](../docs/adr/0043-demo-hebergee.md)). C'est ce qui permet un hébergeur au disque éphémère, comme la démo hébergée.
+
+- **Réglages** : `Storage:S3:ServiceUrl`, `Bucket`, `Region`, `AccessKeyId`, `SecretAccessKey`, tous obligatoires avec `Provider=S3` : sinon l'API refuse de démarrer en nommant chaque valeur manquante (`Storage:S3:Bucket is empty but Storage:Provider is S3…`). Une `ServiceUrl` qui n'est pas une URL http ou https est refusée aussi. Les valeurs ne sont pas essayées sur le réseau au démarrage : un bucket inexistant ou de mauvaises clés se voient à la première photo (500), dans les journaux. Le secret ne s'écrit jamais dans un fichier du dépôt (`Storage__S3__SecretAccessKey`).
+- **Rien ne change pour le client** : `/photos/{fichier}` et `photoUrl` sont inchangés, l'API relaie les octets et le bucket reste privé. Un nom invalide ou un objet absent répond 404 comme avec le disque ; une erreur du service de stockage (réseau, droits) répond 500, elle ne se déguise pas en photo absente.
+- **Noms** : les mêmes que sur disque (32 caractères hexadécimaux et l'extension), validés par la même fonction (`PhotoFileNames`) avant tout appel au bucket. Le type de contenu de l'objet suit l'extension.
+- **Suppression** : idempotente et sans exception (S3 répond un succès pour une clé absente) ; un échec est journalisé en avertissement et l'objet reste dans le bucket.
+- **Client** (`S3PhotoStorage.CreateClient`) : AWSSDK.S3, adresse de service explicite, adressage par chemin (`ForcePathStyle` : le bucket est dans le chemin et non dans le nom d'hôte), région de signature réglable, et sommes de contrôle seulement quand le protocole les exige (`RequestChecksumCalculation` et `ResponseChecksumValidation` à `WHEN_REQUIRED`) : depuis la version 4 du kit, il en ajoute par défaut à chaque envoi, et plusieurs services compatibles S3 les refusent. Les noms de ces propriétés sont ceux du kit 4.1.2 (le projet compile avec) ; seul MinIO a été essayé, pas Supabase.
+- **Mémoire** : une photo est lue en entier en mémoire avant d'être servie (5 Mo au plus, souvent bien moins après nettoyage) : aucune connexion au stockage ne reste ouverte pendant qu'un client télécharge.
+- **Essayer en local** : un MinIO suffit (conteneur `server /data` avec `MINIO_ROOT_USER` et `MINIO_ROOT_PASSWORD`, port 9000), un bucket créé avec `mc` ou le kit AWS, puis `Storage__Provider=S3`, `Storage__S3__ServiceUrl=http://localhost:9000`, `Storage__S3__Region=us-east-1` et les clés du conteneur. Les tests (`S3PhotoStorageTests`, `S3PhotoApiTests`) font la même chose avec Testcontainers.
+
+## Environnement Demo (démo hébergée)
+
+`ASPNETCORE_ENVIRONMENT=Demo` ouvre les outils de développement (connexion de test, données de démonstration) sur un serveur en ligne : une démo gratuite pour montrer l'application sans que l'ordinateur du développeur tourne. [ADR 0043](../docs/adr/0043-demo-hebergee.md) ; guide pas à pas : [`docs/demo-hebergee.md`](../docs/demo-hebergee.md).
+
+- **Ouvert** : `Demo` est dans la liste blanche des outils de développement (`DogoEnvironments.DevToolEnvironments`), comme `Development` et `Testing` : `Auth:AllowDevLogin` et `DemoData:Enabled` peuvent y être vrais, les routes `/auth/dev` et `/dev/demo-data` sont déclarées si leur option est vraie (sinon 404 comme ailleurs), et un compte de test peut y être administrateur si son e-mail figure dans `Admin:Emails`. **Ne pas renseigner `Admin:Emails` en démo** : n'importe qui pourrait alors se connecter par la connexion de test avec cet e-mail et être administrateur.
+- **Inchangé, comme en production** : la clé de signature de développement versionnée reste refusée (une vraie clé est obligatoire), la chaîne de connexion et le fuseau `Europe/Paris` sont exigés, HSTS est envoyé sur les réponses HTTPS, `AllowedHosts` et la limitation de débit s'appliquent.
+- **Autre différence** : les migrations s'appliquent au démarrage, comme en Development (l'hébergeur gratuit n'a pas d'étape avant le déploiement). Ailleurs, c'est le bundle de migrations (voir « Migrations »).
+- **Non exigé** : les contrôles propres à `Production` (fournisseur de notifications autre que `Log`, audiences Apple ou Google) ne s'appliquent pas : les notifications restent dans les journaux.
+- **À savoir** : l'API de démonstration est ouverte à quiconque connaît son adresse ; elle ne doit contenir que des données fictives et jetables.
+
 ## Migrations
 
 ```bash
@@ -301,7 +323,7 @@ dotnet tool restore
 dotnet ef migrations add <Nom> --project src/Dogo.Api --output-dir Infrastructure/Persistence/Migrations
 ```
 
-Hors Development, les migrations ne s'appliquent pas au démarrage. **En production, on utilise le bundle de migrations** que contient l'image (`/app/efbundle`, [ADR 0038](../docs/adr/0038-image-et-migrations-en-production.md)) :
+Hors Development et Demo, les migrations ne s'appliquent pas au démarrage. **En production, on utilise le bundle de migrations** que contient l'image (`/app/efbundle`, [ADR 0038](../docs/adr/0038-image-et-migrations-en-production.md)) :
 
 ```bash
 docker run --rm --entrypoint ./efbundle -e "ConnectionStrings__Dogo=Host=…;Database=dogo;Username=…;Password=…" dogo-api:<étiquette>
@@ -325,7 +347,7 @@ cd api
 docker build -t dogo-api:local .   # image de production : utilisateur « app », port 8080, volume /data/photos
 ```
 
-L'image contient l'API et le bundle de migrations. La construction de l'image n'écrit pas `openapi.json` (`OpenApiGenerateDocuments=false` dans le `Dockerfile` seulement). Procédure complète (architecture, variables, sauvegardes, hébergeurs, liste de contrôle) : [guide de déploiement](../docs/deploiement.md). Exemple Docker Compose de production : [`deploy/docker-compose.production.example.yml`](deploy/docker-compose.production.example.yml).
+Démo gratuite en ligne (Render et Supabase, environnement `Demo`) : [guide](../docs/demo-hebergee.md). L'image contient l'API et le bundle de migrations. La construction de l'image n'écrit pas `openapi.json` (`OpenApiGenerateDocuments=false` dans le `Dockerfile` seulement). Procédure complète (architecture, variables, sauvegardes, hébergeurs, liste de contrôle) : [guide de déploiement](../docs/deploiement.md). Exemple Docker Compose de production : [`deploy/docker-compose.production.example.yml`](deploy/docker-compose.production.example.yml).
 
 ## Description OpenAPI
 
@@ -338,20 +360,25 @@ L'image contient l'API et le bundle de migrations. La construction de l'image n'
 | `ConnectionStrings:Dogo` | `ConnectionStrings__Dogo` | — (Development : base Docker) | Base PostgreSQL + PostGIS |
 | `Auth:Jwt:SigningKey` | `Auth__Jwt__SigningKey` | — (Development : valeur de dev) | Clé HMAC des jetons d'accès, 32 octets au moins ; démarrage refusé sinon, ou si c'est la clé de développement hors Development |
 | `Auth:Jwt:Issuer`, `Auth:Jwt:Audience` | `Auth__Jwt__Issuer`, `Auth__Jwt__Audience` | `dogo-api`, `dogo-app` | Émetteur et audience des jetons d'accès |
-| `Auth:AllowDevLogin` | `Auth__AllowDevLogin` | `false` (Development : `true`) | Active `POST /auth/dev` ; démarrage refusé si vrai hors de Development et Testing |
+| `Auth:AllowDevLogin` | `Auth__AllowDevLogin` | `false` (Development : `true`) | Active `POST /auth/dev` ; démarrage refusé si vrai hors de Development, Testing et Demo |
 | `Auth:Apple:Audiences` | `Auth__Apple__Audiences__0`, … | vide | Identifiants acceptés comme audience des jetons Apple (bundle id) |
 | `Auth:Google:Audiences` | `Auth__Google__Audiences__0`, … | vide | Identifiants client OAuth acceptés pour Google ; en Production, démarrage refusé si Apple et Google sont tous deux vides |
 | `Admin:Emails` | `Admin__Emails__0`, … | vide (Development : `admin@dogo.local`) | E-mails des administrateurs (`isAdmin`, routes `/admin`), ADR 0020 |
 | `Admin:ReportEmail` | `Admin__ReportEmail` | vide | Adresse à prévenir de chaque signalement ; pas encore utilisée (signalements journalisés et notifiés aux administrateurs par push) |
 | `Auth:Jwt:RefreshTokenGracePeriod` | `Auth__Jwt__RefreshTokenGracePeriod` | `00:01:00` | Délai pendant lequel un jeton de rafraîchissement remplacé est encore accepté (ADR 0035) ; entre 0 (désactivé) et 5 minutes, démarrage refusé sinon |
 | `Auth:Jwt:RefreshTokenRetention` | `Auth__Jwt__RefreshTokenRetention` | `30.00:00:00` | Durée de conservation des jetons expirés ou révoqués avant la purge |
-| `Storage:Local:Path` | `Storage__Local__Path` | `./data/photos` | Dossier des photos |
+| `Storage:Provider` | `Storage__Provider` | `Local` | `Local` (dossier) ou `S3` (bucket compatible S3) ; ADR 0043 |
+| `Storage:Local:Path` | `Storage__Local__Path` | `./data/photos` | Dossier des photos avec `Local` |
+| `Storage:S3:ServiceUrl` | `Storage__S3__ServiceUrl` | vide | Avec `S3` : adresse de l'API S3 (URL http ou https), obligatoire |
+| `Storage:S3:Bucket` | `Storage__S3__Bucket` | vide | Avec `S3` : nom du bucket (privé), obligatoire |
+| `Storage:S3:Region` | `Storage__S3__Region` | vide | Avec `S3` : région de signature, par exemple `eu-central-1` ; obligatoire |
+| `Storage:S3:AccessKeyId`, `Storage:S3:SecretAccessKey` | `Storage__S3__AccessKeyId`, `Storage__S3__SecretAccessKey` | vide | Avec `S3` : clés d'accès, obligatoires ; la secrète jamais dans un fichier du dépôt |
 | `Photos:MaxPixels` | `Photos__MaxPixels` | `25000000` | Pixels décodés au plus par photo (413 `photo.too_large` au-delà) ; ADR 0032 |
 | `Photos:MaxSide` | `Photos__MaxSide` | `2048` | Grand côté conservé en pixels (réduction au-delà) ; ramené entre 16 et 16 384 |
 | `Photos:JpegQuality`, `Photos:WebpQuality` | `Photos__JpegQuality`, `Photos__WebpQuality` | `90`, `85` | Qualité des JPEG et des WebP réécrits ; ramenée entre 1 et 100 |
 | `Notifications:Provider` | `Notifications__Provider` | `Log` | `Log` (journal seulement) ou `Expo` (envoi réel) ; `Log` refusé en Production |
 | `Notifications:Expo:AccessToken` | `Notifications__Expo__AccessToken` | vide | Jeton d'accès Expo, seulement si la sécurité renforcée des notifications est activée |
-| `DemoData:Enabled` | `DemoData__Enabled` | `false` (Development : `true`) | Active `/dev/demo-data` ; démarrage refusé si vrai hors de Development et Testing ou sans `Auth:AllowDevLogin` (ADR 0027, 0031) |
+| `DemoData:Enabled` | `DemoData__Enabled` | `false` (Development : `true`) | Active `/dev/demo-data` ; démarrage refusé si vrai hors de Development, Testing et Demo ou sans `Auth:AllowDevLogin` (ADR 0027, 0031, 0043) |
 | `DemoData:Photos:UserAgent` | `DemoData__Photos__UserAgent` | `uzu-demo-data/1.0 (development seed data)` | Agent utilisateur des téléchargements de photos de démonstration |
 | `DemoData:Photos:Timeout`, `TotalTimeout` | `DemoData__Photos__Timeout`, … | `00:00:10`, `00:01:00` | Délai par image et pour l'ensemble des photos |
 | `DemoData:Photos:MaxParallelDownloads` | `DemoData__Photos__MaxParallelDownloads` | `4` | Téléchargements simultanés |
@@ -373,4 +400,5 @@ Exemple complet : [`.env.example`](.env.example). Durées par défaut : jeton d'
 ## Dépannage
 
 - **Testcontainers ne trouve pas Docker ou reste bloqué au téléchargement de l'image** : vérifier `docker info`. Dans un environnement où l'assistant d'identifiants Docker (`credsStore`) n'est pas accessible, télécharger l'image une fois avec `docker pull --platform linux/amd64 postgis/postgis:18-3.6`.
+- **Les tests du stockage S3 échouent au démarrage du conteneur MinIO** : ils utilisent l'image `chainguard/minio:latest` (MinIO ne publie plus d'image utilisable sur Docker Hub ni Quay ; celle-ci existe en amd64 et arm64 et seul `latest` y est conservé). Vérifier `docker pull chainguard/minio:latest`. Le module `Testcontainers.Minio` n'est pas utilisé : il s'arrête à la version 4.15.0 et ne tourne pas avec le noyau 4.17.0 que `Testcontainers.PostgreSql` impose (`MissingMethodException`).
 - **Le premier démarrage de la base est long** sur Apple silicon (émulation amd64) : `--wait` attend qu'elle soit prête.

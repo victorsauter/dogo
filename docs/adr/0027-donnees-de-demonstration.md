@@ -4,6 +4,7 @@
 - **Date :** 18/11/2026
 - **Note :** accepté par l'orchestrateur, sur délégation, pour lancer le développement ; à confirmer.
 - **Précisé par :** [ADR 0031](0031-durcissement-de-l-api.md) (environnements autorisés).
+- **Précisé par :** [ADR 0043](0043-demo-hebergee.md) (environnement `Demo` pour la démo hébergée).
 
 ## Contexte
 

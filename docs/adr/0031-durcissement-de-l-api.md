@@ -2,6 +2,7 @@
 
 - **Statut :** Proposé
 - **Date :** 18/11/2026
+- **Précisé par :** [ADR 0043](0043-demo-hebergee.md) (`Demo`, troisième environnement admis pour les outils de développement).
 
 ## Contexte
 
