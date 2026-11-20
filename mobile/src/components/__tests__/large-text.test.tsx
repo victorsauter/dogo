@@ -80,13 +80,13 @@ describe('participant row', () => {
       />,
     );
     expect(screen.getByText('Mademoiselle Biscotte de la Forêt').props.numberOfLines).toBe(1);
-    expect(screen.getByText(/Hugo Bernard · Petit/).props.numberOfLines).toBe(1);
+    expect(screen.getByText('Hugo Bernard').props.numberOfLines).toBe(1);
 
     await setFontScaleLive(LARGE);
     expect(screen.getByText('Mademoiselle Biscotte de la Forêt').props.numberOfLines).toBe(
       undefined,
     );
-    expect(screen.getByText(/Hugo Bernard · Petit/).props.numberOfLines).toBeUndefined();
+    expect(screen.getByText('Hugo Bernard').props.numberOfLines).toBeUndefined();
   });
 });
 

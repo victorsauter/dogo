@@ -134,12 +134,13 @@ describe('walk detail and registration', () => {
     expect(screen.getByText(walk.locationLabel)).toBeTruthy();
     expect(screen.getByText(walk.description)).toBeTruthy();
     expect(screen.getByText(walk.rules)).toBeTruthy();
-    expect(screen.getByText(otherUser.displayName)).toBeTruthy();
+    // The organizer's card, then the dog's row: its owner (here the organizer too) under its name.
+    expect(screen.getAllByText(otherUser.displayName)).toHaveLength(2);
     expect(screen.getByText('Pixel')).toBeTruthy();
-    // One row per dog: its owner and size under its name, touching it opens the dog.
-    expect(screen.getByText(`${otherUser.displayName} · Petit`)).toBeTruthy();
+    // One row per dog: its size in a pill by its name; touching it opens the dog.
+    expect(screen.getByText('Petit')).toBeTruthy();
     await fireEvent.press(
-      screen.getByRole('button', { name: `Pixel, avec ${otherUser.displayName}` }),
+      screen.getByRole('button', { name: `Pixel, petit, avec ${otherUser.displayName}` }),
     );
     expect(screen).toHavePathname(`/dogs/${otherDog.id}`);
   });

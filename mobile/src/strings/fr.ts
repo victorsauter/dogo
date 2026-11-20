@@ -211,8 +211,7 @@ export const fr = {
     registeredTitle: 'Inscrits',
     /** A participant row: the owner's line says « Toi » for my own dog. */
     you: 'Toi',
-    ownerAndSize: '{owner} · {size}',
-    participantA11y: '{dog}, avec {owner}',
+    participantA11y: '{dog}, {size}, avec {owner}',
     participantActionsA11y: 'Actions pour {dog}',
     viewName: 'Voir {name}',
     removeFromWalk: 'Retirer de la balade',

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -83,13 +83,15 @@ describe('seats gauge', () => {
 });
 
 describe('a participant row', () => {
-  it('shows the dog, then its owner and its size; touching it opens the dog', async () => {
+  it('shows the dog with its size in a pill, then its owner; touching it opens the dog', async () => {
     const { props, render } = setup();
     await render();
     expect(screen.getByText('Pixel')).toBeTruthy();
-    expect(screen.getByText(`${otherUser.displayName} · Petit`)).toBeTruthy();
+    expect(within(screen.getByTestId('participant-size-reg-1')).getByText('Petit')).toBeTruthy();
+    expect(screen.getByText(otherUser.displayName)).toBeTruthy();
+    expect(screen.queryByText(/ · Petit/)).toBeNull();
 
-    const row = screen.getByRole('button', { name: `Pixel, avec ${otherUser.displayName}` });
+    const row = screen.getByRole('button', { name: `Pixel, petit, avec ${otherUser.displayName}` });
     await fireEvent.press(row);
     expect(props.onOpenDog).toHaveBeenCalledWith(otherDog.id);
   });
@@ -97,9 +99,9 @@ describe('a participant row', () => {
   it('says « Toi » on my own dog', async () => {
     const { render } = setup({ walk: walkWith({ participants: [pixel, mine] }) });
     await render();
-    expect(screen.getByText(`${t.walk.you} · Moyen`)).toBeTruthy();
-    expect(screen.queryByText(`${testUser.displayName} · Moyen`)).toBeNull();
-    expect(screen.getByText(`${otherUser.displayName} · Petit`)).toBeTruthy();
+    expect(screen.getByText(t.walk.you)).toBeTruthy();
+    expect(screen.queryByText(testUser.displayName)).toBeNull();
+    expect(screen.getByText(otherUser.displayName)).toBeTruthy();
   });
 
   it('says so when no dog is registered', async () => {
@@ -165,7 +167,7 @@ describe('the organizer’s tools on a row', () => {
     );
     expect(props.onRemove).toHaveBeenCalledTimes(1);
 
-    const row = screen.getByRole('button', { name: `Pixel, avec ${otherUser.displayName}` });
+    const row = screen.getByRole('button', { name: `Pixel, petit, avec ${otherUser.displayName}` });
     expect(row).toHaveProp('accessibilityActions', [{ name: 'remove', label: t.walk.remove }]);
     await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'remove' } });
     expect(props.onRemove).toHaveBeenCalledTimes(2);
@@ -189,7 +191,8 @@ describe('requests to validate', () => {
     await render();
     expect(screen.getByText('1 demande à valider')).toBeTruthy();
     expect(screen.getByText(t.walk.registeredTitle)).toBeTruthy();
-    expect(screen.getByText(`${otherUser.displayName} · Grand`)).toBeTruthy();
+    expect(screen.getAllByText(otherUser.displayName).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Grand').length).toBeGreaterThan(0);
 
     await fireEvent.press(screen.getByRole('button', { name: accept }));
     expect(props.onAccept).toHaveBeenCalledWith('reg-2');

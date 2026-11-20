@@ -52,15 +52,12 @@ export function ParticipantRow({
   trailing,
   background = 'surface',
 }: ParticipantRowProps) {
-  const { colors, spacing } = useTheme();
+  const { colors, radii, spacing } = useTheme();
   const lines = useLineLimit(1);
   const { dog, owner } = participant;
   // The avatars' fallback fill is `primarySoft`: on a row of that colour, they take the surface.
   const avatarBackground = background === 'primarySoft' ? 'surface' : undefined;
-  const ownerLine = format(t.walk.ownerAndSize, {
-    owner: isMine ? t.walk.you : owner.displayName,
-    size: enumLabel('DogSize', dog.size),
-  });
+  const size = enumLabel('DogSize', dog.size);
 
   const row = (
     <View
@@ -76,6 +73,7 @@ export function ParticipantRow({
         accessibilityRole="button"
         accessibilityLabel={format(t.walk.participantA11y, {
           dog: dog.name,
+          size: size.toLocaleLowerCase('fr-FR'),
           owner: owner.displayName,
         })}
         accessibilityActions={onRemove ? [{ name: 'remove', label: t.walk.remove }] : undefined}
@@ -121,11 +119,34 @@ export function ParticipantRow({
           </View>
         </View>
         <View style={{ flex: 1 }}>
-          <Text variant="subheading" numberOfLines={lines}>
-            {dog.name}
-          </Text>
+          {/* The size sits by the dog's name, as a pill: on the owner's line it read as the owner's. */}
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              columnGap: spacing.sm,
+            }}
+          >
+            <Text variant="subheading" numberOfLines={lines} style={{ flexShrink: 1 }}>
+              {dog.name}
+            </Text>
+            <View
+              testID={`participant-size-${participant.registrationId}`}
+              style={{
+                paddingHorizontal: spacing.sm,
+                paddingVertical: 1,
+                borderRadius: radii.pill,
+                backgroundColor: colors[avatarBackground ?? 'primarySoft'],
+              }}
+            >
+              <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>
+                {size}
+              </Text>
+            </View>
+          </View>
           <Text variant="caption" color="textMuted" numberOfLines={lines}>
-            {ownerLine}
+            {isMine ? t.walk.you : owner.displayName}
           </Text>
         </View>
       </Pressable>
