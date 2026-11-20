@@ -104,6 +104,33 @@ describe('a participant row', () => {
     expect(screen.getByText(otherUser.displayName)).toBeTruthy();
   });
 
+  it('opens the owner’s profile from their picture or name, for any visitor', async () => {
+    const { props, render } = setup();
+    await render();
+
+    await fireEvent.press(screen.getByTestId('participant-owner-photo-reg-1'));
+    await fireEvent.press(screen.getByTestId('participant-owner-name-reg-1'));
+    expect(props.onOpenUser).toHaveBeenCalledTimes(2);
+    expect(props.onOpenUser).toHaveBeenCalledWith(otherUser.id);
+    expect(props.onOpenDog).not.toHaveBeenCalled();
+
+    const row = screen.getByRole('button', { name: `Pixel, petit, avec ${otherUser.displayName}` });
+    expect(row).toHaveProp('accessibilityActions', [
+      { name: 'owner', label: `Voir ${otherUser.displayName}` },
+    ]);
+    await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'owner' } });
+    expect(props.onOpenUser).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not open my own profile from my dog’s row', async () => {
+    const { props, render } = setup({ walk: walkWith({ participants: [mine] }) });
+    await render();
+
+    await fireEvent.press(screen.getByTestId('participant-owner-photo-reg-me'));
+    await fireEvent.press(screen.getByTestId('participant-owner-name-reg-me'));
+    expect(props.onOpenUser).not.toHaveBeenCalled();
+  });
+
   it('says so when no dog is registered', async () => {
     const { render } = setup({ walk: walkWith({ acceptedDogsCount: 0, participants: [] }) });
     await render();
@@ -168,7 +195,10 @@ describe('the organizer’s tools on a row', () => {
     expect(props.onRemove).toHaveBeenCalledTimes(1);
 
     const row = screen.getByRole('button', { name: `Pixel, petit, avec ${otherUser.displayName}` });
-    expect(row).toHaveProp('accessibilityActions', [{ name: 'remove', label: t.walk.remove }]);
+    expect(row).toHaveProp('accessibilityActions', [
+      { name: 'owner', label: `Voir ${otherUser.displayName}` },
+      { name: 'remove', label: t.walk.remove },
+    ]);
     await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'remove' } });
     expect(props.onRemove).toHaveBeenCalledTimes(2);
   });

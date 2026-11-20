@@ -134,6 +134,11 @@ describe('walk detail and registration', () => {
     expect(screen.getByText(walk.locationLabel)).toBeTruthy();
     expect(screen.getByText(walk.description)).toBeTruthy();
     expect(screen.getByText(walk.rules)).toBeTruthy();
+    // The number of dogs appears once, in the participants card's gauge, not in the details card.
+    expect(
+      screen.getByText(new RegExp(`^${walk.acceptedDogsCount} chiens? sur ${walk.maxDogs}$`)),
+    ).toBeTruthy();
+    expect(screen.queryByText(`${walk.acceptedDogsCount}/${walk.maxDogs} chiens`)).toBeNull();
     // The organizer's card, then the dog's row: its owner (here the organizer too) under its name.
     expect(screen.getAllByText(otherUser.displayName)).toHaveLength(2);
     expect(screen.getByText('Pixel')).toBeTruthy();

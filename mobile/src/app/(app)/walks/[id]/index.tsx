@@ -238,15 +238,8 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
         ) : null}
       </Card>
 
+      {/* The number of dogs is the gauge of the participants card, further down. */}
       <Card>
-        <Row
-          label={t.walk.participants}
-          value={
-            full
-              ? t.walk.full
-              : format(t.walk.places, { taken: walk.acceptedDogsCount, max: walk.maxDogs })
-          }
-        />
         <Row label={t.walk.sizes} value={sizesLabel(walk.allowedSizes)} />
         <Row label={t.walk.leash} value={enumLabel('LeashRule', walk.leashRule)} />
         <Row label={t.walk.access} value={enumLabel('WalkAccess', walk.access)} />

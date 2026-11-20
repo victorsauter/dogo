@@ -58,6 +58,14 @@ export function ParticipantRow({
   // The avatars' fallback fill is `primarySoft`: on a row of that colour, they take the surface.
   const avatarBackground = background === 'primarySoft' ? 'surface' : undefined;
   const size = enumLabel('DogSize', dog.size);
+  // The owner's picture and name open their profile (not for my own dog); the rest of the row opens the dog.
+  const openOwner = isMine ? undefined : () => onOpenOwner(owner.id);
+  const ownerA11yLabel = format(t.walk.viewName, { name: owner.displayName });
+  // The row is one element for a screen reader: what its inner buttons do is in its actions.
+  const a11yActions = [
+    ...(openOwner ? [{ name: 'owner', label: ownerA11yLabel }] : []),
+    ...(onRemove ? [{ name: 'remove', label: t.walk.remove }] : []),
+  ];
 
   const row = (
     <View
@@ -76,8 +84,9 @@ export function ParticipantRow({
           size: size.toLocaleLowerCase('fr-FR'),
           owner: owner.displayName,
         })}
-        accessibilityActions={onRemove ? [{ name: 'remove', label: t.walk.remove }] : undefined}
+        accessibilityActions={a11yActions.length > 0 ? a11yActions : undefined}
         onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'owner') openOwner?.();
           if (event.nativeEvent.actionName === 'remove') onRemove?.();
         }}
         onPress={() => onOpenDog(dog.id)}
@@ -100,7 +109,11 @@ export function ParticipantRow({
             placeholderIcon="paw"
             background={avatarBackground}
           />
-          <View
+          <Pressable
+            testID={`participant-owner-photo-${participant.registrationId}`}
+            disabled={!openOwner}
+            onPress={openOwner}
+            hitSlop={10}
             style={{
               position: 'absolute',
               right: -spacing.xs - OWNER_RING,
@@ -116,7 +129,7 @@ export function ParticipantRow({
               size={OWNER_SIZE}
               background={avatarBackground}
             />
-          </View>
+          </Pressable>
         </View>
         <View style={{ flex: 1 }}>
           {/* The size sits by the dog's name, as a pill: on the owner's line it read as the owner's. */}
@@ -145,9 +158,17 @@ export function ParticipantRow({
               </Text>
             </View>
           </View>
-          <Text variant="caption" color="textMuted" numberOfLines={lines}>
-            {isMine ? t.walk.you : owner.displayName}
-          </Text>
+          <Pressable
+            testID={`participant-owner-name-${participant.registrationId}`}
+            disabled={!openOwner}
+            onPress={openOwner}
+            hitSlop={{ top: 6, bottom: 10, right: 16 }}
+            style={{ alignSelf: 'flex-start', maxWidth: '100%' }}
+          >
+            <Text variant="caption" color="textMuted" numberOfLines={lines}>
+              {isMine ? t.walk.you : owner.displayName}
+            </Text>
+          </Pressable>
         </View>
       </Pressable>
       {busy ? (
