@@ -50,9 +50,12 @@ describe('withHumansPhrase', () => {
     expect(withHumansPhrase([camille, me, victor], 'me')).toBe('avec Camille, Victor et toi');
     expect(humanNames([me, camille], 'me')).toEqual(['Camille', 'toi']);
   });
-  it('past three, counts the others, me included in the last one', () => {
+  it('past three, keeps « toi » visible before the count of the others', () => {
     expect(withHumansPhrase([me, camille, victor, lea], 'me')).toBe(
-      'avec Camille, Victor et 2 autres',
+      'avec Camille, toi et 2 autres',
+    );
+    expect(withHumansPhrase([camille, victor, me, lea, marc], 'me')).toBe(
+      'avec Camille, toi et 3 autres',
     );
   });
 });

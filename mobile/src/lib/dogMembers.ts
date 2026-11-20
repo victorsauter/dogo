@@ -32,9 +32,21 @@ export function humanNames(members: DogMember[], meId: string | null | undefined
   return others.length < members.length ? [...names, t.dog.youInline] : names;
 }
 
-/** « avec Camille et Victor », « avec Camille et toi », « avec toi », « avec A, B et 2 autres ». */
+const WITH_HUMANS_MAX = 3;
+
+/**
+ * « avec Camille et Victor », « avec Camille et toi », « avec toi », « avec A, B et 2 autres ».
+ * Past three humans, « toi » stays visible: « avec Camille, toi et 2 autres ».
+ */
 export function withHumansPhrase(members: DogMember[], meId: string | null | undefined): string {
-  return format(t.dog.withHumans, { names: listNames(humanNames(members, meId), 3) });
+  const names = humanNames(members, meId);
+  const meIncluded = members.some((member) => member.user.id === meId);
+  if (meIncluded && names.length > WITH_HUMANS_MAX) {
+    // « toi » is last; move it to the last name shown before « N autres ».
+    const you = names.pop()!;
+    names.splice(WITH_HUMANS_MAX - 2, 0, you);
+  }
+  return format(t.dog.withHumans, { names: listNames(names, WITH_HUMANS_MAX) });
 }
 
 /** The dog's humans other than the one whose profile is shown, in API order. */
