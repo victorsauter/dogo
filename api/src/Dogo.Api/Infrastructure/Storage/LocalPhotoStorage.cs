@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 
 namespace Dogo.Api.Infrastructure.Storage;
@@ -19,7 +18,7 @@ public sealed partial class LocalPhotoStorage(IOptions<LocalStorageOptions> opti
     public async Task<string> SaveAsync(Stream content, string extension, CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(_root);
-        var fileName = $"{Guid.NewGuid():N}{extension}";
+        var fileName = PhotoFileNames.New(extension);
         await using var file = new FileStream(FullPath(fileName), FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
         await content.CopyToAsync(file, cancellationToken);
         return fileName;
@@ -27,7 +26,7 @@ public sealed partial class LocalPhotoStorage(IOptions<LocalStorageOptions> opti
 
     public Task<Stream?> OpenReadAsync(string fileName, CancellationToken cancellationToken)
     {
-        if (!IsValidFileName(fileName) || !File.Exists(FullPath(fileName)))
+        if (!PhotoFileNames.IsValid(fileName) || !File.Exists(FullPath(fileName)))
         {
             return Task.FromResult<Stream?>(null);
         }
@@ -38,7 +37,7 @@ public sealed partial class LocalPhotoStorage(IOptions<LocalStorageOptions> opti
 
     public Task DeleteAsync(string fileName, CancellationToken cancellationToken)
     {
-        if (IsValidFileName(fileName))
+        if (PhotoFileNames.IsValid(fileName))
         {
             try
             {
@@ -54,14 +53,8 @@ public sealed partial class LocalPhotoStorage(IOptions<LocalStorageOptions> opti
         return Task.CompletedTask;
     }
 
-    /// <summary>Only names produced by <see cref="SaveAsync"/> are accepted, which rules out path traversal.</summary>
-    public static bool IsValidFileName(string fileName) => FileNameRegex().IsMatch(fileName);
-
     private string FullPath(string fileName) => System.IO.Path.Combine(_root, fileName);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Photo file {FileName} could not be deleted and stays on disk")]
     private partial void LogDeleteFailed(Exception exception, string fileName);
-
-    [GeneratedRegex(@"^[0-9a-f]{32}\.[a-z0-9]{3,4}$")]
-    private static partial Regex FileNameRegex();
 }

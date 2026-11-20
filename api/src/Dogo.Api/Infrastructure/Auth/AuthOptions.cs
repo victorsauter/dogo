@@ -9,7 +9,7 @@ public sealed class AuthOptions
 {
     public const string SectionName = "Auth";
 
-    /// <summary>Enables <c>POST /auth/dev</c>. Only allowed in Development and Testing (<see cref="DogoEnvironments"/>).</summary>
+    /// <summary>Enables <c>POST /auth/dev</c>. Only allowed in Development, Testing and Demo (<see cref="DogoEnvironments"/>).</summary>
     public bool AllowDevLogin { get; set; }
 }
 
@@ -69,7 +69,7 @@ public sealed class AdminOptions
 
     /// <summary>
     /// Whether accounts of the dev sign-in (<see cref="IdentityProvider.Dev"/>) may be administrators.
-    /// Not bound from configuration: set from the environment (Development and Testing only, ADR 0031),
+    /// Not bound from configuration: set from the environment (Development, Testing and Demo only, ADR 0031 and 0043),
     /// because the dev sign-in lets anyone claim any e-mail.
     /// </summary>
     public bool DevAccountsCanBeAdmins { get; internal set; }

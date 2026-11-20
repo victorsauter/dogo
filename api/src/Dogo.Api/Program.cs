@@ -42,8 +42,7 @@ builder.Services.AddDogoRateLimiting();
 
 builder.Services.AddDogoPersistence();
 builder.Services.AddDogoAuth();
-builder.Services.AddOptions<LocalStorageOptions>().BindConfiguration(LocalStorageOptions.SectionName);
-builder.Services.AddSingleton<IPhotoStorage, LocalPhotoStorage>();
+builder.Services.AddDogoPhotoStorage();
 builder.Services.AddDogoPhotoProcessing();
 
 builder.Services.AddDogoPush();
@@ -122,8 +121,13 @@ authenticated.MapAdminEndpoints();
 
 app.MapPhotoFiles();
 
-if (app.Environment.IsDevelopment() && !BuildContext.IsOpenApiGeneration)
+// Migrations at startup in Development and in the hosted Demo (ADR 0043: the free host has no pre-deploy step);
+// elsewhere the migration bundle runs at each deployment (ADR 0038).
+if ((app.Environment.IsDevelopment() || app.Environment.IsEnvironment(DogoEnvironments.Demo)) && !BuildContext.IsOpenApiGeneration)
 {
+    // Reads the deployment checks first (they otherwise run when the host starts, after this): an empty connection
+    // string is then reported by name instead of as a null argument of the migration.
+    _ = app.Services.GetRequiredService<IOptions<StartupChecksOptions>>().Value;
     await app.MigrateDatabaseAsync();
 }
 

@@ -9,7 +9,7 @@ public sealed class DemoDataOptions
     public const string SectionName = "DemoData";
 
     /// <summary>
-    /// Enables <c>/dev/demo-data</c>. Only allowed in Development and Testing (<see cref="DogoEnvironments"/>), and requires
+    /// Enables <c>/dev/demo-data</c>. Only allowed in Development, Testing and Demo (<see cref="DogoEnvironments"/>), and requires
     /// <c>Auth:AllowDevLogin</c> since demo accounts sign in through the dev sign-in.
     /// </summary>
     public bool Enabled { get; set; }

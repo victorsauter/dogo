@@ -11,7 +11,7 @@ namespace Dogo.Api.Features.Admin;
 /// Administrators are the accounts whose e-mail is listed in <c>Admin:Emails</c> (spec §4.7,
 /// ADR 0020). The account is read from the database on each check, so changing the list, an
 /// account's e-mail or its status takes effect at once. A suspended account is not an
-/// administrator, nor a dev sign-in account outside Development and Testing (ADR 0031).
+/// administrator, nor a dev sign-in account outside Development, Testing and Demo (ADR 0031, 0043).
 /// </summary>
 public static class AdminAccess
 {
