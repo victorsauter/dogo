@@ -6,8 +6,10 @@ using System.Text.Json.Serialization;
 using Dogo.Api.Features.Auth;
 using Dogo.Api.Features.Dogs;
 using Dogo.Api.Features.Notifications;
+using Dogo.Api.Features.Users;
 using Dogo.Api.Infrastructure.Push;
 using Dogo.Api.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dogo.Api.Tests.Infrastructure;
@@ -111,6 +113,28 @@ public abstract class ApiTestBase(ApiFixture fixture) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<DogResponse>(Json, Ct))!;
     }
+
+    /// <summary>
+    /// Same dog, same humans. <see cref="DogResponse"/> is a record, but its <c>members</c> list is
+    /// compared by reference, so two equal responses are not <c>Equal</c> as a whole.
+    /// </summary>
+    protected static void AssertSameDog(DogResponse expected, DogResponse? actual)
+    {
+        Assert.NotNull(actual);
+        Assert.Equal(expected.Members, actual.Members);
+        Assert.Equal(expected with { Members = [] }, actual with { Members = [] });
+    }
+
+    /// <summary>The dog has exactly one human, its owner, with the <c>Owner</c> role (ADR 0042, step 1a).</summary>
+    protected static void AssertOwnedBy(DogResponse dog, Guid userId, string displayName, string? photoUrl = null)
+    {
+        var member = Assert.Single(dog.Members);
+        Assert.Equal(new DogMemberResponse(new UserSummaryResponse(userId, displayName, photoUrl), DogMemberRole.Owner), member);
+    }
+
+    /// <summary>Gives a user a profile photo without going through an upload; the file need not exist.</summary>
+    protected Task SetUserPhotoAsync(Guid userId, string fileName) =>
+        WithDbAsync(db => db.Users.Where(u => u.Id == userId).ExecuteUpdateAsync(s => s.SetProperty(u => u.PhotoFileName, fileName), Ct));
 
     protected async Task WithDbAsync(Func<DogoDbContext, Task> action)
     {

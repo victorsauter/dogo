@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Dogo.Api.Features.Admin;
 using Dogo.Api.Features.Auth;
+using Dogo.Api.Features.Dogs;
 using Dogo.Api.Features.Organizations;
 using Dogo.Api.Features.Reports;
 using Dogo.Api.Features.Users;
@@ -132,6 +133,7 @@ public sealed class AdminTests(ApiFixture fixture) : OrganizationTestBase(fixtur
     {
         var (me, session) = await SignedInAsync("me", "Me");
         var (bob, bobId, dog) = await DogOwnerAsync("bob");
+        await SetUserPhotoAsync(bobId, "bob123.jpg");
         var walk = await CreateWalkAsync(bob, ("title", "Tour du lac"));
         await me.PostAsJsonAsync("/api/v1/reports", new { type = "Altercation", facts = "Bagarre au portail.", targetUserId = bobId, targetDogId = dog.Id, walkId = walk.Id }, Ct);
         await me.PostAsJsonAsync("/api/v1/reports", new { type = "HumanBehavior", facts = "Propos insultants.", targetUserId = bobId }, Ct);
@@ -146,7 +148,8 @@ public sealed class AdminTests(ApiFixture fixture) : OrganizationTestBase(fixtur
         Assert.Equal((ReportType.Altercation, "Bagarre au portail.", ReportStatus.Open), (report.Type, report.Facts, report.Status));
         Assert.Equal((session.User.Id, "Me"), (report.Reporter!.Id, report.Reporter.DisplayName));
         Assert.Equal(bobId, report.TargetUser!.Id);
-        Assert.Equal(new ReportDogResponse(dog.Id, dog.Name, bobId), report.TargetDog);
+        Assert.Equal((dog.Id, dog.Name), (report.TargetDog!.Id, report.TargetDog.Name));
+        Assert.Equal(new DogMemberResponse(new UserSummaryResponse(bobId, "bob", "/photos/bob123.jpg"), DogMemberRole.Owner), Assert.Single(report.TargetDog.Members));
         Assert.Equal(new ReportWalkResponse(walk.Id, "Tour du lac", walk.StartsAt), report.Walk);
         Assert.Equal([closedId], closed.Select(r => r.Id));
         Assert.Null(closed[0].TargetDog);

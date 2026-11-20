@@ -33,6 +33,12 @@ public enum LeashHabit
     OffLeash,
 }
 
+/// <summary>Role of a human towards a dog (spec §3, ADR 0042). Only <see cref="Owner"/> exists for now.</summary>
+public enum DogMemberRole
+{
+    Owner,
+}
+
 public sealed class Dog : IHasCreatedAt
 {
     public const int NameMaxLength = 50;

@@ -19,7 +19,13 @@ public sealed class DogTests(ApiFixture fixture) : ApiTestBase(fixture)
         var body = await ReadJsonAsync(response);
         Assert.Equal($"/api/v1/dogs/{body.GetProperty("id").GetGuid()}", response.Headers.Location?.OriginalString);
         Assert.Equal("Rex", body.GetProperty("name").GetString());
-        Assert.Equal(session.User.Id, body.GetProperty("ownerId").GetGuid());
+        Assert.False(body.TryGetProperty("ownerId", out _));
+        var member = Assert.Single(body.GetProperty("members").EnumerateArray());
+        Assert.Equal(["user", "role"], member.EnumerateObject().Select(p => p.Name));
+        Assert.Equal(session.User.Id, member.GetProperty("user").GetProperty("id").GetGuid());
+        Assert.Equal("Alice", member.GetProperty("user").GetProperty("displayName").GetString());
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, member.GetProperty("user").GetProperty("photoUrl").ValueKind);
+        Assert.Equal("Owner", member.GetProperty("role").GetString());
         Assert.Equal("Medium", body.GetProperty("size").GetString());
         Assert.Equal("2021-04-12", body.GetProperty("birthDate").GetString());
         Assert.Equal("Border collie", body.GetProperty("breed").GetString());
@@ -95,7 +101,20 @@ public sealed class DogTests(ApiFixture fixture) : ApiTestBase(fixture)
         var response = await other.GetAsync($"/api/v1/dogs/{dog.Id}", Ct);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(dog, await response.Content.ReadFromJsonAsync<DogResponse>(Json, Ct));
+        AssertSameDog(dog, await response.Content.ReadFromJsonAsync<DogResponse>(Json, Ct));
+    }
+
+    [Fact]
+    public async Task A_dog_lists_its_owner_as_its_only_member()
+    {
+        var (owner, session) = await SignedInAsync("owner", "Owner");
+        await SetUserPhotoAsync(session.User.Id, "abc123.jpg");
+        var created = await CreateDogAsync(owner);
+        var (other, _) = await SignedInAsync("other", "Other");
+
+        var dog = (await other.GetFromJsonAsync<DogResponse>($"/api/v1/dogs/{created.Id}", Json, Ct))!;
+
+        AssertOwnedBy(dog, session.User.Id, "Owner", "/photos/abc123.jpg");
     }
 
     [Fact]
@@ -130,6 +149,20 @@ public sealed class DogTests(ApiFixture fixture) : ApiTestBase(fixture)
     }
 
     [Fact]
+    public async Task My_dogs_list_me_as_their_owner()
+    {
+        var (me, session) = await SignedInAsync("me", "Me");
+        await SetUserPhotoAsync(session.User.Id, "me123.jpg");
+        await CreateDogAsync(me, ValidDog("First"));
+        await CreateDogAsync(me, ValidDog("Second"));
+
+        var dogs = (await me.GetFromJsonAsync<List<DogResponse>>("/api/v1/me/dogs", Json, Ct))!;
+
+        Assert.Equal(2, dogs.Count);
+        Assert.All(dogs, d => AssertOwnedBy(d, session.User.Id, "Me", "/photos/me123.jpg"));
+    }
+
+    [Fact]
     public async Task My_dogs_honours_the_limit()
     {
         var (me, _) = await SignedInAsync();
@@ -153,8 +186,8 @@ public sealed class DogTests(ApiFixture fixture) : ApiTestBase(fixture)
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var updated = (await response.Content.ReadFromJsonAsync<DogResponse>(Json, Ct))!;
-        Assert.Equal(dog with { Name = "Rexy", Size = DogSize.Large, Reactivity = Reactivity.Mild }, updated);
-        Assert.Equal(updated, await client.GetFromJsonAsync<DogResponse>($"/api/v1/dogs/{dog.Id}", Json, Ct));
+        AssertSameDog(dog with { Name = "Rexy", Size = DogSize.Large, Reactivity = Reactivity.Mild }, updated);
+        AssertSameDog(updated, await client.GetFromJsonAsync<DogResponse>($"/api/v1/dogs/{dog.Id}", Json, Ct));
     }
 
     [Fact]

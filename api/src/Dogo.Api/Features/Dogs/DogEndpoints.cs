@@ -60,6 +60,7 @@ public static class DogEndpoints
     {
         var userId = principal.GetUserId();
         var dogs = await db.Dogs.AsNoTracking()
+            .WithMembers()
             .Where(d => d.OwnerId == userId)
             .OrderForDisplay()
             .Take(limit)
@@ -79,8 +80,10 @@ public static class DogEndpoints
             return Problems.Conflict(ErrorCodes.DogLimitReached, $"An account cannot have more than {Dog.MaxPerOwner} dogs.");
         }
 
+        var owner = await db.Users.SingleAsync(u => u.Id == ownerId, cancellationToken);
         var dog = new Dog
         {
+            Owner = owner,
             OwnerId = ownerId,
             Name = request.Name.Trim(),
             Size = request.Size,
@@ -100,7 +103,7 @@ public static class DogEndpoints
     private static async Task<Results<Ok<DogResponse>, ProblemHttpResult>> GetDog(
         Guid id, DogoDbContext db, CancellationToken cancellationToken)
     {
-        var dog = await db.Dogs.AsNoTracking().SingleOrDefaultAsync(d => d.Id == id, cancellationToken);
+        var dog = await db.Dogs.AsNoTracking().WithMembers().SingleOrDefaultAsync(d => d.Id == id, cancellationToken);
         return dog is null ? DogNotFound() : TypedResults.Ok(DogResponse.From(dog));
     }
 
@@ -234,9 +237,14 @@ public static class DogEndpoints
             return (null, DogNotFound());
         }
 
-        return dog.OwnerId == principal.GetUserId()
-            ? (dog, null)
-            : (null, Problems.Forbidden(ErrorCodes.DogForbidden, "Only the owner can modify this dog."));
+        if (dog.OwnerId != principal.GetUserId())
+        {
+            return (null, Problems.Forbidden(ErrorCodes.DogForbidden, "Only the owner can modify this dog."));
+        }
+
+        // The caller is the owner, and the dog's response needs the owner: loaded once.
+        await db.Entry(dog).Reference(d => d.Owner).LoadAsync(cancellationToken);
+        return (dog, null);
     }
 
     private static ProblemHttpResult DogNotFound() => Problems.NotFound(ErrorCodes.DogNotFound, "The dog does not exist.");

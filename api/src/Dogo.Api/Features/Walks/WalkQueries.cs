@@ -92,7 +92,7 @@ internal static class WalkQueries
                 && (r.Status == RegistrationStatus.Accepted
                     || r.UserId == viewerId
                     || (isOrganizer && r.Status == RegistrationStatus.Pending)))
-            .Include(r => r.Dog)
+            .Include(r => r.Dog).ThenInclude(d => d!.Owner)
             .Include(r => r.User)
             .OrderBy(r => r.CreatedAt).ThenBy(r => r.Id)
             .ToListAsync(cancellationToken);

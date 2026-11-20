@@ -4808,10 +4808,31 @@
           }
         }
       },
+      "DogMemberResponse": {
+        "required": [
+          "user",
+          "role"
+        ],
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserSummaryResponse"
+          },
+          "role": {
+            "$ref": "#/components/schemas/DogMemberRole"
+          }
+        }
+      },
+      "DogMemberRole": {
+        "enum": [
+          "Owner"
+        ],
+        "type": "string"
+      },
       "DogResponse": {
         "required": [
           "id",
-          "ownerId",
+          "members",
           "name",
           "photoUrl",
           "size",
@@ -4829,9 +4850,11 @@
             "type": "string",
             "format": "uuid"
           },
-          "ownerId": {
-            "type": "string",
-            "format": "uuid"
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DogMemberResponse"
+            }
           },
           "name": {
             "type": "string"
@@ -5695,7 +5718,7 @@
         "required": [
           "id",
           "name",
-          "ownerId"
+          "members"
         ],
         "type": "object",
         "properties": {
@@ -5706,9 +5729,11 @@
           "name": {
             "type": "string"
           },
-          "ownerId": {
-            "type": "string",
-            "format": "uuid"
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DogMemberResponse"
+            }
           }
         }
       },

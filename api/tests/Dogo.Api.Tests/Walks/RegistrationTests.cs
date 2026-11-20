@@ -500,7 +500,8 @@ public sealed class RegistrationTests(ApiFixture fixture) : WalkTestBase(fixture
 
         var participant = Assert.Single(detail.Participants);
         Assert.Equal(accepted.Id, participant.RegistrationId);
-        Assert.Equal(aliceDog, participant.Dog);
+        AssertSameDog(aliceDog, participant.Dog);
+        AssertOwnedBy(participant.Dog, aliceId, "alice");
         Assert.Equal(aliceId, participant.Owner.Id);
         Assert.Equal("alice", participant.Owner.DisplayName);
         Assert.Equal(1, detail.AcceptedDogsCount);
@@ -521,7 +522,8 @@ public sealed class RegistrationTests(ApiFixture fixture) : WalkTestBase(fixture
 
         var seen = Assert.Single(asOrganizer.PendingRegistrations);
         Assert.Equal(pending.Id, seen.RegistrationId);
-        Assert.Equal(aliceDog, seen.Dog);
+        AssertSameDog(aliceDog, seen.Dog);
+        AssertOwnedBy(seen.Dog, aliceId, "alice");
         Assert.Equal(aliceId, seen.Owner.Id);
         Assert.Empty(asOrganizer.Participants);
         Assert.Empty(asOrganizer.MyRegistrations);
