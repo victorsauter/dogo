@@ -52,7 +52,7 @@ export function problemResponse(status: number, code?: string, extra: object = {
 
 export const testDog: Dog = {
   id: 'd0d0c1e0-0000-4000-8000-000000000001',
-  ownerId: testUser.id,
+  members: [{ user: testUser, role: 'Owner' }],
   name: 'Biscotte',
   photoUrl: null,
   size: 'Medium',
@@ -81,7 +81,7 @@ export const otherUser = {
 export const otherDog: Dog = {
   ...testDog,
   id: 'd0d0c1e0-0000-4000-8000-000000000002',
-  ownerId: otherUser.id,
+  members: [{ user: otherUser, role: 'Owner' }],
   name: 'Pixel',
   size: 'Small',
 };
@@ -122,6 +122,7 @@ export function walkDetail(overrides: Partial<WalkDetail> = {}): WalkDetail {
     isOrganizer: false,
     participants: [],
     myRegistrations: [],
+    myDogsRegistrations: [],
     pendingRegistrations: [],
     ...overrides,
   };

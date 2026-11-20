@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Dogo.Api.Features.Dogs;
 using Dogo.Api.Features.Organizations;
 using Dogo.Api.Features.Reports;
 using Dogo.Api.Features.Users;
@@ -17,7 +18,7 @@ public sealed record AdminOrganizationResponse(
     DateTimeOffset CreatedAt);
 
 /// <summary>The dog a report is about.</summary>
-public sealed record ReportDogResponse(Guid Id, string Name, Guid OwnerId);
+public sealed record ReportDogResponse(Guid Id, string Name, IReadOnlyList<DogMemberResponse> Members);
 
 /// <summary>The walk a report is about.</summary>
 public sealed record ReportWalkResponse(Guid Id, string Title, DateTimeOffset StartsAt);
@@ -48,7 +49,7 @@ public sealed record AdminReportResponse(
         report.CreatedAt,
         report.Reporter is null ? null : UserSummaryResponse.From(report.Reporter),
         report.TargetUser is null ? null : UserSummaryResponse.From(report.TargetUser),
-        report.TargetDog is null ? null : new ReportDogResponse(report.TargetDog.Id, report.TargetDog.Name, report.TargetDog.OwnerId),
+        report.TargetDog is null ? null : new ReportDogResponse(report.TargetDog.Id, report.TargetDog.Name, DogResponse.MembersOf(report.TargetDog)),
         report.Walk is null ? null : new ReportWalkResponse(report.Walk.Id, report.Walk.Title, report.Walk.StartsAt));
 }
 

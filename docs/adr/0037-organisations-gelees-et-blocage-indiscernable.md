@@ -3,6 +3,7 @@
 - **Statut :** Proposé
 - **Date :** 19/11/2026
 - **Note :** les règles 1 et 2 sont des décisions du porteur du projet ; le mécanisme anti-course est un choix de l'agent API.
+- **Précisé par :** [ADR 0042](0042-chien-relie-a-plusieurs-humains.md) (le plafond de 20 chiens se compte sur les liens de l'humain, chiens partagés compris).
 
 ## Contexte
 

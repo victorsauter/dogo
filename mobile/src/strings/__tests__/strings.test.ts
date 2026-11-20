@@ -23,6 +23,7 @@ const specLabels: Record<EnumName, string[]> = {
   WalkStatus: ['Prévue', 'Annulée'],
   RegistrationStatus: ['En attente', 'Acceptée', 'Refusée', 'Annulée'],
   OrganizationStatus: ['En attente', 'Validée', 'Refusée', 'Fermée'],
+  DogMemberRole: ['Propriétaire'],
   MembershipRole: ['Responsable', 'Éducateur', 'Membre'],
   MembershipStatus: ['En attente', 'Accepté', 'Refusé'],
   ReportType: [
@@ -104,6 +105,19 @@ describe('refusals that must not reveal anything', () => {
 describe('format', () => {
   it('fills placeholders and keeps unknown ones', () => {
     expect(format('Bonjour {name} ({missing})', { name: 'Léa' })).toBe('Bonjour Léa ({missing})');
+  });
+
+  it('elides « de » before a vowel, not before a consonant, h or y', () => {
+    expect(format('Ne plus m’occuper de {name}', { name: 'Oscar' })).toBe(
+      'Ne plus m’occuper d’Oscar',
+    );
+    expect(format('Les chiens de {name}', { name: 'Élodie' })).toBe('Les chiens d’Élodie');
+    expect(format('De {name} à toi', { name: 'Antoine' })).toBe('D’Antoine à toi');
+    expect(format('Les chiens de {name}', { name: 'Filou' })).toBe('Les chiens de Filou');
+    expect(format('Les chiens de {name}', { name: 'Hugo' })).toBe('Les chiens de Hugo');
+    expect(format('Les chiens de {name}', { name: 'Yannick' })).toBe('Les chiens de Yannick');
+    expect(format('Prise de {count} places', { count: 8 })).toBe('Prise de 8 places');
+    expect(format('Mode {name}', { name: 'Oscar' })).toBe('Mode Oscar');
   });
 });
 

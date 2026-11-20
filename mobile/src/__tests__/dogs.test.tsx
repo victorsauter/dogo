@@ -1,5 +1,7 @@
-import { act, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
-import { Alert } from 'react-native';
+import { act, fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
+import { Alert, ScrollView } from 'react-native';
+
+import type { DogMember } from '@/api/types';
 
 import { sessionStore } from '@/auth/sessionStore';
 import { pickPhoto } from '@/lib/photoPicker';
@@ -34,6 +36,20 @@ jest.mock('@react-native-community/datetimepicker', () => {
 
 const APP_DIR = './src/app';
 const dogPath = `/api/v1/dogs/${testDog.id}`;
+const camille = {
+  id: '6f1d3c1e-0000-4000-8000-0000000000c1',
+  displayName: 'Camille',
+  photoUrl: null,
+};
+const victor = {
+  id: '6f1d3c1e-0000-4000-8000-0000000000c2',
+  displayName: 'Victor',
+  photoUrl: null,
+};
+const member = (user: DogMember['user']): DogMember => ({
+  user: { id: user.id, displayName: user.displayName, photoUrl: user.photoUrl },
+  role: 'Owner',
+});
 
 afterEach(async () => {
   await act(() => sessionStore.clear());
@@ -61,10 +77,10 @@ describe('dog detail', () => {
     expect(screen.getByRole('button', { name: t.common.delete })).toBeTruthy();
   });
 
-  it('is read-only for someone else’s dog and links to the owner', async () => {
-    const owner = '6f1d3c1e-0000-4000-8000-0000000000aa';
+  it('is read-only for someone else’s dog: report, no edit or delete', async () => {
     mockApi({
-      [`GET ${dogPath}`]: () => ok({ ...testDog, ownerId: owner, birthDate: null, breed: null }),
+      [`GET ${dogPath}`]: () =>
+        ok({ ...testDog, members: [member(camille)], birthDate: null, breed: null }),
     });
     await signIn();
     await renderRouter(APP_DIR, { initialUrl: `/dogs/${testDog.id}` });
@@ -73,7 +89,117 @@ describe('dog detail', () => {
     expect(screen.getByText(t.dog.noBirthDate)).toBeTruthy();
     expect(screen.queryByRole('button', { name: t.common.edit })).toBeNull();
     expect(screen.queryByRole('button', { name: t.common.delete })).toBeNull();
-    expect(screen.getByRole('button', { name: t.dog.ownedBy })).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.report.action })).toBeTruthy();
+    // The owner is reached through « Ses humains », not through a button of its own.
+    expect(screen.queryByText('Voir le propriétaire')).toBeNull();
+  });
+
+  it('sets the sections in order: character, description, humans', async () => {
+    mockApi({ [`GET ${dogPath}`]: () => ok(testDog) });
+    await signIn();
+    await renderRouter(APP_DIR, { initialUrl: `/dogs/${testDog.id}` });
+    await screen.findByText('Biscotte');
+
+    const sections: string[] = [t.dog.characterTitle, t.dog.descriptionTitle, t.dog.humansTitle];
+    const titles = screen
+      .getAllByRole('header')
+      .map((node) => node.props.children as string)
+      .filter((title) => sections.includes(title));
+    expect(titles).toEqual(sections);
+    // The five characteristics are all there, the leash habit included.
+    expect(screen.getByLabelText(`${t.dog.size} : Moyen`)).toBeTruthy();
+    expect(screen.getByLabelText(`${t.dog.leashHabit} : En longe`)).toBeTruthy();
+  });
+
+  describe('the humans', () => {
+    const open = async (members: DogMember[]) => {
+      mockApi({ [`GET ${dogPath}`]: () => ok({ ...testDog, members }) });
+      await signIn();
+      await renderRouter(APP_DIR, { initialUrl: `/dogs/${testDog.id}` });
+      await screen.findByText('Biscotte');
+    };
+
+    it('says « avec toi » when I am the only one, and lists me as « Toi » without a link', async () => {
+      await open([member(testUser)]);
+      expect(screen.getByText('avec toi')).toBeTruthy();
+      expect(screen.getByLabelText('Toi, Propriétaire')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Toi, Propriétaire' })).toBeNull();
+    });
+
+    it('puts me last, called « toi »', async () => {
+      await open([member(testUser), member(camille)]);
+      expect(screen.getByText('avec Camille et toi')).toBeTruthy();
+    });
+
+    it('names two other humans', async () => {
+      await open([member(camille), member(victor)]);
+      expect(screen.getByText('avec Camille et Victor')).toBeTruthy();
+      expect(screen.getByLabelText('Humains de Biscotte : Camille et Victor')).toBeTruthy();
+    });
+
+    it('names three humans', async () => {
+      await open([member(camille), member(victor), member(testUser)]);
+      expect(screen.getByText('avec Camille, Victor et toi')).toBeTruthy();
+    });
+
+    it('counts the rest past three, and keeps three pictures and a « +N » pill', async () => {
+      const crowd = ['Ana', 'Ben', 'Cléo', 'Dan', 'Eva'].map((name, index) =>
+        member({ id: `human-${index}`, displayName: name, photoUrl: null }),
+      );
+      await open(crowd);
+      expect(screen.getByText('avec Ana, Ben et 3 autres')).toBeTruthy();
+      expect(screen.getByText('+2')).toBeTruthy();
+      const stack = within(screen.getByTestId('dog-humans-stack'));
+      expect(stack.getAllByLabelText(/^Photo d(e |’)/, { hidden: true })).toHaveLength(3);
+    });
+
+    it('lists one row per human with the role, and opens a profile except mine', async () => {
+      await open([member(testUser), member(camille)]);
+      expect(screen.getAllByText('Propriétaire')).toHaveLength(2);
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Camille, Propriétaire' }));
+      expect(screen).toHavePathname(`/users/${camille.id}`);
+    });
+
+    it('does not open my own row', async () => {
+      await open([member(testUser)]);
+      await fireEvent.press(screen.getByLabelText('Toi, Propriétaire'));
+      expect(screen).toHavePathname(`/dogs/${testDog.id}`);
+    });
+
+    it('scrolls to « Ses humains » when the line is touched', async () => {
+      await open([member(camille), member(victor)]);
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      await fireEvent.press(screen.getByText('avec Camille et Victor'));
+      expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ animated: true }));
+      await fireEvent.press(screen.getByLabelText('Humains de Biscotte : Camille et Victor'));
+      expect(scrollTo).toHaveBeenCalledTimes(2);
+      scrollTo.mockRestore();
+    });
+  });
+
+  describe('mine is computed from the members', () => {
+    it('offers edit, and « Ne plus m’occuper de » instead of delete, when I am one of several owners', async () => {
+      mockApi({
+        [`GET ${dogPath}`]: () => ok({ ...testDog, members: [member(camille), member(testUser)] }),
+      });
+      await signIn();
+      await renderRouter(APP_DIR, { initialUrl: `/dogs/${testDog.id}` });
+      expect(await screen.findByRole('button', { name: t.common.edit })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Ne plus m’occuper de Biscotte' })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: t.common.delete })).toBeNull();
+      expect(screen.queryByRole('button', { name: t.report.action })).toBeNull();
+    });
+
+    it('offers only to report when I am not a member', async () => {
+      mockApi({
+        [`GET ${dogPath}`]: () => ok({ ...testDog, members: [member(camille), member(victor)] }),
+      });
+      await signIn();
+      await renderRouter(APP_DIR, { initialUrl: `/dogs/${testDog.id}` });
+      expect(await screen.findByRole('button', { name: t.report.action })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: t.common.edit })).toBeNull();
+    });
   });
 
   it('shows a French error for an unknown dog', async () => {
@@ -381,7 +507,7 @@ describe('dog form', () => {
   });
 
   it('refuses to edit a dog that is not mine', async () => {
-    mockApi({ [`GET ${dogPath}`]: () => ok({ ...testDog, ownerId: 'someone-else' }) });
+    mockApi({ [`GET ${dogPath}`]: () => ok({ ...testDog, members: [member(camille)] }) });
     await signIn();
     await renderRouter(APP_DIR, { initialUrl: `/dogs/${testDog.id}/edit` });
     expect(await screen.findByText(t.errors['dog.forbidden'])).toBeTruthy();

@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
+using Dogo.Api.Features.Dogs;
+using Dogo.Api.Features.Users;
 using Dogo.Api.Tests.Infrastructure;
 
 namespace Dogo.Api.Tests.Users;
@@ -27,6 +29,21 @@ public sealed class PublicProfileTests(ApiFixture fixture) : ApiTestBase(fixture
         Assert.Equal("Hi", body.GetProperty("bio").GetString());
         Assert.Equal([rex.Id, nala.Id], body.GetProperty("dogs").EnumerateArray().Select(d => d.GetProperty("id").GetGuid()));
         Assert.DoesNotContain("owner@gmail.com", body.GetRawText(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Public_profile_dogs_list_the_profile_user_as_their_owner()
+    {
+        var (ownerClient, owner) = await SignedInAsync("owner", "Owner");
+        await SetUserPhotoAsync(owner.User.Id, "owner123.jpg");
+        await CreateDogAsync(ownerClient, ValidDog("Rex"));
+        await CreateDogAsync(ownerClient, ValidDog("Nala"));
+        var (visitor, _) = await SignedInAsync("visitor", "Visitor");
+
+        var profile = (await visitor.GetFromJsonAsync<PublicUserResponse>($"/api/v1/users/{owner.User.Id}", Json, Ct))!;
+
+        Assert.Equal(2, profile.Dogs.Count);
+        Assert.All(profile.Dogs, d => AssertOwnedBy(d, owner.User.Id, "Owner", "/photos/owner123.jpg"));
     }
 
     [Fact]

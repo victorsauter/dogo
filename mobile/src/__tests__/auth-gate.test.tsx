@@ -1,6 +1,7 @@
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 
 import { sessionStore } from '@/auth/sessionStore';
+import { hasPendingInvitation } from '@/lib/pendingInvitation';
 import { t } from '@/strings';
 import { authResponse } from '@/test/fixtures';
 
@@ -50,5 +51,17 @@ describe('auth gate', () => {
     await renderRouter(APP_DIR, { initialUrl: '/profile' });
     expect(await screen.findByText(t.app.tagline)).toBeTruthy();
     expect(screen).toHavePathname('/sign-in');
+  });
+
+  // The link is kept for after the sign-in (see pending-invitation.test.tsx for the whole journey).
+  it('keeps signed-out users away from an invitation link, which does not reach the API', async () => {
+    await renderRouter(APP_DIR, { initialUrl: '/invitation/some-token' });
+    expect(await screen.findByText(t.app.tagline)).toBeTruthy();
+    expect(screen).toHavePathname('/sign-in');
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('dog-invitations'),
+      expect.anything(),
+    );
+    expect(hasPendingInvitation()).toBe(true);
   });
 });

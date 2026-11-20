@@ -43,6 +43,7 @@ Chaque fichier consigne une décision technique : son contexte, ce qui est déci
 | [0039](0039-profils-de-build-eas.md) | Profils de build EAS : variables d'environnement EAS, numéros de build distants, TestFlight par le profil `preview`, garde-fou de distribution | Proposé |
 | [0040](0040-navigation-gardee-et-rafraichissement-apres-refus.md) | Navigation gardée contre les appuis répétés, rafraîchissement après un refus 404 ou 409, mise en page qui suit la taille du texte | Proposé |
 | [0041](0041-nom-de-l-application-uzu.md) | Nom de l'application : Uzu (`com.victorsauter.uzu`, schéma `uzu://`, slug `uzu`) ; le dépôt et le code gardent `dogo` | Accepté |
+| [0042](0042-chien-relie-a-plusieurs-humains.md) | Un chien relié à plusieurs humains : liens `DogMember` (rôle `Owner`), invitation par lien `uzu://`, droits égaux, plafond de 20 chiens par humain ; précise les ADR 0023 et 0037 | Proposé |
 
 Les numéros 0016 et 0024 n'ont jamais été attribués : il n'y a pas d'ADR manquant.
 

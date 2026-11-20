@@ -3,7 +3,8 @@ import { useEffect } from 'react';
 
 import { useGuardedRouter } from '@/lib/navigation';
 import { useSession } from '@/auth';
-import { shouldShowWelcome } from '@/lib/welcomeNudge';
+import { takePendingInvitation, usePendingInvitation } from '@/lib/pendingInvitation';
+import { isWelcomeInProgress, shouldShowWelcome, useWelcomeInProgress } from '@/lib/welcomeNudge';
 import { t } from '@/strings';
 import { useTheme } from '@/theme';
 
@@ -14,7 +15,10 @@ import { useTheme } from '@/theme';
  * then static routes by name length, then dynamic ones): any other order makes
  * the navigator report a « not handled » ROUTE_NAMES_CHANGED action (ADR 0026).
  * Also opens the edit-profile screen once for
- * a new member who still has the default display name.
+ * a new member who still has the default display name, and the screen of an
+ * invitation link that arrived before the sign-in (`pendingInvitation`): at
+ * once for a known member, after the welcome screen for a new one (which
+ * hands it over itself, see `edit-profile`).
  */
 export default function AppLayout() {
   const { colors } = useTheme();
@@ -26,6 +30,15 @@ export default function AppLayout() {
       router.push({ pathname: '/edit-profile', params: { welcome: '1' } });
     }
   }, [user, router]);
+
+  // The link is opened once: taking it forgets it, so « Plus tard » on the invitation does not bring it back.
+  const invitationWaiting = usePendingInvitation();
+  const welcomeOpen = useWelcomeInProgress();
+  useEffect(() => {
+    if (!user || !invitationWaiting || welcomeOpen || isWelcomeInProgress()) return;
+    const token = takePendingInvitation();
+    if (token) router.push({ pathname: '/invitation/[token]', params: { token } });
+  }, [user, invitationWaiting, welcomeOpen, router]);
 
   return (
     <Stack
@@ -52,6 +65,11 @@ export default function AppLayout() {
       <Stack.Screen name="organizations/index" options={{ title: t.organization.findTitle }} />
       <Stack.Screen name="dogs/[id]/edit" options={{ title: t.dog.editTitle }} />
       <Stack.Screen name="dogs/[id]/index" options={{ title: t.dog.detailTitle }} />
+      <Stack.Screen
+        name="dogs/[id]/invite"
+        options={{ title: t.dogInvitation.screenTitle, presentation: 'modal' }}
+      />
+      <Stack.Screen name="invitation/[token]" options={{ title: t.dogInvitation.screenTitle }} />
       <Stack.Screen name="organizations/[id]/edit" options={{ title: t.organization.editTitle }} />
       <Stack.Screen
         name="organizations/[id]/index"
