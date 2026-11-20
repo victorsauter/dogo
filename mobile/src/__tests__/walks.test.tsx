@@ -136,13 +136,12 @@ describe('walk detail and registration', () => {
     expect(screen.getByText(walk.rules)).toBeTruthy();
     expect(screen.getByText(otherUser.displayName)).toBeTruthy();
     expect(screen.getByText('Pixel')).toBeTruthy();
-    expect(screen.getByText(`Avec ${otherUser.displayName}`)).toBeTruthy();
-
-    // Organizer row first, then the participant's owner link.
+    // One row per dog: its owner and size under its name, touching it opens the dog.
+    expect(screen.getByText(`${otherUser.displayName} · Petit`)).toBeTruthy();
     await fireEvent.press(
-      screen.getAllByLabelText(`Voir le profil de ${otherUser.displayName}`)[0]!,
+      screen.getByRole('button', { name: `Pixel, avec ${otherUser.displayName}` }),
     );
-    expect(screen).toHavePathname(`/users/${otherUser.id}`);
+    expect(screen).toHavePathname(`/dogs/${otherDog.id}`);
   });
 
   it('registers on an open walk: « Inscrit »', async () => {
@@ -409,7 +408,8 @@ describe('organizer tools', () => {
     const { calls } = await openMine(mine({ participants: [participant(otherDog, 'reg-1')] }), {
       [`POST ${walkPath}/registrations/reg-1/decline`]: () => ok({}),
     });
-    await fireEvent.press(screen.getByRole('button', { name: 'Retirer Pixel' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Actions pour Pixel' }));
+    await fireEvent.press(screen.getByRole('menuitem', { name: t.walk.removeFromWalk }));
     expect(alert.mock.calls[0]![0]).toBe('Retirer Pixel de la balade ?');
     await confirmAlert(alert);
     await waitFor(() =>

@@ -1,0 +1,189 @@
+import type { ReactNode } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+
+import type { Participant } from '@/api/types';
+import { enumLabel, format, t } from '@/strings';
+import { useLineLimit, useTheme, type ColorTokens } from '@/theme';
+
+import { ActionMenu } from './ActionMenu';
+import { Avatar } from './Avatar';
+import { Text } from './Text';
+
+const DOG_SIZE = 44;
+const OWNER_SIZE = 20;
+/** Ring of the owner's avatar, in the colour of the row: it cuts the dog's picture. */
+const OWNER_RING = 2;
+const SWIPE_ACTION_WIDTH = 88;
+
+export interface ParticipantRowProps {
+  participant: Participant;
+  /** The dog is mine: the owner's line says « Toi ». */
+  isMine?: boolean;
+  onOpenDog: (dogId: string) => void;
+  onOpenOwner: (userId: string) => void;
+  /**
+   * Organizer only: removes the dog from the walk (the caller confirms first).
+   * Gives the row its « … » menu, its swipe action and its screen reader action.
+   */
+  onRemove?: () => void;
+  /** A removal is on its way: a spinner replaces the menu. */
+  busy?: boolean;
+  /** At the end of the row (accept and decline buttons of a request). */
+  trailing?: ReactNode;
+  /** Background of the row (it must be opaque for the swipe), the surface by default. */
+  background?: keyof ColorTokens;
+}
+
+/**
+ * One line of the participants card: the dog's picture with its owner's small
+ * picture on its corner (that is what binds them), the dog's name, then
+ * « owner · size ». Touching the line opens the dog. For the organizer, a
+ * « … » menu (see the dog, the owner, remove) and a swipe to the left that
+ * reveals « Retirer ».
+ */
+export function ParticipantRow({
+  participant,
+  isMine = false,
+  onOpenDog,
+  onOpenOwner,
+  onRemove,
+  busy = false,
+  trailing,
+  background = 'surface',
+}: ParticipantRowProps) {
+  const { colors, spacing } = useTheme();
+  const lines = useLineLimit(1);
+  const { dog, owner } = participant;
+  const ownerLine = format(t.walk.ownerAndSize, {
+    owner: isMine ? t.walk.you : owner.displayName,
+    size: enumLabel('DogSize', dog.size),
+  });
+
+  const row = (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors[background],
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: colors.border,
+      }}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={format(t.walk.participantA11y, {
+          dog: dog.name,
+          owner: owner.displayName,
+        })}
+        accessibilityActions={onRemove ? [{ name: 'remove', label: t.walk.remove }] : undefined}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'remove') onRemove?.();
+        }}
+        onPress={() => onOpenDog(dog.id)}
+        style={({ pressed }) => ({
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.md,
+          paddingVertical: spacing.sm,
+          paddingLeft: spacing.lg,
+          paddingRight: trailing || onRemove || busy ? spacing.xs : spacing.lg,
+          backgroundColor: pressed ? colors.surfaceMuted : 'transparent',
+        })}
+      >
+        <View style={{ width: DOG_SIZE, height: DOG_SIZE, marginRight: spacing.xs }}>
+          <Avatar name={dog.name} photoUrl={dog.photoUrl} size={DOG_SIZE} placeholderIcon="paw" />
+          <View
+            style={{
+              position: 'absolute',
+              right: -spacing.xs - OWNER_RING,
+              bottom: -spacing.xs,
+              padding: OWNER_RING,
+              borderRadius: (OWNER_SIZE + OWNER_RING * 2) / 2,
+              backgroundColor: colors[background],
+            }}
+          >
+            <Avatar name={owner.displayName} photoUrl={owner.photoUrl} size={OWNER_SIZE} />
+          </View>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text variant="subheading" numberOfLines={lines}>
+            {dog.name}
+          </Text>
+          <Text variant="caption" color="textMuted" numberOfLines={lines}>
+            {ownerLine}
+          </Text>
+        </View>
+      </Pressable>
+      {busy ? (
+        <View
+          accessibilityState={{ busy: true }}
+          style={{ width: 48, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <ActivityIndicator color={colors.textMuted} />
+        </View>
+      ) : onRemove ? (
+        <ActionMenu
+          label={format(t.walk.participantActionsA11y, { dog: dog.name })}
+          actions={[
+            { id: 'dog', label: format(t.walk.viewName, { name: dog.name }) },
+            { id: 'owner', label: format(t.walk.viewName, { name: owner.displayName }) },
+            { id: 'remove', label: t.walk.removeFromWalk, destructive: true },
+          ]}
+          onAction={(id) => {
+            if (id === 'dog') onOpenDog(dog.id);
+            else if (id === 'owner') onOpenOwner(owner.id);
+            else if (id === 'remove') onRemove();
+          }}
+        />
+      ) : null}
+      {trailing ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            paddingRight: spacing.lg,
+          }}
+        >
+          {trailing}
+        </View>
+      ) : null}
+    </View>
+  );
+
+  if (!onRemove || busy) return row;
+  return (
+    <ReanimatedSwipeable
+      testID={`participant-swipe-${participant.registrationId}`}
+      overshootRight={false}
+      friction={2}
+      rightThreshold={SWIPE_ACTION_WIDTH / 2}
+      renderRightActions={(_progress, _translation, methods) => (
+        <Pressable
+          testID={`participant-swipe-remove-${participant.registrationId}`}
+          // The « … » menu and the screen reader action are the ways to remove for those who do not swipe.
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onPress={() => {
+            methods.close();
+            onRemove();
+          }}
+          style={{
+            width: SWIPE_ACTION_WIDTH,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.danger,
+          }}
+        >
+          <Text variant="label" color="onDanger">
+            {t.walk.remove}
+          </Text>
+        </Pressable>
+      )}
+    >
+      {row}
+    </ReanimatedSwipeable>
+  );
+}

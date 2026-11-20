@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 
 import { t } from '@/strings';
 import { setFontScale, setFontScaleLive } from '@/test/fontScale';
-import { testDog, walkResult } from '@/test/fixtures';
+import { otherDog, participant, testDog, walkResult } from '@/test/fixtures';
 import { renderWithTheme } from '@/test/render';
 import { isLargeText, LARGE_TEXT_SCALE, scaledSize } from '@/theme';
 
@@ -12,6 +12,7 @@ import { DateTimeField } from '../DateTimeField';
 import { DogCard } from '../DogCard';
 import { ListItem } from '../ListItem';
 import { MessageComposer } from '../MessageComposer';
+import { ParticipantRow } from '../ParticipantRow';
 import { TextField } from '../TextField';
 import { WalkCard } from '../WalkCard';
 
@@ -65,6 +66,27 @@ describe('line limits', () => {
       undefined,
     );
     expect(screen.getByText('Et son sous-titre').props.numberOfLines).toBeUndefined();
+  });
+});
+
+describe('participant row', () => {
+  it('cuts the dog and owner lines at one line at the normal size, shows them whole when enlarged', async () => {
+    setFontScale(1);
+    await renderWithTheme(
+      <ParticipantRow
+        participant={participant({ ...otherDog, name: 'Mademoiselle Biscotte de la Forêt' }, 'r1')}
+        onOpenDog={() => {}}
+        onOpenOwner={() => {}}
+      />,
+    );
+    expect(screen.getByText('Mademoiselle Biscotte de la Forêt').props.numberOfLines).toBe(1);
+    expect(screen.getByText(/Hugo Bernard · Petit/).props.numberOfLines).toBe(1);
+
+    await setFontScaleLive(LARGE);
+    expect(screen.getByText('Mademoiselle Biscotte de la Forêt').props.numberOfLines).toBe(
+      undefined,
+    );
+    expect(screen.getByText(/Hugo Bernard · Petit/).props.numberOfLines).toBeUndefined();
   });
 });
 

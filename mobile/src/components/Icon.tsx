@@ -29,6 +29,7 @@ const icons = {
   check: { ios: 'checkmark', android: 'check', web: 'check' },
   refresh: { ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' },
   sliders: { ios: 'slider.horizontal.3', android: 'tune', web: 'tune' },
+  more: { ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' },
   locate: { ios: 'location', android: 'my_location', web: 'my_location' },
 } as const;
 

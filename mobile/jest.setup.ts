@@ -197,6 +197,33 @@ jest.mock('expo-notifications', () => {
 // Gesture handler: its own mocks (GestureHandlerRootView becomes a View).
 require('react-native-gesture-handler/jestSetup');
 
+// A swipeable row cannot be dragged in a test, and its module installs native
+// bindings that the web build of Reanimated's worklets refuses (an error out of
+// a microtask that fails the suite). In tests it is a View showing the row and,
+// after it, its right actions (give the action a `testID` to press it).
+jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
+  const React = jest.requireActual<typeof import('react')>('react');
+  const { View } = jest.requireActual<typeof import('react-native')>('react-native');
+  const methods = { close: jest.fn(), openLeft: jest.fn(), openRight: jest.fn(), reset: jest.fn() };
+  function Swipeable(props: {
+    testID?: string;
+    children?: React.ReactNode;
+    renderRightActions?: (
+      progress: unknown,
+      translation: unknown,
+      methods: unknown,
+    ) => React.ReactNode;
+  }) {
+    return React.createElement(
+      View,
+      { testID: props.testID },
+      props.children,
+      props.renderRightActions?.({ value: 0 }, { value: 0 }, methods),
+    );
+  }
+  return { __esModule: true, default: Swipeable, SwipeDirection: { LEFT: 'left', RIGHT: 'right' } };
+});
+
 // The sliding panel (@gorhom/bottom-sheet) runs on Reanimated. In tests it is a
 // View whose `snapToIndex(i)` reports `onChange(i)` at once, its current
 // position exposed as `accessibilityValue.now` on the `bottom-sheet` testID;

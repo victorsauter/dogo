@@ -24,7 +24,7 @@ import {
   isWalkFull,
   ListItem,
   LoadingState,
-  ParticipantCard,
+  ParticipantsCard,
   Screen,
   sizesLabel,
   Text,
@@ -306,85 +306,25 @@ function WalkDetailContent({ walk }: { walk: WalkDetail }) {
       </Card>
 
       <Text variant="heading">{t.walk.participants}</Text>
-      {walk.participants.length === 0 ? (
-        <Text color="textMuted">{t.walk.noParticipants}</Text>
-      ) : (
-        <View style={{ gap: spacing.md }}>
-          {walk.participants.map((participant) => (
-            <ParticipantCard
-              key={participant.registrationId}
-              participant={participant}
-              onOpenDog={openDog}
-              onOpenOwner={openUser}
-              actions={
-                organizer && open && participant.owner.id !== user?.id ? (
-                  <Button
-                    label={t.walk.remove}
-                    accessibilityLabel={format(t.walk.removeA11y, { dog: participant.dog.name })}
-                    variant="secondary"
-                    loading={decline.isPending && decline.variables === participant.registrationId}
-                    onPress={() => confirmRemove(participant)}
-                  />
-                ) : undefined
-              }
-            />
-          ))}
-        </View>
-      )}
-
-      {organizer ? (
-        <View style={{ gap: spacing.md }}>
-          <Text variant="heading">{t.walk.pendingRequests}</Text>
-          {walk.pendingRegistrations.length === 0 ? (
-            <Text color="textMuted">{t.walk.noPendingRequests}</Text>
-          ) : (
-            walk.pendingRegistrations.map((request) => {
-              const names = { dog: request.dog.name, owner: request.owner.displayName };
-              return (
-                <ParticipantCard
-                  key={request.registrationId}
-                  participant={request}
-                  onOpenDog={openDog}
-                  onOpenOwner={openUser}
-                  actions={
-                    open ? (
-                      <>
-                        <View style={{ flex: 1 }}>
-                          <Button
-                            label={t.walk.accept}
-                            accessibilityLabel={format(t.walk.acceptA11y, names)}
-                            loading={
-                              accept.isPending && accept.variables === request.registrationId
-                            }
-                            onPress={() => {
-                              setOrganizerError(null);
-                              accept.mutate(request.registrationId, { onError: onAcceptError });
-                            }}
-                          />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Button
-                            label={t.walk.decline}
-                            accessibilityLabel={format(t.walk.declineA11y, names)}
-                            variant="secondary"
-                            loading={
-                              decline.isPending && decline.variables === request.registrationId
-                            }
-                            onPress={() => {
-                              setOrganizerError(null);
-                              decline.mutate(request.registrationId, { onError });
-                            }}
-                          />
-                        </View>
-                      </>
-                    ) : undefined
-                  }
-                />
-              );
-            })
-          )}
-        </View>
-      ) : null}
+      <ParticipantsCard
+        walk={walk}
+        currentUserId={user?.id}
+        organizer={organizer}
+        open={open}
+        onOpenDog={openDog}
+        onOpenUser={openUser}
+        onRemove={confirmRemove}
+        onAccept={(registrationId) => {
+          setOrganizerError(null);
+          accept.mutate(registrationId, { onError: onAcceptError });
+        }}
+        onDecline={(registrationId) => {
+          setOrganizerError(null);
+          decline.mutate(registrationId, { onError });
+        }}
+        acceptingId={accept.isPending ? accept.variables : undefined}
+        decliningId={decline.isPending ? decline.variables : undefined}
+      />
 
       {organizerError ? (
         <Text color="danger" accessibilityLiveRegion="polite">

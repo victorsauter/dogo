@@ -50,7 +50,9 @@ export {
 } from './WalkCard';
 export { WalkForm, walkSubmitErrors, type WalkFormProps } from './WalkForm';
 export { WalkPin, WalksMap, type WalksMapProps } from './WalksMap';
-export { ParticipantCard, type ParticipantCardProps } from './ParticipantCard';
+export { ActionMenu, type ActionMenuAction, type ActionMenuProps } from './ActionMenu';
+export { ParticipantRow, type ParticipantRowProps } from './ParticipantRow';
+export { ParticipantsCard, type ParticipantsCardProps } from './ParticipantsCard';
 export {
   dogUnavailableReason,
   WalkRegistrationPanel,
